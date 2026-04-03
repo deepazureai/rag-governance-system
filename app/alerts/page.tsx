@@ -7,6 +7,13 @@ import { getSeverityColor, formatDateTime } from '@/src/utils/format';
 import { AlertTriangle, CheckCircle, Bell, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function AlertsPage() {
   const [activeTab, setActiveTab] = useState('unresolved');
