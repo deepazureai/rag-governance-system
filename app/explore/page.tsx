@@ -1,9 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { Send, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { mockApps, mockQueryLogs } from '@/src/data/mockData';
 import { FrameworkSelector } from '@/src/components/evaluation/framework-selector';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function ExplorePage() {
   const [selectedApp, setSelectedApp] = useState<string>(mockApps[0].id);
