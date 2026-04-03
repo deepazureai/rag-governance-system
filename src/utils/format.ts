@@ -1,9 +1,10 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, utcToZonedTime } from 'date-fns-tz';
 
 export const formatDate = (date: string | Date, formatStr = 'MMM dd, yyyy') => {
   try {
     const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-    return format(parsedDate, formatStr);
+    // Use UTC to avoid timezone mismatches in hydration
+    return format(parsedDate, formatStr, { timeZone: 'UTC' });
   } catch {
     return date;
   }
