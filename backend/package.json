@@ -1,0 +1,50 @@
+{
+  "name": "rag-evaluation-backend",
+  "version": "1.0.0",
+  "description": "Node.js backend for RAG LLM Evaluation Platform with pluggable evaluation frameworks",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "RAG",
+    "LLM",
+    "Evaluation",
+    "RAGAS",
+    "Microsoft Evaluation SDK"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "axios": "^1.6.2",
+    "sqlite3": "^5.1.6",
+    "pg": "^8.11.2",
+    "pino": "^8.16.2",
+    "pino-http": "^8.5.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.8",
+    "@types/cors": "^2.8.17",
+    "@types/uuid": "^9.0.6",
+    "typescript": "^5.2.2",
+    "tsx": "^4.1.0",
+    "vitest": "^0.34.6",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.51.0"
+  }
+}

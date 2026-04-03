@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { mockApps, mockQueryLogs } from '@/data/mockData';
 import { Zap, Send, Copy, TrendingUp } from 'lucide-react';
+import { FrameworkSelector } from '@/components/evaluation/framework-selector';
 
 export default function ExplorePage() {
   const [selectedApp, setSelectedApp] = useState<string>(mockApps[0].id);
@@ -57,6 +58,9 @@ Response Time: 245ms | Confidence: 92.3% | Token Usage: 487/2048`;
             Test and explore your RAG applications with real queries
           </p>
         </div>
+
+        {/* Framework Selector */}
+        <FrameworkSelector />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Query Panel */}
