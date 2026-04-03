@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { mockPolicies } from '@/data/mockData';
+import { mockPolicies, mockGovernanceMetrics } from '@/data/mockData';
 import { Plus, Shield, Lock, Eye, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GovernanceMetricsGrid } from '@/components/dashboard/governance-metrics-grid';
 
 const typeIcons: Record<string, React.ReactNode> = {
   compliance: <FileText className="w-5 h-5" />,
@@ -32,13 +33,19 @@ export default function GovernancePage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Governance & Compliance</h1>
             <p className="text-gray-600">
-              Manage policies and compliance rules for your RAG applications
+              Manage policies, governance metrics, and compliance rules for your RAG applications
             </p>
           </div>
           <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
             <Plus className="w-4 h-4" />
             New Policy
           </Button>
+        </div>
+
+        {/* Governance Metrics */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">Infrastructure & Performance Governance</h2>
+          <GovernanceMetricsGrid metrics={mockGovernanceMetrics} />
         </div>
 
         {/* Policy Statistics */}

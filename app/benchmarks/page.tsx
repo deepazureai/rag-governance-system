@@ -67,24 +67,24 @@ export default function BenchmarksPage() {
               </div>
             </Card>
 
-            {/* Metrics Comparison */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Bar Chart Comparison */}
-              <Card className="p-6 bg-white">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Performance</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={benchmark.metrics}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="appName" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="retrieval" fill="#8b5cf6" name="Retrieval" />
-                    <Bar dataKey="generation" fill="#3b82f6" name="Generation" />
-                    <Bar dataKey="overall" fill="#10b981" name="Overall" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
+        {/* Metrics Comparison */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bar Chart Comparison */}
+          <Card className="p-6 bg-white">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Performance Comparison</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={benchmark.metrics}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="appName" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="retrieval" fill="#3b82f6" name="Retrieval Accuracy" />
+                <Bar dataKey="generation" fill="#8b5cf6" name="Generation Quality" />
+                <Bar dataKey="overall" fill="#10b981" name="Overall Score" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
 
               {/* Radar Chart */}
               <Card className="p-6 bg-white">

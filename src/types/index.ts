@@ -19,6 +19,31 @@ export interface EvaluationMetric {
   trend: 'up' | 'down' | 'stable';
   trendPercentage: number;
   unit?: string;
+  category?: 'quality' | 'safety' | 'relevance' | 'performance';
+}
+
+export interface GovernanceMetric {
+  id: string;
+  name: string;
+  description: string;
+  value: number;
+  trend: 'up' | 'down' | 'stable';
+  trendPercentage: number;
+  unit?: string;
+  threshold?: number;
+  status: 'healthy' | 'warning' | 'critical';
+  category: 'tokens' | 'performance' | 'throughput' | 'latency' | 'cost';
+}
+
+export interface DetailedEvaluationMetrics {
+  groundedness: number;
+  relevance: number;
+  fluency: number;
+  safety: number;
+  coherence: number;
+  completeness: number;
+  factuality: number;
+  harmfulness: number;
 }
 
 export interface QueryPerformance {
@@ -66,6 +91,9 @@ export interface QueryLog {
   relevanceScore: number;
   latency: number;
   timestamp: string;
+  evaluationMetrics?: DetailedEvaluationMetrics;
+  tokensUsed: number;
+  costEstimate: number;
 }
 
 export interface Document {

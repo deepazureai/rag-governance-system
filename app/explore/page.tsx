@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockApps } from '@/data/mockData';
-import { Zap, Send, Copy } from 'lucide-react';
+import { mockApps, mockQueryLogs } from '@/data/mockData';
+import { Zap, Send, Copy, TrendingUp } from 'lucide-react';
 
 export default function ExplorePage() {
   const [selectedApp, setSelectedApp] = useState<string>(mockApps[0].id);
@@ -138,6 +138,42 @@ Response Time: 245ms | Confidence: 92.3% | Token Usage: 487/2048`;
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 whitespace-pre-wrap text-sm text-gray-700">
                   {response}
+                </div>
+              </Card>
+            )}
+
+            {/* Evaluation Metrics for Last Query */}
+            {mockQueryLogs.length > 0 && response && (
+              <Card className="p-6 bg-white">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  Evaluation Metrics for This Query
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-gray-600 font-medium">Groundedness</p>
+                    <p className="text-2xl font-bold text-blue-700 mt-1">{mockQueryLogs[0].evaluationMetrics?.groundedness || 92}%</p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-xs text-gray-600 font-medium">Relevance</p>
+                    <p className="text-2xl font-bold text-green-700 mt-1">{mockQueryLogs[0].evaluationMetrics?.relevance || 91}%</p>
+                  </div>
+                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-xs text-gray-600 font-medium">Fluency</p>
+                    <p className="text-2xl font-bold text-purple-700 mt-1">{mockQueryLogs[0].evaluationMetrics?.fluency || 89}%</p>
+                  </div>
+                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-xs text-gray-600 font-medium">Safety</p>
+                    <p className="text-2xl font-bold text-red-700 mt-1">{mockQueryLogs[0].evaluationMetrics?.safety || 99}%</p>
+                  </div>
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <p className="text-xs text-gray-600 font-medium">Tokens Used</p>
+                    <p className="text-2xl font-bold text-orange-700 mt-1">{mockQueryLogs[0].tokensUsed}</p>
+                  </div>
+                  <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                    <p className="text-xs text-gray-600 font-medium">Cost</p>
+                    <p className="text-2xl font-bold text-pink-700 mt-1">${mockQueryLogs[0].costEstimate}</p>
+                  </div>
                 </div>
               </Card>
             )}

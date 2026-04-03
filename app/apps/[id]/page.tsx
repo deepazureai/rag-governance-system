@@ -21,11 +21,14 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { mockApps, mockMetrics, mockQueryPerformance, mockRelevanceScores } from '@/data/mockData';
+import { mockApps, mockMetrics, mockQueryPerformance, mockRelevanceScores, mockGovernanceMetrics, mockDetailedMetrics } from '@/data/mockData';
 import { getStatusColor, formatDateTime } from '@/utils/format';
 import { ArrowLeft, Edit, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { GovernanceMetricsGrid } from '@/components/dashboard/governance-metrics-grid';
+import { EvaluationMetricsGrid } from '@/components/dashboard/evaluation-metrics-grid';
+import { EvaluationMetricsRadar } from '@/components/dashboard/evaluation-metrics-radar';
 
 interface AppDetailPageProps {
   params: {
@@ -107,8 +110,9 @@ export default function AppDetailPage({ params }: AppDetailPageProps) {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-5 bg-white border-b border-gray-200 rounded-none">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-6 bg-white border-b border-gray-200 rounded-none">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="queries">Query Logs</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
@@ -171,8 +175,106 @@ export default function AppDetailPage({ params }: AppDetailPageProps) {
             </div>
           </TabsContent>
 
+          {/* Evaluation Tab */}
+          <TabsContent value="evaluation" className="space-y-6 mt-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quality & Safety Evaluation Metrics</h3>
+              <EvaluationMetricsGrid metrics={mockMetrics} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <EvaluationMetricsRadar metrics={mockDetailedMetrics} title="Quality Profile" />
+              <Card className="p-6 bg-white">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Evaluation Summary</h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Overall Quality Score</span>
+                      <span className="text-2xl font-bold text-blue-700">91.3%</span>
+                    </div>
+                    <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600" style={{ width: '91.3%' }} />
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Safety & Compliance</span>
+                      <span className="text-2xl font-bold text-green-700">99.2%</span>
+                    </div>
+                    <div className="h-2 bg-green-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-600" style={{ width: '99.2%' }} />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Factuality & Accuracy</span>
+                      <span className="text-2xl font-bold text-purple-700">96.1%</span>
+                    </div>
+                    <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-600" style={{ width: '96.1%' }} />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Response Completeness</span>
+                      <span className="text-2xl font-bold text-orange-700">88.5%</span>
+                    </div>
+                    <div className="h-2 bg-orange-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-orange-600" style={{ width: '88.5%' }} />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card className="p-6 bg-white">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Evaluation Metrics Over Time</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={mockRelevanceScores}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="retrieval"
+                    stroke="#3b82f6"
+                    name="Retrieval Quality"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="generation"
+                    stroke="#8b5cf6"
+                    name="Generation Quality"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="overall"
+                    stroke="#10b981"
+                    name="Overall Score"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          </TabsContent>
+
           {/* Performance Tab */}
           <TabsContent value="performance" className="space-y-6 mt-6">
+            {/* Governance Metrics */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Governance Metrics</h3>
+              <GovernanceMetricsGrid metrics={mockGovernanceMetrics} />
+            </div>
+
+            {/* Query Performance Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="p-6 bg-white">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Query Performance</h3>

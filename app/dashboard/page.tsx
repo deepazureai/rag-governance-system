@@ -17,10 +17,13 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts } from '@/data/mockData';
+import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts, mockGovernanceMetrics, mockDetailedMetrics } from '@/data/mockData';
 import { formatDateTime } from '@/utils/format';
 import { AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import { GovernanceMetricsGrid } from '@/components/dashboard/governance-metrics-grid';
+import { EvaluationMetricsGrid } from '@/components/dashboard/evaluation-metrics-grid';
+import { EvaluationMetricsRadar } from '@/components/dashboard/evaluation-metrics-radar';
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -75,13 +78,50 @@ export default function DashboardPage() {
         )}
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {mockMetrics.map((metric) => (
-            <MetricCard key={metric.id} metric={metric} />
-          ))}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Evaluation Metrics</h2>
+            <EvaluationMetricsGrid metrics={mockMetrics} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <EvaluationMetricsRadar metrics={mockDetailedMetrics} title="Quality Evaluation Profile" />
+            <Card className="p-6 bg-white">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Safety & Compliance</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div>
+                    <p className="font-medium text-gray-900">Safety Score</p>
+                    <p className="text-sm text-gray-600">Absence of harmful content</p>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">{mockDetailedMetrics.safety.toFixed(1)}%</p>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div>
+                    <p className="font-medium text-gray-900">Harmfulness Detection</p>
+                    <p className="text-sm text-gray-600">Blocked harmful responses</p>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">{(100 - mockDetailedMetrics.harmfulness).toFixed(1)}%</p>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <div>
+                    <p className="font-medium text-gray-900">Factuality Score</p>
+                    <p className="text-sm text-gray-600">Accuracy of factual claims</p>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">{mockDetailedMetrics.factuality.toFixed(1)}%</p>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
 
-        {/* Charts Grid */}
+        {/* Governance Metrics */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold text-gray-900">Governance & Infrastructure Metrics</h2>
+          <GovernanceMetricsGrid metrics={mockGovernanceMetrics} />
+        </div>
+
+        {/* Key Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Query Performance Chart */}
           <Card className="p-6 bg-white">
