@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { MetricCard } from '@/src/components/dashboard/metric-card';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts, mockGovernanceMetrics, mockDetailedMetrics } from '@/src/data/mockData';
 import { formatDateTime } from '@/src/utils/format';
 import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-metrics-grid';
