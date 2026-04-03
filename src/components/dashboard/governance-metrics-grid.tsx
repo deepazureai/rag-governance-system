@@ -1,6 +1,6 @@
 'use client';
 
-import { GovernanceMetric } from '@/types';
+import { GovernanceMetric } from '@/src/types';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';

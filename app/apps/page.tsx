@@ -1,19 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card } from '@/components/ui/card';
-import { AppCard } from '@/components/dashboard/app-card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { mockApps } from '@/data/mockData';
+import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
+import { AppCard } from '@/src/components/dashboard/app-card';
+import { mockApps } from '@/src/data/mockData';
 import { Plus, Search } from 'lucide-react';
 
 export default function AppsPage() {

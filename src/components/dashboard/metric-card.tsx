@@ -2,8 +2,8 @@
 
 import { Card } from '@/components/ui/card';
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
-import { formatNumber, formatPercentage } from '@/utils/format';
-import { EvaluationMetric } from '@/types';
+import { formatNumber, formatPercentage } from '@/src/utils/format';
+import { EvaluationMetric } from '@/src/types';
 
 interface MetricCardProps {
   metric: EvaluationMetric;

@@ -1,4 +1,4 @@
-import { DetailedEvaluationMetrics } from '@/types';
+import { DetailedEvaluationMetrics } from '@/src/types';
 
 // Mock framework configurations
 export const MOCK_FRAMEWORKS = {

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAppDispatch, useAppSelector } from '@/hooks/useRedux';
-import { toggleSidebar } from '@/store/slices/uiSlice';
+import { useAppDispatch, useAppSelector } from '@/src/hooks/useRedux';
+import { toggleSidebar } from '@/src/store/slices/uiSlice';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

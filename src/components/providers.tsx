@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { store } from '@/store';
+import { store } from '@/src/store';
 
 const queryClient = new QueryClient({
   defaultOptions: {

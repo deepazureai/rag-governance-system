@@ -3,8 +3,8 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getStatusColor } from '@/utils/format';
-import { App } from '@/types';
+import { getStatusColor } from '@/src/utils/format';
+import { App } from '@/src/types';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts';
-import { mockBenchmarks, mockApps } from '@/data/mockData';
+import { mockBenchmarks, mockApps } from '@/src/data/mockData';
 import { Plus, TrendingUp } from 'lucide-react';
 
 export default function BenchmarksPage() {

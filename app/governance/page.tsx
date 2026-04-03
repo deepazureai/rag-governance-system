@@ -1,14 +1,8 @@
 'use client';
 
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { mockPolicies, mockGovernanceMetrics } from '@/data/mockData';
-import { Plus, Shield, Lock, Eye, FileText } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GovernanceMetricsGrid } from '@/components/dashboard/governance-metrics-grid';
+import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
+import { mockPolicies, mockGovernanceMetrics } from '@/src/data/mockData';
+import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-metrics-grid';
 
 const typeIcons: Record<string, React.ReactNode> = {
   compliance: <FileText className="w-5 h-5" />,

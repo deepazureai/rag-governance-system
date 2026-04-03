@@ -1,19 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { mockAlerts, mockApps } from '@/data/mockData';
-import { getSeverityColor, formatDateTime } from '@/utils/format';
+import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
+import { mockAlerts, mockApps } from '@/src/data/mockData';
+import { getSeverityColor, formatDateTime } from '@/src/utils/format';
 import { AlertTriangle, CheckCircle, Bell, Trash2 } from 'lucide-react';
 
 export default function AlertsPage() {

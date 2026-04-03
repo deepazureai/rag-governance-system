@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { useAppSelector } from '@/hooks/useRedux';
+import { useAppSelector } from '@/src/hooks/useRedux';
 import { Bell, Settings, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

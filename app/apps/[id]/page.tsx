@@ -1,34 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { MetricCard } from '@/components/dashboard/metric-card';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-} from 'recharts';
-import { mockApps, mockMetrics, mockQueryPerformance, mockRelevanceScores, mockGovernanceMetrics, mockDetailedMetrics } from '@/data/mockData';
-import { getStatusColor, formatDateTime } from '@/utils/format';
-import { ArrowLeft, Edit, Settings } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { GovernanceMetricsGrid } from '@/components/dashboard/governance-metrics-grid';
-import { EvaluationMetricsGrid } from '@/components/dashboard/evaluation-metrics-grid';
-import { EvaluationMetricsRadar } from '@/components/dashboard/evaluation-metrics-radar';
+import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
+import { MetricCard } from '@/src/components/dashboard/metric-card';
+import { mockApps, mockMetrics, mockQueryPerformance, mockRelevanceScores, mockGovernanceMetrics, mockDetailedMetrics } from '@/src/data/mockData';
+import { getStatusColor, formatDateTime } from '@/src/utils/format';
+import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-metrics-grid';
+import { EvaluationMetricsGrid } from '@/src/components/dashboard/evaluation-metrics-grid';
+import { EvaluationMetricsRadar } from '@/src/components/dashboard/evaluation-metrics-radar';
 
 interface AppDetailPageProps {
   params: {

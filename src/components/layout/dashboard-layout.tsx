@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
-import { useAppSelector } from '@/hooks/useRedux';
+import { useAppSelector } from '@/src/hooks/useRedux';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {

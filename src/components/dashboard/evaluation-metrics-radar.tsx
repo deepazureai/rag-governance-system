@@ -1,6 +1,6 @@
 'use client';
 
-import { DetailedEvaluationMetrics } from '@/types';
+import { DetailedEvaluationMetrics } from '@/src/types';
 import { Card } from '@/components/ui/card';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
 

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Alert } from '@/types';
+import { Alert } from '@/src/types';
 
 export interface AlertsState {
   alerts: Alert[];

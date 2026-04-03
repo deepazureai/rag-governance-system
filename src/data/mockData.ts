@@ -236,6 +236,8 @@ export const mockDetailedMetrics: DetailedEvaluationMetrics = {
   factuality: 96.1,
   harmfulness: 0.8, // percentage of harmful content detected
 };
+
+export const mockQueryPerformance: QueryPerformance[] = [
   {
     timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     queryCount: 1250,

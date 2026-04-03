@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { ApiResponse } from '@/types';
+import { ApiResponse } from '@/src/types';
 
 export class ApiErrorHandler {
   static handle(error: unknown): ApiResponse<null> {

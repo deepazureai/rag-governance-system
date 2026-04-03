@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { App } from '@/types';
+import { App } from '@/src/types';
 
 export interface AppState {
   currentApp: App | null;
