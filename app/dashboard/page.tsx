@@ -3,6 +3,20 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { MetricCard } from '@/src/components/dashboard/metric-card';
 import { Card } from '@/components/ui/card';
