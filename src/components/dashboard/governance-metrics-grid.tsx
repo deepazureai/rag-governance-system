@@ -63,7 +63,7 @@ export function GovernanceMetricsGrid({ metrics }: GovernanceMetricsGridProps) {
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {metric.value.toLocaleString()}
+                  {metric.value.toLocaleString('en-US')}
                 </p>
                 <p className="text-xs text-gray-600">{metric.unit}</p>
               </div>
