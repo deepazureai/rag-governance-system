@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
 import {
@@ -19,20 +19,32 @@ import {
 } from 'recharts';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { MetricCard } from '@/src/components/dashboard/metric-card';
+import { AppSelector } from '@/src/components/dashboard/app-selector';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts, mockGovernanceMetrics, mockDetailedMetrics } from '@/src/data/mockData';
+import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts, mockGovernanceMetrics, mockDetailedMetrics, mockApps } from '@/src/data/mockData';
 import { formatDateTime } from '@/src/utils/format';
+import { getFilteredMetrics, getFilteredAlerts, getFilteredGovernanceMetrics } from '@/src/utils/dashboardFilters';
 import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-metrics-grid';
 import { EvaluationMetricsGrid } from '@/src/components/dashboard/evaluation-metrics-grid';
 import { EvaluationMetricsRadar } from '@/src/components/dashboard/evaluation-metrics-radar';
+import { useAppSelector } from '@/src/hooks/useRedux';
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const filteredData = useMemo(() => {
+    return {
+      metrics: getFilteredMetrics(selectedAppIds, mockApps),
+      alerts: getFilteredAlerts(selectedAppIds, mockApps),
+      governanceMetrics: getFilteredGovernanceMetrics(selectedAppIds),
+    };
+  }, [selectedAppIds]);
 
   if (!mounted) {
     return (
@@ -45,7 +57,7 @@ export default function DashboardPage() {
     );
   }
 
-  const unresolvedAlerts = mockAlerts.filter((a) => !a.resolved);
+  const unresolvedAlerts = filteredData.alerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.severity === 'critical');
 
   return (
@@ -58,6 +70,9 @@ export default function DashboardPage() {
             Real-time metrics and performance monitoring for your RAG applications
           </p>
         </div>
+
+        {/* Application Selector */}
+        <AppSelector />
 
         {/* Alert Banner */}
         {criticalAlerts.length > 0 && (
@@ -83,7 +98,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Evaluation Metrics</h2>
-            <EvaluationMetricsGrid metrics={mockMetrics} />
+            <EvaluationMetricsGrid metrics={filteredData.metrics.metrics} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -120,7 +135,7 @@ export default function DashboardPage() {
         {/* Governance Metrics */}
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-gray-900">Governance & Infrastructure Metrics</h2>
-          <GovernanceMetricsGrid metrics={mockGovernanceMetrics} />
+          <GovernanceMetricsGrid metrics={filteredData.governanceMetrics} />
         </div>
 
         {/* Key Metrics */}

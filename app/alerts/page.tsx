@@ -5,6 +5,8 @@ import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { mockAlerts, mockApps } from '@/src/data/mockData';
 import { getSeverityColor, formatDateTime } from '@/src/utils/format';
 import { AlertTriangle, CheckCircle, Bell, Trash2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function AlertsPage() {
   const [activeTab, setActiveTab] = useState('unresolved');

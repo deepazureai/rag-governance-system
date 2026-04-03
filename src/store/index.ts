@@ -3,6 +3,7 @@ import filtersReducer from './slices/filtersSlice';
 import uiReducer from './slices/uiSlice';
 import appReducer from './slices/appSlice';
 import alertsReducer from './slices/alertsSlice';
+import appSelectionReducer from './slices/appSelectionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     ui: uiReducer,
     app: appReducer,
     alerts: alertsReducer,
+    appSelection: appSelectionReducer,
   },
 });
 
