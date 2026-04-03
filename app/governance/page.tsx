@@ -6,6 +6,13 @@ import { mockPolicies, mockGovernanceMetrics } from '@/src/data/mockData';
 import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-metrics-grid';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
 
 const typeIcons: Record<string, React.ReactNode> = {
   compliance: <FileText className="w-5 h-5" />,
