@@ -4,6 +4,7 @@ import uiReducer from './slices/uiSlice';
 import appReducer from './slices/appSlice';
 import alertsReducer from './slices/alertsSlice';
 import appSelectionReducer from './slices/appSelectionSlice';
+import dataSourcesReducer from './slices/dataSourcesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     app: appReducer,
     alerts: alertsReducer,
     appSelection: appSelectionReducer,
+    dataSources: dataSourcesReducer,
   },
 });
 
