@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Check, X } from 'lucide-react';
 import { DATA_SOURCE_TYPES } from '@/src/constants/dataSources';
-import { DatabaseForm } from './database-form';
-import { AzureLogsForm } from './azure-logs-form';
-import { AzureBlobForm } from './azure-blob-form';
-import { SplunkForm } from './splunk-form';
-import { DatadogForm } from './datadog-form';
+import { DatabaseForm } from './data-sources/database-form';
+import { AzureLogsForm } from './data-sources/azure-logs-form';
+import { AzureBlobForm } from './data-sources/azure-blob-form';
+import { SplunkForm } from './data-sources/splunk-form';
+import { DatadogForm } from './data-sources/datadog-form';
 import { DataSourceConfig, DataSourceType } from '@/src/types/dataSource';
 
 export function DataSourcesTab() {
