@@ -3,7 +3,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const connectionsRoutes = require('./routes/connectionsRoutes');
 const applicationsRoutes = require('./routes/applicationsRoutes');
+const metricsRoutes = require('./routes/metricsRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
+const MetricsCollectionJob = require('./jobs/metricsCollectionJob');
 
 const app = express();
 
@@ -27,6 +29,10 @@ mongoose.connect(process.env.DATABASE_URL || 'mongodb://localhost:27017/rag-eval
 // Routes
 app.use('/api/connections', connectionsRoutes);
 app.use('/api/applications', applicationsRoutes);
+app.use('/api', metricsRoutes);
+
+// Start scheduled metrics collection (every 5 minutes)
+MetricsCollectionJob.startScheduledCollection(5);
 
 // Health check
 app.get('/api/health', (req, res) => {
