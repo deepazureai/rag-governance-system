@@ -2,15 +2,15 @@
   "name": "rag-evaluation-backend",
   "version": "1.0.0",
   "description": "Node.js backend for RAG LLM Evaluation Platform with pluggable evaluation frameworks",
-  "main": "dist/index.js",
-  "type": "module",
+  "main": "app.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "vitest",
-    "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "dev": "node --watch app.js",
+    "build": "echo 'No build needed for JavaScript'",
+    "start": "node server.js",
+    "setup": "node scripts/setup.js",
+    "lint": "eslint . --ext .js",
+    "logs": "tail -f logs/*.log"
   },
   "keywords": [
     "RAG",
@@ -49,11 +49,6 @@
     "@types/ws": "^8.5.8",
     "@types/cors": "^2.8.17",
     "@types/uuid": "^9.0.6",
-    "typescript": "^5.2.2",
-    "tsx": "^4.1.0",
-    "vitest": "^0.34.6",
-    "@typescript-eslint/eslint-plugin": "^6.8.0",
-    "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^8.51.0"
   }
 }
