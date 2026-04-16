@@ -5,6 +5,7 @@ import appReducer from './slices/appSlice';
 import alertsReducer from './slices/alertsSlice';
 import appSelectionReducer from './slices/appSelectionSlice';
 import dataSourcesReducer from './slices/dataSourcesSlice';
+import connectionsReducer from './slices/connectionsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     alerts: alertsReducer,
     appSelection: appSelectionReducer,
     dataSources: dataSourcesReducer,
+    connections: connectionsReducer,
   },
 });
 

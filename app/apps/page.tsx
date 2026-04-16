@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { AppCard } from '@/src/components/dashboard/app-card';
 import { mockApps } from '@/src/data/mockData';
@@ -42,10 +43,12 @@ export default function AppsPage() {
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Application Catalog</h1>
             <p className="text-gray-600">Manage and monitor your RAG applications</p>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-            <Plus className="w-4 h-4" />
-            New Application
-          </Button>
+          <Link href="/apps/new">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+              <Plus className="w-4 h-4" />
+              New Application
+            </Button>
+          </Link>
         </div>
 
         {/* Filters */}

@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Lock, Palette, User, Database } from 'lucide-react';
 import { useState } from 'react';
 import { DataSourcesTab } from '@/src/components/settings/data-sources-tab';
+import { ConnectionsTab } from '@/src/components/settings/connections-tab';
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState('system');
@@ -47,9 +48,9 @@ export default function SettingsPage() {
               <Palette className="w-4 h-4" />
               <span className="hidden sm:inline">Appearance</span>
             </TabsTrigger>
-            <TabsTrigger value="data-sources" className="gap-2">
+            <TabsTrigger value="connections" className="gap-2">
               <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">Data Sources</span>
+              <span className="hidden sm:inline">Connections</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="gap-2">
               <Lock className="w-4 h-4" />
@@ -241,9 +242,9 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Data Sources Tab */}
-          <TabsContent value="data-sources" className="space-y-6 mt-6">
-            <DataSourcesTab />
+          {/* Connections Tab */}
+          <TabsContent value="connections" className="space-y-6 mt-6">
+            <ConnectionsTab />
           </TabsContent>
 
           {/* Security Tab */}
