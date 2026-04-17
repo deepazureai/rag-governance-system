@@ -7,6 +7,8 @@ import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import http from 'http';
 import { createEvaluationRouter } from './api/routes';
+import { applicationsRouter } from './api/applicationsRoutes';
+import { connectionsRouter } from './api/connectionsRoutes';
 import { getFrameworkRegistry } from './frameworks/registry';
 import { createDatabase } from './services/database';
 import { createEvaluationService } from './services/evaluation';
@@ -52,6 +54,8 @@ async function createServer(): Promise<Express> {
   // API routes
   const evaluationRouter = createEvaluationRouter(evaluationService);
   app.use('/api/evaluations', evaluationRouter);
+  app.use('/api/applications', applicationsRouter);
+  app.use('/api/connections', connectionsRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {
