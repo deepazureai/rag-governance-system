@@ -9,13 +9,15 @@ import {
   deleteConnection,
   setTestingConnection,
   updateConnectionTestStatus,
+  updateConnection,
 } from '@/src/store/slices/connectionsSlice';
 import { mockApps } from '@/src/data/mockData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, RotateCcw, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Trash2, RotateCcw, CheckCircle, XCircle, Clock, Edit2 } from 'lucide-react';
 import { connectionsClient } from '@/src/api/connectionsClient';
+import { EditConnectionModal } from './edit-connection-modal';
 
 export function ConnectionsTab() {
   const dispatch = useAppDispatch();
@@ -23,6 +25,7 @@ export function ConnectionsTab() {
     (state) => state.connections
   );
   const [loading, setLoading] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<any>(null);
 
   const selectedApp = selectedAppId ? mockApps.find((app) => app.id === selectedAppId) : null;
   const appConnections = selectedAppId ? connections.filter((c) => c.appId === selectedAppId) : [];
@@ -106,6 +109,22 @@ export function ConnectionsTab() {
     }
   };
 
+  const handleEditConnection = (connection: any) => {
+    setEditingConnection(connection);
+  };
+
+  const handleSaveConnection = async (updatedConnection: any) => {
+    try {
+      await connectionsClient.updateConnection(updatedConnection.id, updatedConnection);
+      dispatch(updateConnection(updatedConnection));
+      setEditingConnection(null);
+      alert('Connection updated successfully');
+    } catch (error) {
+      console.error('[v0] Update connection error:', error);
+      alert('Failed to update connection');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Application Connections</h2>
@@ -181,6 +200,13 @@ export function ConnectionsTab() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => handleEditConnection(connection)}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => handleTestConnection(connection.id)}
                         disabled={testingConnectionId === connection.id}
                       >
@@ -206,6 +232,15 @@ export function ConnectionsTab() {
         <Card className="p-8 text-center text-gray-500">
           Select an application to view its connections
         </Card>
+      )}
+
+      {/* Edit Connection Modal */}
+      {editingConnection && (
+        <EditConnectionModal
+          connection={editingConnection}
+          onSave={handleSaveConnection}
+          onClose={() => setEditingConnection(null)}
+        />
       )}
     </div>
   );
