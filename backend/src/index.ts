@@ -9,10 +9,12 @@ import http from 'http';
 import { createEvaluationRouter } from './api/routes';
 import { applicationsRouter } from './api/applicationsRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
+import { batchProcessingRouter } from './api/batchProcessingRoutes';
 import { getFrameworkRegistry } from './frameworks/registry';
 import { createDatabase } from './services/database';
 import { createEvaluationService } from './services/evaluation';
 import { createWebSocketService } from './services/websocket';
+import { scheduledBatchJobService } from './services/ScheduledBatchJobService';
 
 async function createServer(): Promise<Express> {
   const app = express();
@@ -51,11 +53,15 @@ async function createServer(): Promise<Express> {
   const registry = getFrameworkRegistry();
   await registry.initializeAll();
 
+  // Initialize scheduled batch jobs
+  await scheduledBatchJobService.initializeAllScheduledJobs();
+
   // API routes
   const evaluationRouter = createEvaluationRouter(evaluationService);
   app.use('/api/evaluations', evaluationRouter);
   app.use('/api/applications', applicationsRouter);
   app.use('/api/connections', connectionsRouter);
+  app.use('/api/batch', batchProcessingRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {

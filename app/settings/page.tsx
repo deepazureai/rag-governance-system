@@ -14,10 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, Lock, Palette, User, Database } from 'lucide-react';
+import { Bell, Lock, Palette, User, Database, Zap, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { DataSourcesTab } from '@/src/components/settings/data-sources-tab';
 import { ConnectionsTab } from '@/src/components/settings/connections-tab';
+import { BatchProcessingTab } from '@/src/components/settings/batch-processing-tab';
+import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState('system');
@@ -35,7 +37,7 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-5">
+          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-7">
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -51,6 +53,14 @@ export default function SettingsPage() {
             <TabsTrigger value="connections" className="gap-2">
               <Database className="w-4 h-4" />
               <span className="hidden sm:inline">Connections</span>
+            </TabsTrigger>
+            <TabsTrigger value="batch" className="gap-2">
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Batch</span>
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="gap-2">
+              <Clock className="w-4 h-4" />
+              <span className="hidden sm:inline">Scheduled</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="gap-2">
               <Lock className="w-4 h-4" />
@@ -245,6 +255,16 @@ export default function SettingsPage() {
           {/* Connections Tab */}
           <TabsContent value="connections" className="space-y-6 mt-6">
             <ConnectionsTab />
+          </TabsContent>
+
+          {/* Batch Processing Tab */}
+          <TabsContent value="batch" className="space-y-6 mt-6">
+            <BatchProcessingTab />
+          </TabsContent>
+
+          {/* Scheduled Jobs Tab */}
+          <TabsContent value="scheduled" className="space-y-6 mt-6">
+            <ScheduledJobsTab />
           </TabsContent>
 
           {/* Security Tab */}
