@@ -1,18 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { DataIngestionService } from '../services/DataIngestionService';
 import { DataProcessingService } from '../services/DataProcessingService';
-import { LocalFolderConnector } from '../connectors/LocalFolderConnector';
-import { AzureBlobConnector } from '../connectors/AzureBlobConnector';
-import { DatabaseConnector } from '../connectors/DatabaseConnector';
+import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors/DataSourceConnectorFactory';
 import { logger } from '../utils/logger';
 
 export const dataIngestionRouter = Router();
 
 const dataIngestionService = new DataIngestionService();
 const dataProcessingService = new DataProcessingService();
-const localFolderConnector = new LocalFolderConnector();
-const azureBlobConnector = new AzureBlobConnector();
-const databaseConnector = new DatabaseConnector();
 
 // POST /api/data/ingest/local-folder
 dataIngestionRouter.post('/ingest/local-folder', async (req: Request, res: Response) => {
@@ -25,18 +20,21 @@ dataIngestionRouter.post('/ingest/local-folder', async (req: Request, res: Respo
 
     logger.info(`[v0] Initiating local folder ingestion for app: ${applicationName}`);
 
-    const ingestionResult = await dataIngestionService.ingestFromLocalFolder(
-      applicationId,
-      folderPath,
-      fileName
-    );
+    // Use unified ingestion service with factory pattern
+    const dataSourceConfig: DataSourceConfig = {
+      type: 'local_folder',
+      config: { folderPath, fileName },
+    };
 
+    const ingestionResult = await dataIngestionService.ingestFromDataSource(applicationId, dataSourceConfig);
+
+    // Process with evaluation framework
     const processedMetrics = await dataProcessingService.processRawData(
       applicationId,
       applicationName,
-      ingestionResult.records,
-      'local_folder',
-      fileName
+      ingestionResult.rawData,
+      ingestionResult.sourceType,
+      'raga' // Use RAGA framework by default
     );
 
     res.json({
@@ -44,7 +42,6 @@ dataIngestionRouter.post('/ingest/local-folder', async (req: Request, res: Respo
       ingestionId: `ingest_${applicationId}_${Date.now()}`,
       totalRecords: ingestionResult.totalRecords,
       processedMetrics: processedMetrics.length,
-      fileSize: ingestionResult.fileSize,
       metrics: processedMetrics,
     });
   } catch (error) {
@@ -64,28 +61,27 @@ dataIngestionRouter.post('/ingest/azure-blob', async (req: Request, res: Respons
 
     logger.info(`[v0] Initiating Azure Blob ingestion for app: ${applicationName}`);
 
-    const blobResult = await azureBlobConnector.readDataFile(
-      {
-        storageAccount,
-        containerName,
-        blobName,
-        connectionString,
-      },
-      applicationId
-    );
+    // Use unified ingestion service with factory pattern
+    const dataSourceConfig: DataSourceConfig = {
+      type: 'azure_blob',
+      config: { storageAccount, containerName, blobName, connectionString },
+    };
 
+    const ingestionResult = await dataIngestionService.ingestFromDataSource(applicationId, dataSourceConfig);
+
+    // Process with evaluation framework
     const processedMetrics = await dataProcessingService.processRawData(
       applicationId,
       applicationName,
-      blobResult.records as Record<string, unknown>[],
-      'azure_blob',
-      blobName
+      ingestionResult.rawData,
+      ingestionResult.sourceType,
+      'raga'
     );
 
     res.json({
       success: true,
       ingestionId: `ingest_${applicationId}_${Date.now()}`,
-      totalRecords: blobResult.metadata.totalRecords,
+      totalRecords: ingestionResult.totalRecords,
       processedMetrics: processedMetrics.length,
       container: containerName,
       metrics: processedMetrics,
@@ -99,7 +95,7 @@ dataIngestionRouter.post('/ingest/azure-blob', async (req: Request, res: Respons
 // POST /api/data/ingest/database
 dataIngestionRouter.post('/ingest/database', async (req: Request, res: Response) => {
   try {
-    const { applicationId, applicationName, dbConfig } = req.body;
+    const { applicationId, applicationName, dbConfig, columnMapping } = req.body;
 
     if (!applicationId || !dbConfig || !dbConfig.type) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -107,20 +103,30 @@ dataIngestionRouter.post('/ingest/database', async (req: Request, res: Response)
 
     logger.info(`[v0] Initiating database ingestion for app: ${applicationName}`);
 
-    const dbResult = await databaseConnector.readData(dbConfig, applicationId);
+    // Use unified ingestion service with factory pattern
+    const dataSourceConfig: DataSourceConfig = {
+      type: 'database',
+      config: {
+        ...dbConfig,
+        columnMapping, // Include column mapping for field standardization
+      },
+    };
 
+    const ingestionResult = await dataIngestionService.ingestFromDataSource(applicationId, dataSourceConfig);
+
+    // Process with evaluation framework
     const processedMetrics = await dataProcessingService.processRawData(
       applicationId,
       applicationName,
-      dbResult.records as Record<string, unknown>[],
-      'database',
-      `${dbConfig.database}.${dbConfig.table}`
+      ingestionResult.rawData,
+      ingestionResult.sourceType,
+      'raga'
     );
 
     res.json({
       success: true,
       ingestionId: `ingest_${applicationId}_${Date.now()}`,
-      totalRecords: dbResult.metadata.totalRecords,
+      totalRecords: ingestionResult.totalRecords,
       processedMetrics: processedMetrics.length,
       database: dbConfig.database,
       table: dbConfig.table,

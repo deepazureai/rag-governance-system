@@ -122,6 +122,8 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
       };
     }
   }
+
+  async readDataFile(
     folderPath: string,
     fileName: string,
     applicationId: string
@@ -337,5 +339,3 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
     }
   }
 }
-
-export const localFolderConnector = new LocalFolderConnector();
