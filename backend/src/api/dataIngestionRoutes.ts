@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { DataIngestionService } from '../services/DataIngestionService';
 import { DataProcessingService } from '../services/DataProcessingService';
-import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors/DataSourceConnectorFactory';
+import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors';
 import { logger } from '../utils/logger';
 
 export const dataIngestionRouter = Router();
