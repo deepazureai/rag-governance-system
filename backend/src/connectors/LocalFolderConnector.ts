@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
+import { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector';
 
 export interface FileAccessError {
   code: string;
@@ -16,12 +17,111 @@ export interface ParsedRecord {
   validationErrors: string[];
 }
 
-export class LocalFolderConnector extends EventEmitter {
-  private fileCheckInterval = 1000; // 1 second
+export class LocalFolderConnector extends EventEmitter implements IDataSourceConnector {
+  private fileCheckInterval = 1000;
   private maxRetries = 3;
-  private retryDelay = 2000; // 2 seconds
+  private retryDelay = 2000;
+  private config: Record<string, any>;
+  private connected = false;
 
-  async readDataFile(
+  constructor(config: Record<string, any>) {
+    super();
+    this.config = config;
+  }
+
+  /**
+   * Connect to data source (validate folder access)
+   */
+  async connect(): Promise<void> {
+    try {
+      const folderPath = this.config.folderPath;
+      if (!fs.existsSync(folderPath)) {
+        throw new Error(`Folder path does not exist: ${folderPath}`);
+      }
+      this.connected = true;
+      logger.info(`[v0] LocalFolderConnector connected to: ${folderPath}`);
+    } catch (error) {
+      logger.error(`[v0] LocalFolderConnector connection failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disconnect from data source
+   */
+  async disconnect(): Promise<void> {
+    this.connected = false;
+    logger.info(`[v0] LocalFolderConnector disconnected`);
+  }
+
+  /**
+   * Fetch raw data from file
+   * Returns standardized RawDataRecord[] format regardless of source
+   */
+  async fetchRawData(): Promise<RawDataRecord[]> {
+    if (!this.connected) {
+      throw new Error('Connector not connected. Call connect() first.');
+    }
+
+    const folderPath = this.config.folderPath;
+    const fileName = this.config.fileName || 'data.txt';
+
+    const result = await this.readDataFile(folderPath, fileName, '');
+    
+    // Transform parsed records to standardized RawDataRecord format
+    const rawDataRecords: RawDataRecord[] = result.records.map((record) => ({
+      query: record.data.query || '',
+      response: record.data.response || '',
+      context: record.data.context,
+      userId: record.data.userId || record.data.user_id,
+      sessionId: record.data.sessionId || record.data.session_id,
+      timestamp: record.data.timestamp,
+      ...record.data, // Include all other fields
+    }));
+
+    return rawDataRecords;
+  }
+
+  /**
+   * Test connection to data source
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.connect();
+      await this.disconnect();
+      return true;
+    } catch (error) {
+      logger.error(`[v0] LocalFolderConnector test connection failed:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get metadata about the data source
+   */
+  async getMetadata(): Promise<{
+    recordCount?: number;
+    lastModified?: Date;
+    sourceInfo: string;
+  }> {
+    const folderPath = this.config.folderPath;
+    const fileName = this.config.fileName || 'data.txt';
+    const filePath = path.join(folderPath, fileName);
+
+    try {
+      const stats = fs.statSync(filePath);
+      return {
+        recordCount: undefined, // Would need to parse to know exact count
+        lastModified: stats.mtime,
+        sourceInfo: `Local folder: ${filePath}`,
+      };
+    } catch (error) {
+      logger.error(`[v0] Cannot get metadata:`, error);
+      return {
+        sourceInfo: `Local folder: ${folderPath}/${fileName}`,
+      };
+    }
+  }
     folderPath: string,
     fileName: string,
     applicationId: string
