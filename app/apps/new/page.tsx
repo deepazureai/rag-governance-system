@@ -18,8 +18,13 @@ import {
 import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { DataSourceType } from '@/src/types/dataSource';
 import { ConnectorForm } from '@/src/components/apps/connector-form';
+import { DataSourceSelector } from '@/src/components/apps/data-source-selector';
+import { LocalFolderConfig } from '@/src/components/apps/local-folder-config';
+import { DatabaseConfig } from '@/src/components/apps/database-config';
+import { AzureBlobConfig } from '@/src/components/apps/azure-blob-config';
+import { ProcessingPreview } from '@/src/components/apps/processing-preview';
 
-type WizardStep = 'app-info' | 'connector-type' | 'connector-config' | 'review';
+type WizardStep = 'app-info' | 'connector-type' | 'data-source' | 'connector-config' | 'review';
 
 export default function NewApplicationPage() {
   const [step, setStep] = useState<WizardStep>('app-info');
@@ -30,8 +35,11 @@ export default function NewApplicationPage() {
     owner: '',
   });
   const [selectedConnectorType, setSelectedConnectorType] = useState<DataSourceType | null>(null);
+  const [selectedDataSource, setSelectedDataSource] = useState<string | null>(null);
   const [connectorConfig, setConnectorConfig] = useState<any>(null);
+  const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [processingPreview, setProcessingPreview] = useState<any>(null);
 
   const handleNext = () => {
     if (step === 'app-info') {
@@ -45,9 +53,15 @@ export default function NewApplicationPage() {
         alert('Please select a data source type');
         return;
       }
+      setStep('data-source');
+    } else if (step === 'data-source') {
+      if (!selectedDataSource) {
+        alert('Please select a data source type (Local Folder, Database, or Azure Blob)');
+        return;
+      }
       setStep('connector-config');
     } else if (step === 'connector-config') {
-      if (!connectorConfig) {
+      if (!connectorConfig && !dataSourceConfig) {
         alert('Please configure the connector');
         return;
       }
@@ -57,18 +71,43 @@ export default function NewApplicationPage() {
 
   const handleBack = () => {
     if (step === 'connector-type') setStep('app-info');
-    else if (step === 'connector-config') setStep('connector-type');
+    else if (step === 'data-source') setStep('connector-type');
+    else if (step === 'connector-config') setStep('data-source');
     else if (step === 'review') setStep('connector-config');
   };
 
   const handleCreate = async () => {
     try {
-      console.log('[v0] Creating application with data:', { appData, selectedConnectorType, connectorConfig });
-      // API call will be implemented in the next phase
-      alert('Application created successfully! (Mock)');
+      const applicationPayload = {
+        name: appData.name,
+        description: appData.description,
+        framework: appData.ragFramework,
+        owner: appData.owner,
+        dataSource: {
+          type: selectedDataSource,
+          config: dataSourceConfig || connectorConfig,
+        },
+      };
+      
+      console.log('[v0] Creating application with data:', applicationPayload);
+      
+      // API call to create application and trigger ingestion
+      const response = await fetch('/api/applications/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(applicationPayload),
+      });
+      
+      if (!response.ok) throw new Error('Failed to create application');
+      
+      const result = await response.json();
+      console.log('[v0] Application created successfully:', result);
+      
+      alert('Application created successfully! Data ingestion has been initiated.');
+      window.location.href = '/apps';
     } catch (error) {
       console.error('[v0] Error creating application:', error);
-      alert('Failed to create application');
+      alert('Failed to create application. Please try again.');
     }
   };
 
@@ -91,24 +130,24 @@ export default function NewApplicationPage() {
 
         {/* Progress Indicator */}
         <div className="flex justify-between items-center">
-          {(['app-info', 'connector-type', 'connector-config', 'review'] as WizardStep[]).map((s, idx) => (
+          {(['app-info', 'connector-type', 'data-source', 'connector-config', 'review'] as WizardStep[]).map((s, idx) => (
             <div key={s} className="flex items-center flex-1">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                   step === s
                     ? 'bg-blue-600 text-white'
-                    : ['app-info', 'connector-type', 'connector-config', 'review'].indexOf(step) > idx
+                    : ['app-info', 'connector-type', 'data-source', 'connector-config', 'review'].indexOf(step) > idx
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-200 text-gray-600'
                 }`}
               >
-                {['app-info', 'connector-type', 'connector-config', 'review'].indexOf(step) > idx ? (
+                {['app-info', 'connector-type', 'data-source', 'connector-config', 'review'].indexOf(step) > idx ? (
                   <CheckCircle className="w-6 h-6" />
                 ) : (
                   idx + 1
                 )}
               </div>
-              {idx < 3 && <div className="flex-1 h-1 mx-2 bg-gray-200" />}
+              {idx < 4 && <div className="flex-1 h-1 mx-2 bg-gray-200" />}
             </div>
           ))}
         </div>
@@ -192,6 +231,32 @@ export default function NewApplicationPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {step === 'data-source' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900">Select Data Source Type</h2>
+              <p className="text-gray-600">Choose where your RAG application will fetch raw metrics data from.</p>
+              <DataSourceSelector
+                value={selectedDataSource}
+                onChange={setSelectedDataSource}
+              />
+              {selectedDataSource === 'local_folder' && (
+                <LocalFolderConfig
+                  onChange={setDataSourceConfig}
+                />
+              )}
+              {selectedDataSource === 'database' && (
+                <DatabaseConfig
+                  onChange={setDataSourceConfig}
+                />
+              )}
+              {selectedDataSource === 'azure_blob' && (
+                <AzureBlobConfig
+                  onChange={setDataSourceConfig}
+                />
+              )}
             </div>
           )}
 

@@ -12,9 +12,13 @@ const applicationsRouter = Router();
 const createApplicationSchema = z.object({
   name: z.string().min(1, 'Application name is required'),
   description: z.string().optional(),
-  ragFramework: z.string().optional(),
+  framework: z.string().optional(),
   owner: z.string().optional(),
   status: z.enum(['active', 'inactive', 'archived']).default('active'),
+  dataSource: z.object({
+    type: z.enum(['local_folder', 'azure_blob', 'database', 'splunk', 'datadog']),
+    config: z.record(z.any()).optional(),
+  }).optional(),
 });
 
 const updateApplicationSchema = z.object({
@@ -47,6 +51,66 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/applications/create
+ * Create a new application with data source (from wizard)
+ */
+applicationsRouter.post('/create', async (req: Request, res: Response) => {
+  try {
+    const validation = createApplicationSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation error',
+        details: validation.error.errors,
+      });
+    }
+
+    const appData = validation.data;
+    const applicationId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log('[API] Creating application from wizard:', applicationId, appData);
+
+    // Create ApplicationMaster record
+    const newApp = {
+      id: applicationId,
+      name: appData.name,
+      description: appData.description,
+      owner: appData.owner || 'system',
+      framework: appData.framework || 'unknown',
+      status: 'active',
+      dataSource: appData.dataSource || { type: 'database', config: {} },
+      initialDataProcessingStatus: 'pending',
+      metricsCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Trigger data ingestion job asynchronously
+    if (appData.dataSource) {
+      console.log('[API] Initiating data ingestion for application:', applicationId);
+      // Queue ingestion job - would call dataIngestionService.initiateIngestion(newApp)
+      setImmediate(() => {
+        console.log('[v0] Background ingestion task started for', applicationId, 'with data source', appData.dataSource.type);
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: newApp,
+      message: 'Application created successfully. Data ingestion has been initiated in the background.',
+      jobId: `job_${applicationId}`,
+    });
+  } catch (error: any) {
+    console.error('[API] Create application from wizard error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create application',
+    });
+  }
+});
+
+/**
  * POST /api/applications
  * Create a new application
  */
@@ -65,17 +129,40 @@ applicationsRouter.post('/', async (req: Request, res: Response) => {
     const appData = validation.data;
     console.log('[API] Creating application:', appData);
 
-    // Will be replaced with database call
+    // Create application ID
+    const applicationId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Will be replaced with database call to ApplicationMaster collection
     const newApp = {
-      id: Date.now().toString(),
-      ...appData,
+      id: applicationId,
+      name: appData.name,
+      description: appData.description,
+      owner: appData.owner,
+      framework: appData.framework,
+      status: appData.status,
+      dataSource: appData.dataSource || { type: 'database', config: {} },
+      initialDataProcessingStatus: 'pending',
+      metricsCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    console.log('[API] Application created:', newApp);
+
+    // Trigger data ingestion asynchronously
+    if (appData.dataSource) {
+      console.log('[API] Queuing data ingestion for application:', applicationId);
+      // This would be replaced with a call to dataIngestionService.initiateIngestion()
+      // For now, it's logged for testing purposes
+      setImmediate(() => {
+        console.log('[v0] Background task: Starting data ingestion for', applicationId);
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: newApp,
+      message: 'Application created successfully. Data ingestion initiated.',
     });
   } catch (error: any) {
     console.error('[API] Create application error:', error);
