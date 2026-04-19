@@ -10,6 +10,7 @@ import { createEvaluationRouter } from './api/routes';
 import { applicationsRouter } from './api/applicationsRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
 import { batchProcessingRouter } from './api/batchProcessingRoutes';
+import { dataIngestionRouter } from './api/dataIngestionRoutes';
 import { getFrameworkRegistry } from './frameworks/registry';
 import { createDatabase } from './services/database';
 import { createEvaluationService } from './services/evaluation';
@@ -62,6 +63,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/applications', applicationsRouter);
   app.use('/api/connections', connectionsRouter);
   app.use('/api/batch', batchProcessingRouter);
+  app.use('/api/data', dataIngestionRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {
