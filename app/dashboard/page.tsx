@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CheckCircle, RefreshCw } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -29,14 +29,33 @@ import { GovernanceMetricsGrid } from '@/src/components/dashboard/governance-met
 import { EvaluationMetricsGrid } from '@/src/components/dashboard/evaluation-metrics-grid';
 import { EvaluationMetricsRadar } from '@/src/components/dashboard/evaluation-metrics-radar';
 import { useAppSelector } from '@/src/hooks/useRedux';
+import { useAppDispatch } from '@/src/hooks/useRedux';
+import { setApps } from '@/src/store/slices/appSlice';
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
   const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
+  const apps = useAppSelector((state) => state.app.apps);
+  const displayApps = apps.length > 0 ? apps : mockApps;
 
   useEffect(() => {
     setMounted(true);
+    if (apps.length === 0) {
+      dispatch(setApps(mockApps));
+    }
   }, []);
+
+  const handleRefreshApp = async (appId: string) => {
+    setRefreshing(appId);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      console.log('[v0] Refreshed metrics for app:', appId);
+    } finally {
+      setRefreshing(null);
+    }
+  };
 
   const filteredData = useMemo(() => {
     return {
@@ -73,6 +92,84 @@ export default function DashboardPage() {
 
         {/* Application Selector */}
         <AppSelector />
+
+        {/* Bulk Refresh for Selected Applications */}
+        {selectedAppIds.length > 0 && (
+          <Card className="p-4 bg-blue-50 border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Selected Applications</h3>
+                <p className="text-sm text-blue-700">
+                  Showing metrics for {selectedAppIds.length} application{selectedAppIds.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setRefreshing('bulk');
+                  setTimeout(() => setRefreshing(null), 1500);
+                }}
+                disabled={refreshing === 'bulk'}
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing === 'bulk' ? 'animate-spin' : ''}`} />
+                {refreshing === 'bulk' ? 'Refreshing...' : 'Refresh All'}
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* All Applications Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">All Applications</h2>
+            <Link href="/apps/new">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                + Add Application
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayApps.map((app) => (
+              <Card key={app.id} className="p-4 bg-white hover:shadow-lg transition-shadow">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 truncate">{app.name}</h3>
+                    <p className="text-sm text-gray-600 truncate">{app.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-gray-50 p-2 rounded">
+                      <p className="text-gray-600">Status</p>
+                      <p className={`font-semibold ${app.status === 'active' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {app.status === 'active' ? '✓ Active' : 'Inactive'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded">
+                      <p className="text-gray-600">Owner</p>
+                      <p className="font-semibold text-gray-900">{app.owner}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleRefreshApp(app.id)}
+                    disabled={refreshing === app.id}
+                    className={`w-full flex items-center justify-center gap-2 p-2 rounded border transition-all ${
+                      refreshing === app.id
+                        ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${refreshing === app.id ? 'animate-spin' : ''}`}
+                    />
+                    {refreshing === app.id ? 'Refreshing...' : 'Refresh Metrics'}
+                  </button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
 
         {/* Alert Banner */}
         {criticalAlerts.length > 0 && (
