@@ -26,31 +26,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Production PostgreSQL with backups
-  postgres:
-    image: postgres:16-alpine
-    container_name: rag-postgres-prod
-    restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-      - ./postgres-backup:/backup
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - rag-network-prod
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
   # Production Backend API
   backend:
     build:
@@ -66,15 +41,12 @@ services:
       NODE_ENV: production
       PORT: 5000
       DATABASE_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/rag-evaluation
-      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BACKEND_PORT: 5000
       CORS_ORIGIN: ${CORS_ORIGIN}
       LOG_LEVEL: warn
       LOCAL_DATA_FOLDER: /app/local-data
     depends_on:
       mongodb:
-        condition: service_healthy
-      postgres:
         condition: service_healthy
     volumes:
       # Production: only mount local data folder
@@ -155,4 +127,3 @@ networks:
 volumes:
   mongo_data_prod:
   mongo_config_prod:
-  postgres_data_prod:
