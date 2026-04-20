@@ -31,15 +31,31 @@ const updateApplicationSchema = z.object({
 
 /**
  * GET /api/applications
- * Get all applications
+ * Get all applications from ApplicationMaster collection
  */
 applicationsRouter.get('/', async (req: Request, res: Response) => {
   try {
-    console.log('[API] GET /api/applications');
-    // Will be replaced with database call
+    console.log('[API] GET /api/applications - Fetching all applications');
+    
+    // TODO: Query MongoDB ApplicationMaster collection
+    // const db = getDatabase();
+    // const applications = await db.collection('ApplicationMaster')
+    //   .find({})
+    //   .sort({ createdAt: -1 })
+    //   .toArray();
+    // 
+    // return res.json({
+    //   success: true,
+    //   data: applications,
+    //   count: applications.length,
+    // });
+
+    // For now, return empty array - will be populated with real MongoDB data
     res.json({
       success: true,
       data: [],
+      count: 0,
+      message: 'No applications found. Add applications from the App Catalog.',
     });
   } catch (error: any) {
     console.error('[API] Get applications error:', error);

@@ -1,41 +1,83 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { ApplicationsTable } from '@/src/components/dashboard/applications-table';
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockApps, mockAlerts } from '@/src/data/mockData';
+import { mockAlerts } from '@/src/data/mockData';
 import { useAppSelector, useAppDispatch } from '@/src/hooks/useRedux';
 import { selectApps } from '@/src/store/slices/appSelectionSlice';
 import { useMetricsFetch } from '@/src/hooks/useMetricsFetch';
 import Link from 'next/link';
 
+interface Application {
+  id: string;
+  name: string;
+  description?: string;
+  owner?: string;
+  status: 'active' | 'inactive' | 'archived';
+  framework?: string;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [appsLoading, setAppsLoading] = useState(true);
+  const [appsError, setAppsError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
   const { metrics, isLoading, error, refreshMetrics } = useMetricsFetch();
 
-  // Auto-select first app on mount
+  // Fetch all applications on mount
   useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        console.log('[v0] Fetching applications from API');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/applications`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch applications');
+        }
+
+        const result = await response.json();
+        console.log('[v0] Applications fetched:', result.data);
+        setApplications(result.data || []);
+      } catch (err) {
+        console.error('[v0] Error fetching applications:', err);
+        setAppsError(err instanceof Error ? err.message : 'Failed to load applications');
+      } finally {
+        setAppsLoading(false);
+      }
+    };
+
     setMounted(true);
-    if (mockApps.length > 0 && selectedAppIds.length === 0) {
-      dispatch(selectApps([mockApps[0].id]));
-    }
+    fetchApplications();
   }, []);
+
+  // Auto-select first app when applications load
+  useEffect(() => {
+    if (applications.length > 0 && selectedAppIds.length === 0) {
+      console.log('[v0] Auto-selecting first application:', applications[0].id);
+      dispatch(selectApps([applications[0].id]));
+    }
+  }, [applications, selectedAppIds.length, dispatch]);
 
   // Fetch metrics when selected apps change
   useEffect(() => {
     if (selectedAppIds.length > 0) {
+      console.log('[v0] Selected apps changed, fetching metrics for:', selectedAppIds);
       refreshMetrics(selectedAppIds);
     }
   }, [selectedAppIds, refreshMetrics]);
 
   const handleRefresh = async () => {
     if (selectedAppIds.length > 0) {
+      console.log('[v0] Refresh button clicked for apps:', selectedAppIds);
       await refreshMetrics(selectedAppIds);
     }
   };
@@ -60,22 +102,50 @@ export default function DashboardPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Monitor metrics for your RAG applications</p>
+          <p className="text-gray-600">Select and monitor metrics for your RAG applications</p>
         </div>
+
+        {/* Applications Loading Error */}
+        {appsError && (
+          <Card className="p-4 bg-red-50 border border-red-200">
+            <p className="text-sm text-red-800">
+              <span className="font-semibold">Error loading applications:</span> {appsError}
+            </p>
+          </Card>
+        )}
 
         {/* Applications Table with Multi-Select */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">Applications</h2>
-            <p className="text-sm text-gray-600">
-              {selectedAppIds.length > 0 ? `${selectedAppIds.length} selected` : 'No selection'}
-            </p>
+            <div className="flex items-center gap-4">
+              {appsLoading && <span className="text-sm text-gray-600">Loading applications...</span>}
+              {!appsLoading && (
+                <p className="text-sm text-gray-600">
+                  {applications.length} available · {selectedAppIds.length > 0 ? `${selectedAppIds.length} selected` : 'No selection'}
+                </p>
+              )}
+            </div>
           </div>
-          <ApplicationsTable
-            applications={mockApps}
-            onRefresh={handleRefresh}
-            isRefreshing={isLoading}
-          />
+          
+          {appsLoading ? (
+            <div className="h-64 bg-gray-100 rounded animate-pulse" />
+          ) : applications.length === 0 ? (
+            <Card className="p-8 bg-gray-50 border border-gray-200 text-center">
+              <p className="text-gray-600 mb-4">No applications found.</p>
+              <Link href="/apps/new">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Create First Application
+                </Button>
+              </Link>
+            </Card>
+          ) : (
+            <ApplicationsTable
+              applications={applications}
+              onRefresh={handleRefresh}
+              isRefreshing={isLoading}
+            />
+          )}
         </div>
 
         {/* Refresh Button for Selected Apps */}
