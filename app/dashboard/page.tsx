@@ -7,10 +7,11 @@ import { ApplicationsTable } from '@/src/components/dashboard/applications-table
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockAlerts, mockApps } from '@/src/data/mockData';
+import { mockAlerts } from '@/src/data/mockData';
 import { useAppSelector, useAppDispatch } from '@/src/hooks/useRedux';
 import { selectApps } from '@/src/store/slices/appSelectionSlice';
 import { useMetricsFetch } from '@/src/hooks/useMetricsFetch';
+import { getFetchErrorMessage, getEmptyStateMessage } from '@/src/utils/apiErrorHandler';
 import Link from 'next/link';
 
 interface Application {
@@ -36,14 +37,31 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        // Use mock data for now - will be replaced with actual API call
-        console.log('[v0] Loading applications from mock data');
-        setApplications(mockApps);
-        setAppsError(null);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
+        
+        const response = await fetch(`${apiUrl}/api/applications`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('[v0] Applications response:', result);
+        
+        if (result.success) {
+          setApplications(result.data || []);
+          setAppsError(null);
+        } else {
+          throw new Error(result.message || 'Failed to fetch applications');
+        }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[v0] Error loading applications:', errorMsg);
-        setAppsError(`Unable to load applications. Details: ${errorMsg}`);
+        const errorMsg = getFetchErrorMessage(err, 'load applications');
+        console.error('[v0] Error fetching applications:', err);
+        setAppsError(errorMsg);
       } finally {
         setAppsLoading(false);
       }
@@ -103,7 +121,7 @@ export default function DashboardPage() {
         {appsError && (
           <Card className="p-4 bg-red-50 border border-red-200">
             <p className="text-sm text-red-800">
-              <span className="font-semibold">Error loading applications:</span> {appsError}
+              <span className="font-semibold">Error:</span> {appsError}
             </p>
           </Card>
         )}
@@ -126,8 +144,7 @@ export default function DashboardPage() {
             <div className="h-64 bg-gray-100 rounded animate-pulse" />
           ) : applications.length === 0 ? (
             <Card className="p-12 bg-gray-50 border border-gray-200 text-center">
-              <p className="text-gray-700 text-lg">No applications available.</p>
-              <p className="text-gray-500 text-sm mt-2">Applications will appear here once they are added from the App Catalog.</p>
+              <p className="text-gray-700 text-lg">{getEmptyStateMessage('applications')}</p>
             </Card>
           ) : (
             <ApplicationsTable

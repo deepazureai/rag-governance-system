@@ -44,24 +44,36 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
     //   .sort({ createdAt: -1 })
     //   .toArray();
     // 
+    // if (applications.length === 0) {
+    //   return res.json({
+    //     success: true,
+    //     data: [],
+    //     count: 0,
+    //     message: 'No applications added to the RAG Evaluation Platform yet.',
+    //   });
+    // }
+    // 
     // return res.json({
     //   success: true,
     //   data: applications,
     //   count: applications.length,
+    //   message: `Found ${applications.length} application(s)`,
     // });
 
-    // For now, return empty array - will be populated with real MongoDB data
+    // For now, return empty array with user-friendly message
     res.json({
       success: true,
       data: [],
       count: 0,
-      message: 'No applications found. Add applications from the App Catalog.',
+      message: 'No applications added to the RAG Evaluation Platform yet.',
     });
   } catch (error: any) {
     console.error('[API] Get applications error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch applications',
+      error: 'Unable to load applications',
+      message: 'Failed to retrieve applications from the platform. Please try again later.',
+      details: error.message || 'Internal server error',
     });
   }
 });

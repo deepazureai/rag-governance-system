@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { AppCard } from '@/src/components/dashboard/app-card';
-import { mockApps } from '@/src/data/mockData';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { getFetchErrorMessage, getEmptyStateMessage } from '@/src/utils/apiErrorHandler';
 import {
   Select,
   SelectContent,
@@ -18,11 +18,51 @@ import {
 } from '@/components/ui/select';
 
 export default function AppsPage() {
+  const [applications, setApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  // Fetch applications from API
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
+        
+        const response = await fetch(`${apiUrl}/api/applications`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('[v0] Applications response:', result);
+
+        if (result.success) {
+          setApplications(result.data || []);
+          setError(null);
+        } else {
+          throw new Error(result.message || 'Failed to fetch applications');
+        }
+      } catch (err) {
+        const errorMsg = getFetchErrorMessage(err, 'load applications');
+        console.error('[v0] Error fetching applications:', err);
+        setError(errorMsg);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
+
   const filteredApps = useMemo(() => {
-    return mockApps.filter((app) => {
+    return applications.filter((app) => {
       const matchesSearch =
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,10 +78,10 @@ export default function AppsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Application Catalog</h1>
-            <p className="text-gray-600">Manage and monitor your RAG applications</p>
+            <h1 className="text-3xl font-bold text-gray-900">Applications</h1>
+            <p className="text-gray-600 mt-1">Manage your RAG applications and add new data sources</p>
           </div>
           <Link href="/apps/new">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
@@ -51,64 +91,75 @@ export default function AppsPage() {
           </Link>
         </div>
 
-        {/* Filters */}
-        <Card className="p-4 bg-white">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search apps..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Results: {filteredApps.length}
-              </label>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                className="w-full"
-              >
-                Reset Filters
-              </Button>
-            </div>
-          </div>
-        </Card>
+        {/* Error State */}
+        {error && (
+          <Card className="p-4 bg-red-50 border border-red-200">
+            <p className="text-sm text-red-800">
+              <span className="font-semibold">Error:</span> {error}
+            </p>
+          </Card>
+        )}
 
-        {/* Apps Grid */}
-        {filteredApps.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Search and Filter */}
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Search applications..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg bg-white"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && filteredApps.length === 0 && applications.length === 0 && (
+          <Card className="p-12 bg-gray-50 border border-gray-200 text-center">
+            <p className="text-gray-700 text-lg font-semibold">{getEmptyStateMessage('applications')}</p>
+            <p className="text-gray-500 text-sm mt-2">Create your first application to start evaluating RAG systems.</p>
+            <Link href="/apps/new" className="mt-4 inline-block">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                <Plus className="w-4 h-4" />
+                Create First Application
+              </Button>
+            </Link>
+          </Card>
+        )}
+
+        {/* No Search Results */}
+        {!isLoading && filteredApps.length === 0 && applications.length > 0 && (
+          <Card className="p-8 bg-gray-50 border border-gray-200 text-center">
+            <p className="text-gray-500">No applications found matching your criteria.</p>
+          </Card>
+        )}
+
+        {/* Applications Grid */}
+        {!isLoading && filteredApps.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredApps.map((app) => (
               <AppCard key={app.id} app={app} />
             ))}
           </div>
-        ) : (
-          <Card className="p-12 bg-white text-center">
-            <p className="text-gray-500">No applications found matching your criteria.</p>
-          </Card>
         )}
       </div>
     </DashboardLayout>
