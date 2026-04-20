@@ -7,7 +7,7 @@ import { ApplicationsTable } from '@/src/components/dashboard/applications-table
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockAlerts } from '@/src/data/mockData';
+import { mockAlerts, mockApps } from '@/src/data/mockData';
 import { useAppSelector, useAppDispatch } from '@/src/hooks/useRedux';
 import { selectApps } from '@/src/store/slices/appSelectionSlice';
 import { useMetricsFetch } from '@/src/hooks/useMetricsFetch';
@@ -36,26 +36,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
-        
-        const response = await fetch(`${apiUrl}/api/applications`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log('[v0] Applications fetched successfully:', result.data?.length || 0, 'apps');
-        setApplications(result.data || []);
+        // Use mock data for now - will be replaced with actual API call
+        console.log('[v0] Loading applications from mock data');
+        setApplications(mockApps);
         setAppsError(null);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[v0] Error fetching applications:', errorMsg);
-        setAppsError(`Unable to load applications. Backend may not be running. Details: ${errorMsg}`);
+        console.error('[v0] Error loading applications:', errorMsg);
+        setAppsError(`Unable to load applications. Details: ${errorMsg}`);
       } finally {
         setAppsLoading(false);
       }
