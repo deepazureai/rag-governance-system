@@ -158,6 +158,155 @@ export interface QueryLog {
   costEstimate: number;
 }
 
+/**
+ * Notification Channel Types
+ * Defines how alerts are delivered to users
+ */
+export type NotificationChannelType = 'email' | 'webhook' | 'slack' | 'teams';
+
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  type: NotificationChannelType;
+  enabled: boolean;
+  
+  // Email channel
+  emailConfig?: {
+    provider: 'smtp' | 'sendgrid' | 'mailgun';
+    recipientEmails: string[];
+    smtpHost?: string;
+    smtpPort?: number;
+    fromEmail: string;
+  };
+  
+  // Webhook channel
+  webhookConfig?: {
+    url: string;
+    apiKey?: string;
+    headers?: Record<string, string>;
+    timeout: number;  // ms
+  };
+  
+  // Slack channel
+  slackConfig?: {
+    webhookUrl: string;
+    channel: string;
+  };
+  
+  // Teams channel
+  teamsConfig?: {
+    webhookUrl: string;
+  };
+  
+  // Common
+  createdAt: string;
+  updatedAt: string;
+  lastTestedAt?: string;
+  testStatus?: 'success' | 'failed' | 'pending';
+}
+
+export interface NotificationRule {
+  id: string;
+  appId: string;
+  name: string;
+  enabled: boolean;
+  
+  // When to trigger
+  triggerOn: 'critical' | 'warning' | 'both';
+  metricNames?: string[];  // Specific metrics, or all if empty
+  
+  // Which channels to use
+  channelIds: string[];
+  
+  // Notification content customization
+  includeMetricValue: boolean;
+  includeThreshold: boolean;
+  includeRecommendation: boolean;
+  customMessage?: string;
+  
+  // Rate limiting
+  maxNotificationsPerHour: number;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationLog {
+  id: string;
+  alertId: string;
+  appId: string;
+  channelType: NotificationChannelType;
+  channelId: string;
+  
+  // What was sent
+  message: string;
+  subject?: string;
+  
+  // Status tracking
+  status: 'sent' | 'failed' | 'pending' | 'retrying';
+  attempts: number;
+  lastAttemptAt: string;
+  sentAt?: string;
+  
+  // Error tracking
+  errorMessage?: string;
+  errorCode?: string;
+  
+  // For webhook delivery
+  webhookResponse?: {
+    statusCode?: number;
+    responseBody?: string;
+  };
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  appId?: string;  // App-specific, or global if null
+  
+  enableEmailNotifications: boolean;
+  enableWebhookNotifications: boolean;
+  enableSlackNotifications: boolean;
+  enableTeamsNotifications: boolean;
+  
+  // Digest settings
+  useDigestEmail: boolean;
+  digestFrequency: 'realtime' | 'hourly' | 'daily' | 'weekly';
+  
+  // Do not disturb
+  quietHoursEnabled: boolean;
+  quietHoursStart?: string;  // HH:mm format
+  quietHoursEnd?: string;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Email template for notifications
+ */
+export interface EmailTemplate {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export interface NotificationPayload {
+  alertId: string;
+  appId: string;
+  appName: string;
+  metricName: string;
+  severity: 'critical' | 'warning';
+  metricValue: number;
+  threshold: number;
+  message: string;
+  timestamp: string;
+  dashboardLink: string;
+}
+
 export interface Document {
   id: string;
   content: string;

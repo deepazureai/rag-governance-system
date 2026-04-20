@@ -1,4 +1,6 @@
 import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS, MetricThreshold } from '../../types/index';
+import { NotificationService } from './NotificationService';
+import { logger } from '../utils/logger';
 
 /**
  * AlertCalculationEngine
@@ -186,5 +188,55 @@ export class AlertCalculationEngine {
     }
 
     return byApp;
+  }
+
+  /**
+   * Handle alert notifications - dispatch to configured channels
+   * Called when new alerts are generated
+   */
+  static async handleAlertNotifications(
+    alerts: Alert[],
+    channels: any[],
+    rules: any[],
+    notificationService: NotificationService
+  ): Promise<void> {
+    if (!alerts || alerts.length === 0) {
+      return;
+    }
+
+    try {
+      // Group alerts by severity to handle critical alerts first
+      const criticalAlerts = alerts.filter((a) => a.severity === 'critical');
+      const warningAlerts = alerts.filter((a) => a.severity === 'warning');
+
+      // Send critical alerts immediately
+      for (const alert of criticalAlerts) {
+        logger.info('[AlertCalculationEngine] Processing critical alert for notifications', {
+          alertId: alert.id,
+          appId: alert.appId,
+        });
+
+        await notificationService.handleAlert(alert, channels, rules);
+      }
+
+      // Queue warning alerts for batch processing
+      for (const alert of warningAlerts) {
+        logger.info('[AlertCalculationEngine] Processing warning alert for notifications', {
+          alertId: alert.id,
+          appId: alert.appId,
+        });
+
+        // TODO: Implement batch queuing for warning alerts
+        // await notificationService.queueAlert(alert);
+      }
+
+      logger.info('[AlertCalculationEngine] Alert notifications processed', {
+        totalAlerts: alerts.length,
+        critical: criticalAlerts.length,
+        warnings: warningAlerts.length,
+      });
+    } catch (error) {
+      logger.error('[AlertCalculationEngine] Error handling alert notifications:', error);
+    }
   }
 }

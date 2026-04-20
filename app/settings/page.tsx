@@ -21,6 +21,7 @@ import { ConnectionsTab } from '@/src/components/settings/connections-tab';
 import { BatchProcessingTab } from '@/src/components/settings/batch-processing-tab';
 import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
 import { AlertThresholdsTab } from '@/src/components/settings/alert-thresholds-tab';
+import { NotificationsTab } from '@/src/components/settings/notifications-tab';
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState('system');
@@ -138,71 +139,7 @@ export default function SettingsPage() {
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6 mt-6">
-            <Card className="p-6 bg-white">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
-
-              <div className="space-y-4">
-                {/* Email Notifications */}
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Email Notifications</p>
-                    <p className="text-sm text-gray-600">Receive email alerts for important events</p>
-                  </div>
-                  <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
-                </div>
-
-                {/* Push Notifications */}
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Push Notifications</p>
-                    <p className="text-sm text-gray-600">Browser push notifications</p>
-                  </div>
-                  <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
-                </div>
-
-                {/* Alert Rules */}
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="font-semibold text-gray-900 mb-4">Alert Triggers</p>
-
-                  {[
-                    {
-                      name: 'Critical Alerts',
-                      description: 'Notify on critical severity alerts',
-                      checked: true,
-                    },
-                    {
-                      name: 'Performance Issues',
-                      description: 'Notify when performance degrades',
-                      checked: true,
-                    },
-                    {
-                      name: 'Daily Summary',
-                      description: 'Receive daily summary emails',
-                      checked: false,
-                    },
-                    {
-                      name: 'Weekly Report',
-                      description: 'Weekly performance reports',
-                      checked: true,
-                    },
-                  ].map((alert, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-3 border-t border-gray-100">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{alert.name}</p>
-                        <p className="text-xs text-gray-600">{alert.description}</p>
-                      </div>
-                      <input type="checkbox" checked={alert.checked} readOnly className="w-4 h-4" />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-4">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Save Notification Settings
-                  </Button>
-                </div>
-              </div>
-            </Card>
+            <NotificationsTab />
           </TabsContent>
 
           {/* Appearance Tab */}
