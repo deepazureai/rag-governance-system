@@ -11,7 +11,7 @@
     "setup": "node scripts/setup.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
-    "logs": "tail -f logs/*.log"
+    "logs": "node scripts/tail-logs.js"
   },
   "keywords": [
     "RAG",
