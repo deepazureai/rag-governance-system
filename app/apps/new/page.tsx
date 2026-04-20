@@ -24,7 +24,7 @@ import { DatabaseConfig } from '@/src/components/apps/database-config';
 import { AzureBlobConfig } from '@/src/components/apps/azure-blob-config';
 import { ProcessingPreview } from '@/src/components/apps/processing-preview';
 
-type WizardStep = 'app-info' | 'connector-type' | 'data-source' | 'connector-config' | 'review';
+type WizardStep = 'app-info' | 'data-source' | 'connector-config' | 'review';
 
 export default function NewApplicationPage() {
   const [step, setStep] = useState<WizardStep>('app-info');
@@ -34,7 +34,6 @@ export default function NewApplicationPage() {
     ragFramework: '',
     owner: '',
   });
-  const [selectedConnectorType, setSelectedConnectorType] = useState<DataSourceType | null>(null);
   const [selectedDataSource, setSelectedDataSource] = useState<string | null>(null);
   const [connectorConfig, setConnectorConfig] = useState<any>(null);
   const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
@@ -45,12 +44,6 @@ export default function NewApplicationPage() {
     if (step === 'app-info') {
       if (!appData.name || !appData.description) {
         alert('Please fill in all required fields');
-        return;
-      }
-      setStep('connector-type');
-    } else if (step === 'connector-type') {
-      if (!selectedConnectorType) {
-        alert('Please select a data source type');
         return;
       }
       setStep('data-source');
@@ -70,8 +63,7 @@ export default function NewApplicationPage() {
   };
 
   const handleBack = () => {
-    if (step === 'connector-type') setStep('app-info');
-    else if (step === 'data-source') setStep('connector-type');
+    if (step === 'data-source') setStep('app-info');
     else if (step === 'connector-config') setStep('data-source');
     else if (step === 'review') setStep('connector-config');
   };
@@ -130,24 +122,24 @@ export default function NewApplicationPage() {
 
         {/* Progress Indicator */}
         <div className="flex justify-between items-center">
-          {(['app-info', 'connector-type', 'data-source', 'connector-config', 'review'] as WizardStep[]).map((s, idx) => (
+          {(['app-info', 'data-source', 'connector-config', 'review'] as WizardStep[]).map((s, idx) => (
             <div key={s} className="flex items-center flex-1">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                   step === s
                     ? 'bg-blue-600 text-white'
-                    : ['app-info', 'connector-type', 'data-source', 'connector-config', 'review'].indexOf(step) > idx
+                    : ['app-info', 'data-source', 'connector-config', 'review'].indexOf(step) > idx
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-200 text-gray-600'
                 }`}
               >
-                {['app-info', 'connector-type', 'data-source', 'connector-config', 'review'].indexOf(step) > idx ? (
+                {['app-info', 'data-source', 'connector-config', 'review'].indexOf(step) > idx ? (
                   <CheckCircle className="w-6 h-6" />
                 ) : (
                   idx + 1
                 )}
               </div>
-              {idx < 4 && <div className="flex-1 h-1 mx-2 bg-gray-200" />}
+              {idx < 3 && <div className="flex-1 h-1 mx-2 bg-gray-200" />}
             </div>
           ))}
         </div>
@@ -201,39 +193,6 @@ export default function NewApplicationPage() {
             </div>
           )}
 
-          {step === 'connector-type' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Select Data Source Type</h2>
-              <p className="text-gray-600">Choose where your evaluation metrics and governance data will be stored</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['database', 'azure-logs', 'azure-blob', 'splunk', 'datadog'] as DataSourceType[]).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedConnectorType(type)}
-                    className={`p-4 border-2 rounded-lg transition-all text-left ${
-                      selectedConnectorType === type ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-semibold text-gray-900">
-                      {type === 'database' && 'Database'}
-                      {type === 'azure-logs' && 'Azure Log Analytics'}
-                      {type === 'azure-blob' && 'Azure Blob Storage'}
-                      {type === 'splunk' && 'Splunk'}
-                      {type === 'datadog' && 'Datadog'}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {type === 'database' && 'PostgreSQL, MySQL, SQL Server'}
-                      {type === 'azure-logs' && 'Azure Monitor workspace'}
-                      {type === 'azure-blob' && 'Cloud storage logs'}
-                      {type === 'splunk' && 'Splunk Enterprise/Cloud'}
-                      {type === 'datadog' && 'Datadog platform'}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {step === 'data-source' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900">Select Data Source Type</h2>
@@ -260,11 +219,11 @@ export default function NewApplicationPage() {
             </div>
           )}
 
-          {step === 'connector-config' && selectedConnectorType && (
+          {step === 'connector-config' && selectedDataSource && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900">Configure Connection</h2>
               <ConnectorForm
-                type={selectedConnectorType}
+                type={selectedDataSource as DataSourceType}
                 onConfigChange={setConnectorConfig}
                 onTestResult={setTestResult}
               />
@@ -308,7 +267,11 @@ export default function NewApplicationPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Data Source Type</p>
-                  <p className="font-semibold text-gray-900">{selectedConnectorType?.replace('-', ' ').toUpperCase()}</p>
+                  <p className="font-semibold text-gray-900">
+                    {selectedDataSource === 'local_folder' && 'Local Folder'}
+                    {selectedDataSource === 'database' && 'SQL Database'}
+                    {selectedDataSource === 'azure_blob' && 'Azure Blob Storage'}
+                  </p>
                 </div>
               </div>
             </div>
