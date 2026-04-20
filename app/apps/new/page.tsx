@@ -278,17 +278,17 @@ export default function NewApplicationPage() {
           )}
         </Card>
 
-        {/* Action Buttons */}
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={step === 'app-info'}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Previous
-          </Button>
+  {/* Action Buttons */}
+  <div className="flex justify-between">
+    <Button
+      variant="outline"
+      onClick={handleBack}
+      disabled={step === 'app-info'}
+      className="gap-2"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Previous
+    </Button>
           {step !== 'review' && (
             <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white">
               Next
