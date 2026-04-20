@@ -4,7 +4,7 @@ import {
   NotificationLog,
   NotificationPayload,
   NotificationChannelType,
-} from '../../src/types/index';
+} from '../types';
 import { EmailService } from './EmailService';
 import { WebhookService } from './WebhookService';
 import { logger } from '../utils/logger';

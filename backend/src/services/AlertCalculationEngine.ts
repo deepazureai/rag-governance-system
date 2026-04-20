@@ -1,4 +1,4 @@
-import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS, MetricThreshold } from '../../types/index';
+import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS, MetricThreshold } from '../types';
 import { NotificationService } from './NotificationService';
 import { logger } from '../utils/logger';
 

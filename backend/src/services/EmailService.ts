@@ -1,4 +1,4 @@
-import { NotificationChannel, NotificationLog, NotificationPayload, EmailTemplate } from '../../src/types/index';
+import { NotificationChannel, NotificationLog, NotificationPayload, EmailTemplate } from '../types';
 import { logger } from '../utils/logger';
 
 interface EmailConfig {
