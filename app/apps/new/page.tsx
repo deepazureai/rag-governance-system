@@ -198,8 +198,8 @@ export default function NewApplicationPage() {
               <h2 className="text-2xl font-bold text-gray-900">Select Data Source Type</h2>
               <p className="text-gray-600">Choose where your RAG application will fetch raw metrics data from.</p>
               <DataSourceSelector
-                value={selectedDataSource}
-                onChange={setSelectedDataSource}
+                selected={selectedDataSource}
+                onSelect={setSelectedDataSource}
               />
               {selectedDataSource === 'local_folder' && (
                 <LocalFolderConfig
