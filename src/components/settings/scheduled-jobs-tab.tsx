@@ -6,7 +6,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { Plus, Trash2, Play, Edit2, Clock } from 'lucide-react';
 import { mockApps } from '@/src/data/mockData';
 import { batchClient } from '@/src/api/batchClient';
-import { logger } from '@/src/utils/logger';
+import { FrontendLogger } from '@/src/utils/logger';
 import { ScheduleJobModal } from './schedule-job-modal';
 
 interface ScheduledJob {
@@ -53,9 +53,9 @@ export function ScheduledJobsTab() {
       setLoading(true);
       const result = await batchClient.getApplicationScheduledJobs(selectedAppId);
       setScheduledJobs(result.jobs || []);
-      logger.info(`[ScheduledJobs] Fetched ${result.count} scheduled jobs`);
+      FrontendLogger.info(`[ScheduledJobs] Fetched ${result.count} scheduled jobs`);
     } catch (error: any) {
-      logger.error('[ScheduledJobs] Failed to fetch jobs:', error);
+      FrontendLogger.error('[ScheduledJobs] Failed to fetch jobs:', error);
     } finally {
       setLoading(false);
     }
@@ -65,9 +65,9 @@ export function ScheduledJobsTab() {
     try {
       await batchClient.toggleScheduledJob(jobId, !isCurrentlyEnabled);
       await fetchScheduledJobs();
-      logger.info(`[ScheduledJobs] Job ${jobId} toggled`);
+      FrontendLogger.info(`[ScheduledJobs] Job ${jobId} toggled`);
     } catch (error: any) {
-      logger.error('[ScheduledJobs] Failed to toggle job:', error);
+      FrontendLogger.error('[ScheduledJobs] Failed to toggle job:', error);
       alert(`Failed to toggle job: ${error.message}`);
     }
   };
@@ -78,7 +78,7 @@ export function ScheduledJobsTab() {
       alert('Job triggered successfully');
       await fetchScheduledJobs();
     } catch (error: any) {
-      logger.error('[ScheduledJobs] Failed to trigger job:', error);
+      FrontendLogger.error('[ScheduledJobs] Failed to trigger job:', error);
       alert(`Failed to trigger job: ${error.message}`);
     }
   };
@@ -89,9 +89,9 @@ export function ScheduledJobsTab() {
     try {
       await batchClient.deleteScheduledJob(jobId);
       await fetchScheduledJobs();
-      logger.info(`[ScheduledJobs] Job ${jobId} deleted`);
+      FrontendLogger.info(`[ScheduledJobs] Job ${jobId} deleted`);
     } catch (error: any) {
-      logger.error('[ScheduledJobs] Failed to delete job:', error);
+      FrontendLogger.error('[ScheduledJobs] Failed to delete job:', error);
       alert(`Failed to delete job: ${error.message}`);
     }
   };
@@ -112,7 +112,7 @@ export function ScheduledJobsTab() {
       setShowModal(false);
       setEditingJob(null);
     } catch (error: any) {
-      logger.error('[ScheduledJobs] Failed to save job:', error);
+      FrontendLogger.error('[ScheduledJobs] Failed to save job:', error);
       alert(`Failed to save job: ${error.message}`);
     }
   };

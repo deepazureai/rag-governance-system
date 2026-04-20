@@ -7,7 +7,7 @@ import { Play, RotateCcw, Eye } from 'lucide-react';
 import { useAppSelector } from '@/src/hooks/useRedux';
 import { mockApps } from '@/src/data/mockData';
 import { batchClient } from '@/src/api/batchClient';
-import { logger } from '@/src/utils/logger';
+import { FrontendLogger } from '@/src/utils/logger';
 import { BatchProgressModal } from './batch-progress-modal';
 
 interface BatchHistory {
@@ -49,9 +49,9 @@ export function BatchProcessingTab() {
       setLoading(true);
       const result = await batchClient.getBatchHistory(selectedAppId, 10);
       setBatchHistory(result.batches || []);
-      logger.info(`[BatchProcessing] Fetched ${result.count} batch records`);
+      FrontendLogger.info(`[BatchProcessing] Fetched ${result.count} batch records`);
     } catch (error: any) {
-      logger.error('[BatchProcessing] Failed to fetch history:', error);
+      FrontendLogger.error('[BatchProcessing] Failed to fetch history:', error);
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export function BatchProcessingTab() {
 
     try {
       setExecuting(true);
-      logger.info(`[BatchProcessing] Executing batch for app ${selectedAppId}`);
+      FrontendLogger.info(`[BatchProcessing] Executing batch for app ${selectedAppId}`);
 
       // TODO: Get connection details and source config
       const result = await batchClient.executeBatch(
@@ -72,11 +72,11 @@ export function BatchProcessingTab() {
         {} // sourceConfig
       );
 
-      logger.info('[BatchProcessing] Batch executed:', result);
+      FrontendLogger.info('[BatchProcessing] Batch executed:', result);
       await fetchBatchHistory();
       alert('Batch processing started successfully');
     } catch (error: any) {
-      logger.error('[BatchProcessing] Execution failed:', error);
+      FrontendLogger.error('[BatchProcessing] Execution failed:', error);
       alert(`Failed to execute batch: ${error.message}`);
     } finally {
       setExecuting(false);
