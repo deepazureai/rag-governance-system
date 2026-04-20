@@ -40,12 +40,15 @@ export default function DashboardPage() {
     const fetchApplications = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
+        const endpoint = `${apiUrl}/api/applications`;
+        console.log('[v0] Fetching applications from:', endpoint);
         
-        const response = await fetch(`${apiUrl}/api/applications`, {
+        const response = await fetch(endpoint, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
+        
+        console.log('[v0] Response status:', response.status);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -61,8 +64,16 @@ export default function DashboardPage() {
           throw new Error(result.message || 'Failed to fetch applications');
         }
       } catch (err) {
-        const errorMsg = getFetchErrorMessage(err, 'load applications');
+        let errorMsg = getFetchErrorMessage(err, 'load applications');
+        
+        // Add diagnostic information for network errors
+        if (err instanceof TypeError && err.message.includes('fetch')) {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          errorMsg = `Unable to connect to backend at ${apiUrl}. Make sure the backend server is running. Error: ${err.message}`;
+        }
+        
         console.error('[v0] Error fetching applications:', err);
+        console.error('[v0] Error details:', { errorMsg, apiUrl: process.env.NEXT_PUBLIC_API_URL });
         setAppsError(errorMsg);
       } finally {
         setAppsLoading(false);

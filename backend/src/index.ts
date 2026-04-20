@@ -43,6 +43,11 @@ async function createServer(): Promise<Express> {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // API health check endpoint (for docker-compose healthcheck)
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.json({ status: 'ok', service: 'rag-evaluation-backend', timestamp: new Date().toISOString() });
+  });
+
   // Initialize services
   console.log('[Server] Initializing services...');
 
