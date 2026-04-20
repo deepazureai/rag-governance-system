@@ -36,20 +36,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        console.log('[v0] Fetching applications from API');
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${apiUrl}/api/applications`);
+        console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
+        
+        const response = await fetch(`${apiUrl}/api/applications`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch applications');
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const result = await response.json();
-        console.log('[v0] Applications fetched:', result.data);
+        console.log('[v0] Applications fetched successfully:', result.data?.length || 0, 'apps');
         setApplications(result.data || []);
+        setAppsError(null);
       } catch (err) {
-        console.error('[v0] Error fetching applications:', err);
-        setAppsError(err instanceof Error ? err.message : 'Failed to load applications');
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.error('[v0] Error fetching applications:', errorMsg);
+        setAppsError(`Unable to load applications. Backend may not be running. Details: ${errorMsg}`);
       } finally {
         setAppsLoading(false);
       }
@@ -131,13 +137,9 @@ export default function DashboardPage() {
           {appsLoading ? (
             <div className="h-64 bg-gray-100 rounded animate-pulse" />
           ) : applications.length === 0 ? (
-            <Card className="p-8 bg-gray-50 border border-gray-200 text-center">
-              <p className="text-gray-600 mb-4">No applications found.</p>
-              <Link href="/apps/new">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Create First Application
-                </Button>
-              </Link>
+            <Card className="p-12 bg-gray-50 border border-gray-200 text-center">
+              <p className="text-gray-700 text-lg">No applications available.</p>
+              <p className="text-gray-500 text-sm mt-2">Applications will appear here once they are added from the App Catalog.</p>
             </Card>
           ) : (
             <ApplicationsTable
