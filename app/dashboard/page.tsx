@@ -5,12 +5,13 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { ApplicationsTable } from '@/src/components/dashboard/applications-table';
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
+import { AlertsDisplay, CollectiveAlertsSummary } from '@/src/components/dashboard/alerts-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { mockAlerts } from '@/src/data/mockData';
 import { useAppSelector, useAppDispatch } from '@/src/hooks/useRedux';
 import { selectApps } from '@/src/store/slices/appSelectionSlice';
 import { useMetricsFetch } from '@/src/hooks/useMetricsFetch';
+import { useAlerts } from '@/src/hooks/useAlerts';
 import { getFetchErrorMessage, getEmptyStateMessage } from '@/src/utils/apiErrorHandler';
 import Link from 'next/link';
 
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const dispatch = useAppDispatch();
   const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
   const { metrics, isLoading, error, refreshMetrics } = useMetricsFetch();
+  const { alerts, calculateAlertsForApp, getAggregatedAlerts, getAppAlerts, resolveAlert } = useAlerts();
 
   // Fetch all applications on mount
   useEffect(() => {
@@ -79,13 +81,16 @@ export default function DashboardPage() {
     }
   }, [applications, selectedAppIds.length, dispatch]);
 
-  // Fetch metrics when selected apps change
+  // Calculate alerts when metrics update
   useEffect(() => {
-    if (selectedAppIds.length > 0) {
-      console.log('[v0] Selected apps changed, fetching metrics for:', selectedAppIds);
-      refreshMetrics(selectedAppIds);
+    if (metrics && selectedAppIds.length > 0) {
+      selectedAppIds.forEach((appId) => {
+        if (metrics.metrics) {
+          calculateAlertsForApp(appId, metrics.metrics);
+        }
+      });
     }
-  }, [selectedAppIds, refreshMetrics]);
+  }, [metrics, selectedAppIds, calculateAlertsForApp]);
 
   const handleRefresh = async () => {
     if (selectedAppIds.length > 0) {
@@ -94,8 +99,10 @@ export default function DashboardPage() {
     }
   };
 
-  const unresolvedAlerts = mockAlerts.filter((a) => !a.resolved);
+  const allAlerts = getAggregatedAlerts();
+  const unresolvedAlerts = allAlerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.severity === 'critical');
+  const warningAlerts = unresolvedAlerts.filter((a) => a.severity === 'warning');
 
   if (!mounted) {
     return (
@@ -192,23 +199,29 @@ export default function DashboardPage() {
           isEmpty={selectedAppIds.length === 0}
         />
 
+        {/* Collective Alerts Summary */}
+        <CollectiveAlertsSummary
+          totalUnresolved={unresolvedAlerts.length}
+          criticalCount={criticalAlerts.length}
+          warningCount={warningAlerts.length}
+          healthyCount={unresolvedAlerts.length === 0 ? selectedAppIds.length : 0}
+        />
+
         {/* Alerts Section */}
-        {criticalAlerts.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-4">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-red-900 mb-1">
-                {criticalAlerts.length} Critical Alert{criticalAlerts.length !== 1 ? 's' : ''}
-              </h3>
-              <p className="text-sm text-red-800 mb-3">
-                {criticalAlerts.map((a) => a.message).join('; ')}
-              </p>
+        {unresolvedAlerts.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Active Alerts</h2>
+            <AlertsDisplay
+              alerts={unresolvedAlerts.slice(0, 5)}
+              onResolve={resolveAlert}
+            />
+            {unresolvedAlerts.length > 5 && (
               <Link href="/alerts">
-                <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-100">
-                  View Alerts
+                <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50">
+                  View All {unresolvedAlerts.length} Alerts
                 </Button>
               </Link>
-            </div>
+            )}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ApplicationMetricsService } from '../services/ApplicationMetricsService';
+import { AlertCalculationEngine } from '../services/AlertCalculationEngine';
 import { logger } from '../utils/logger';
 
 const metricsRouter = Router();
@@ -149,6 +150,70 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to refresh metrics',
+    });
+  }
+});
+
+/**
+ * POST /api/metrics/calculate-alerts
+ * Calculate alerts based on metrics and thresholds for one or more applications
+ */
+metricsRouter.post('/calculate-alerts', async (req: Request, res: Response) => {
+  try {
+    const { applicationIds, metricsData } = req.body;
+
+    if (!applicationIds || !Array.isArray(applicationIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'applicationIds must be a non-empty array',
+      });
+    }
+
+    if (!metricsData || typeof metricsData !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'metricsData is required',
+      });
+    }
+
+    logger.info(`[v0] Calculating alerts for ${applicationIds.length} applications`);
+
+    // TODO: When database is connected, fetch threshold configs for each app
+    // For now, use industry defaults
+    const { INDUSTRY_STANDARD_THRESHOLDS } = require('../../types/index');
+
+    const allAlerts = [];
+
+    // Calculate alerts for each application
+    for (const appId of applicationIds) {
+      // TODO: Load app-specific thresholds from database
+      // const appThresholds = await db.collection('AlertThresholds').findOne({ appId });
+      const thresholds = INDUSTRY_STANDARD_THRESHOLDS;
+
+      const appMetrics = metricsData[appId] || metricsData;
+      const alerts = AlertCalculationEngine.generateAlertsForApp(appId, appMetrics, thresholds);
+      allAlerts.push(...alerts);
+    }
+
+    // Calculate collective severity
+    const collectiveSeverity = AlertCalculationEngine.calculateCollectiveSeverity(allAlerts);
+    const aggregatedStats = AlertCalculationEngine.getAggregatedStats(allAlerts);
+    const perAppSummary = AlertCalculationEngine.getPerAppAlertSummary(allAlerts);
+
+    res.json({
+      success: true,
+      data: {
+        alerts: allAlerts,
+        collectiveSeverity,
+        aggregatedStats,
+        perAppSummary,
+      },
+    });
+  } catch (error) {
+    logger.error(`[v0] Alert calculation error:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to calculate alerts',
     });
   }
 });

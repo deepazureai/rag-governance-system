@@ -61,6 +61,64 @@ export interface RelevanceScore {
   overall: number;
 }
 
+/**
+ * Threshold Configuration for Alert System
+ * Defines industry-standard thresholds for each metric
+ * Supports per-app customization with global defaults
+ */
+export interface MetricThreshold {
+  critical: number;  // Value below this is CRITICAL
+  warning: number;   // Value below this is WARNING
+  healthy?: number;  // Value at or above this is HEALTHY
+}
+
+export interface AlertThresholdConfig {
+  id: string;
+  appId: string;
+  // Quality Metrics
+  groundedness: MetricThreshold;
+  relevance: MetricThreshold;
+  contextPrecision: MetricThreshold;
+  contextRecall: MetricThreshold;
+  answerRelevancy: MetricThreshold;
+  coherence: MetricThreshold;
+  faithfulness: MetricThreshold;
+  // Performance Metrics
+  successRate: MetricThreshold;
+  latency: MetricThreshold;        // ms - lower is better
+  tokenEfficiency: MetricThreshold; // tokens per query - lower is better
+  errorRate: MetricThreshold;      // percentage - lower is better
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  isCustom: boolean;  // Whether this is customized from defaults
+}
+
+/**
+ * Industry Standard Default Thresholds (2026 RAG Evaluation Standards)
+ * Based on RAGAS, TREC, and enterprise RAG benchmarks
+ */
+export const INDUSTRY_STANDARD_THRESHOLDS: AlertThresholdConfig = {
+  id: 'industry-default',
+  appId: 'global-default',
+  // Quality Metrics (0-100 scale)
+  groundedness: { critical: 70, warning: 80, healthy: 85 },
+  relevance: { critical: 75, warning: 85, healthy: 90 },
+  contextPrecision: { critical: 70, warning: 80, healthy: 85 },
+  contextRecall: { critical: 75, warning: 85, healthy: 90 },
+  answerRelevancy: { critical: 70, warning: 80, healthy: 85 },
+  coherence: { critical: 75, warning: 85, healthy: 90 },
+  faithfulness: { critical: 70, warning: 80, healthy: 85 },
+  // Performance Metrics
+  successRate: { critical: 90, warning: 95, healthy: 98 },     // percentage
+  latency: { critical: 5000, warning: 3000, healthy: 2000 },   // milliseconds
+  tokenEfficiency: { critical: 2000, warning: 1500, healthy: 1000 }, // tokens
+  errorRate: { critical: 10, warning: 5, healthy: 2 },         // percentage
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  isCustom: false,
+};
+
 export interface AlertRule {
   id: string;
   name: string;
@@ -75,11 +133,15 @@ export interface AlertRule {
 export interface Alert {
   id: string;
   appId: string;
-  ruleId: string;
+  ruleId?: string;
+  metricName: string;           // Which metric triggered it
   message: string;
-  severity: 'critical' | 'warning' | 'info';
+  severity: 'critical' | 'warning' | 'healthy';
   timestamp: string;
   resolved: boolean;
+  resolvedAt?: string;
+  metricValue: number;          // The actual value that triggered alert
+  threshold: number;            // The threshold that was exceeded
 }
 
 export interface QueryLog {

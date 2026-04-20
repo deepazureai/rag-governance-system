@@ -20,6 +20,7 @@ import { DataSourcesTab } from '@/src/components/settings/data-sources-tab';
 import { ConnectionsTab } from '@/src/components/settings/connections-tab';
 import { BatchProcessingTab } from '@/src/components/settings/batch-processing-tab';
 import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
+import { AlertThresholdsTab } from '@/src/components/settings/alert-thresholds-tab';
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState('system');
@@ -37,7 +38,7 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-7">
+          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-8">
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -49,6 +50,10 @@ export default function SettingsPage() {
             <TabsTrigger value="appearance" className="gap-2">
               <Palette className="w-4 h-4" />
               <span className="hidden sm:inline">Appearance</span>
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="gap-2">
+              <Bell className="w-4 h-4" />
+              <span className="hidden sm:inline">Alerts</span>
             </TabsTrigger>
             <TabsTrigger value="connections" className="gap-2">
               <Database className="w-4 h-4" />
@@ -260,6 +265,11 @@ export default function SettingsPage() {
           {/* Batch Processing Tab */}
           <TabsContent value="batch" className="space-y-6 mt-6">
             <BatchProcessingTab />
+          </TabsContent>
+
+          {/* Alert Thresholds Tab */}
+          <TabsContent value="alerts" className="space-y-6 mt-6">
+            <AlertThresholdsTab />
           </TabsContent>
 
           {/* Scheduled Jobs Tab */}
