@@ -11,6 +11,7 @@ import { applicationsRouter } from './api/applicationsRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
 import { batchProcessingRouter } from './api/batchProcessingRoutes';
 import { dataIngestionRouter } from './api/dataIngestionRoutes';
+import { metricsRouter } from './api/metricsRoutes';
 import { getFrameworkRegistry } from './frameworks/registry';
 import { createDatabase } from './services/database';
 import { createEvaluationService } from './services/evaluation';
@@ -64,6 +65,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/connections', connectionsRouter);
   app.use('/api/batch', batchProcessingRouter);
   app.use('/api/data', dataIngestionRouter);
+  app.use('/api/metrics', metricsRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {

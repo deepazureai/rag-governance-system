@@ -1,0 +1,156 @@
+import { Router, Request, Response } from 'express';
+import { ApplicationMetricsService } from '../services/ApplicationMetricsService';
+import { logger } from '../utils/logger';
+
+const metricsRouter = Router();
+const metricsService = new ApplicationMetricsService();
+
+/**
+ * GET /api/metrics/:applicationId
+ * Fetch metrics for a single application
+ */
+metricsRouter.get('/:applicationId', async (req: Request, res: Response) => {
+  try {
+    const { applicationId } = req.params;
+    logger.info(`[v0] Fetching metrics for app: ${applicationId}`);
+
+    const metrics = await metricsService.fetchMetricsForApp(applicationId);
+
+    if (!metrics) {
+      return res.status(404).json({
+        success: false,
+        error: 'No metrics found for this application',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: metrics,
+    });
+  } catch (error) {
+    logger.error(`[v0] Metrics fetch error:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch metrics',
+    });
+  }
+});
+
+/**
+ * POST /api/metrics/fetch-multiple
+ * Fetch and aggregate metrics for multiple applications
+ */
+metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
+  try {
+    const { applicationIds } = req.body;
+
+    if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'applicationIds must be a non-empty array',
+      });
+    }
+
+    logger.info(`[v0] Fetching metrics for ${applicationIds.length} applications`);
+
+    const metricsArray = await metricsService.fetchMetricsForApps(applicationIds);
+
+    if (metricsArray.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No metrics found for the specified applications',
+      });
+    }
+
+    // If only one app, return its metrics directly
+    if (metricsArray.length === 1) {
+      return res.json({
+        success: true,
+        data: {
+          type: 'single',
+          metrics: metricsArray[0],
+        },
+      });
+    }
+
+    // If multiple apps, aggregate their metrics
+    const aggregatedMetrics = metricsService.aggregateMetrics(metricsArray);
+
+    res.json({
+      success: true,
+      data: {
+        type: 'aggregated',
+        metrics: aggregatedMetrics,
+        individualMetrics: metricsArray,
+      },
+    });
+  } catch (error) {
+    logger.error(`[v0] Metrics aggregation error:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to aggregate metrics',
+    });
+  }
+});
+
+/**
+ * POST /api/metrics/refresh
+ * Refresh metrics data for selected applications
+ */
+metricsRouter.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    const { applicationIds } = req.body;
+
+    if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'applicationIds must be a non-empty array',
+      });
+    }
+
+    logger.info(`[v0] Refreshing metrics for ${applicationIds.length} applications`);
+
+    // Fetch latest metrics
+    const metricsArray = await metricsService.fetchMetricsForApps(applicationIds);
+
+    if (metricsArray.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          type: 'empty',
+          message: 'No metrics data available yet for selected applications',
+        },
+      });
+    }
+
+    // Aggregate if multiple apps
+    if (metricsArray.length === 1) {
+      return res.json({
+        success: true,
+        data: {
+          type: 'single',
+          metrics: metricsArray[0],
+        },
+      });
+    }
+
+    const aggregatedMetrics = metricsService.aggregateMetrics(metricsArray);
+
+    res.json({
+      success: true,
+      data: {
+        type: 'aggregated',
+        metrics: aggregatedMetrics,
+        applicationCount: metricsArray.length,
+      },
+    });
+  } catch (error) {
+    logger.error(`[v0] Metrics refresh error:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to refresh metrics',
+    });
+  }
+});
+
+export { metricsRouter };
