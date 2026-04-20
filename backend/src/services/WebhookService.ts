@@ -69,7 +69,7 @@ export class WebhookService {
           { url: this.config.url }
         );
 
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           'X-Webhook-Signature': signature,
           'X-Webhook-Timestamp': timestamp,
