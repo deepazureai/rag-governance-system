@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BatchProcess, IBatchProcess } from '../models/BatchProcess';
 import { RawDataRecord } from '../models/RawDataRecord';
 import { Archive } from '../models/Archive';
-import { localFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
+import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
 import { archiveService } from './ArchiveService';
 import { logger } from '../utils/logger';
 import * as crypto from 'crypto';
@@ -115,7 +115,10 @@ export class BatchProcessingService {
   }> {
     if (sourceType === 'local-folder') {
       const { folderPath, fileName } = sourceConfig;
-      const result = await localFolderConnector.readDataFile(folderPath, fileName, applicationId);
+      const connector = new LocalFolderConnector({ folderPath });
+      await connector.connect();
+      
+      const result = await connector.readDataFile(folderPath, fileName, applicationId);
 
       if (result.error) {
         return {
@@ -126,7 +129,7 @@ export class BatchProcessingService {
         };
       }
 
-      const fileSize = localFolderConnector.getFileSize(folderPath, fileName) || 0;
+      const fileSize = connector.getFileSize(folderPath, fileName) || 0;
       return {
         records: result.records,
         fileSize,
