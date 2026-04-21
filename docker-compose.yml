@@ -33,12 +33,12 @@ services:
     container_name: rag-backend
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "5000:5000"
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: 3001
+      PORT: 5000
       DATABASE_URL: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/rag-evaluation
-      BACKEND_PORT: 3001
+      BACKEND_PORT: 5000
       CORS_ORIGIN: http://localhost:3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOCAL_DATA_FOLDER: /app/local-data
@@ -51,7 +51,7 @@ services:
       # Development: mount source code for hot reload
       - ./backend/src:/app/src:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,7 +73,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
-      NEXT_PUBLIC_API_URL: http://backend:3001
+      NEXT_PUBLIC_API_URL: http://backend:5000
       NEXT_TELEMETRY_DISABLED: 1
     depends_on:
       - backend
