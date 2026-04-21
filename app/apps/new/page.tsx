@@ -74,6 +74,25 @@ export default function NewApplicationPage() {
     setError(null);
     
     try {
+      console.log('[v0] ====== START APPLICATION CREATION ======');
+      console.log('[v0] Step 1: Validating form data...');
+      console.log('[v0] App data:', appData);
+      console.log('[v0] Selected data source:', selectedDataSource);
+      console.log('[v0] Data source config:', dataSourceConfig);
+      console.log('[v0] Connector config:', connectorConfig);
+      
+      // Validate required fields
+      if (!appData.name || !appData.name.trim()) {
+        throw new Error('Application name is required');
+      }
+      if (!selectedDataSource) {
+        throw new Error('Data source type is required');
+      }
+      if (!dataSourceConfig && !connectorConfig) {
+        throw new Error('Data source configuration is required');
+      }
+      
+      console.log('[v0] Step 2: Building payload...');
       const applicationPayload = {
         name: appData.name,
         description: appData.description,
@@ -85,40 +104,52 @@ export default function NewApplicationPage() {
         },
       };
       
-      console.log('[v0] Creating application with data:', applicationPayload);
+      console.log('[v0] Payload ready:', JSON.stringify(applicationPayload, null, 2));
+      console.log('[v0] Step 3: Calling API...');
+      
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/create`;
+      console.log('[v0] API URL:', apiUrl);
       
       // API call to create application and trigger ingestion
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/create`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(applicationPayload),
       });
       
+      console.log('[v0] Step 4: Received response from API');
+      console.log('[v0] Response status:', response.status, response.statusText);
+      
       const result = await response.json();
-      console.log('[v0] API Response:', result);
+      console.log('[v0] Response body:', result);
       
       if (!response.ok) {
+        console.log('[v0] Step 5: Response not OK, extracting error message...');
         const errorMessage = result.details 
           ? Array.isArray(result.details) 
-            ? result.details.map((d: any) => d.message).join(', ')
-            : result.details
-          : result.error || result.message || 'Failed to create application';
+            ? result.details.map((d: any) => d.message || JSON.stringify(d)).join(', ')
+            : typeof result.details === 'string' ? result.details : JSON.stringify(result.details)
+          : result.error || result.message || `HTTP ${response.status}: ${response.statusText}`;
         
         console.error('[v0] Error response from backend:', errorMessage);
         throw new Error(errorMessage);
       }
       
-      console.log('[v0] Application created successfully:', result);
+      console.log('[v0] Step 6: Application created successfully');
+      console.log('[v0] Created app:', result.data);
       alert('Application created successfully! Data ingestion has been initiated.');
       window.location.href = '/apps';
     } catch (error: any) {
       const errorMsg = error.message || 'Failed to create application. Please try again.';
-      console.error('[v0] Error creating application:', error);
-      console.error('[v0] Error details:', { message: errorMsg, error });
+      console.error('[v0] ❌ ERROR in handleCreate:', error);
+      console.error('[v0] Error name:', error.name);
+      console.error('[v0] Error message:', errorMsg);
+      console.error('[v0] Error stack:', error.stack);
       setError(errorMsg);
-      alert(errorMsg);
+      alert(`Error: ${errorMsg}`);
     } finally {
       setIsLoading(false);
+      console.log('[v0] ====== END APPLICATION CREATION ======');
     }
   };
 
