@@ -203,17 +203,17 @@ export default function NewApplicationPage() {
               />
               {selectedDataSource === 'local_folder' && (
                 <LocalFolderConfig
-                  onChange={setDataSourceConfig}
+                  onConfigure={setDataSourceConfig}
                 />
               )}
               {selectedDataSource === 'database' && (
                 <DatabaseConfig
-                  onChange={setDataSourceConfig}
+                  onConfigure={setDataSourceConfig}
                 />
               )}
               {selectedDataSource === 'azure_blob' && (
                 <AzureBlobConfig
-                  onChange={setDataSourceConfig}
+                  onConfigure={setDataSourceConfig}
                 />
               )}
             </div>
