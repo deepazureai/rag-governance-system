@@ -70,6 +70,10 @@ export default function NewApplicationPage() {
   };
 
   const handleCreate = async () => {
+    window.addEventListener('error', (event) => {
+      console.error('[v0] GLOBAL ERROR CAUGHT:', event.error);
+    });
+    
     setIsLoading(true);
     setError(null);
     
@@ -111,6 +115,7 @@ export default function NewApplicationPage() {
       console.log('[v0] API URL:', apiUrl);
       
       // API call to create application and trigger ingestion
+      console.log('[v0] About to fetch...');
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,8 +125,14 @@ export default function NewApplicationPage() {
       console.log('[v0] Step 4: Received response from API');
       console.log('[v0] Response status:', response.status, response.statusText);
       
-      const result = await response.json();
-      console.log('[v0] Response body:', result);
+      let result;
+      try {
+        result = await response.json();
+        console.log('[v0] Response body:', result);
+      } catch (parseError) {
+        console.error('[v0] Failed to parse response JSON:', parseError);
+        throw new Error('Server returned invalid response');
+      }
       
       if (!response.ok) {
         console.log('[v0] Step 5: Response not OK, extracting error message...');
@@ -140,13 +151,19 @@ export default function NewApplicationPage() {
       alert('Application created successfully! Data ingestion has been initiated.');
       window.location.href = '/apps';
     } catch (error: any) {
-      const errorMsg = error.message || 'Failed to create application. Please try again.';
-      console.error('[v0] ❌ ERROR in handleCreate:', error);
-      console.error('[v0] Error name:', error.name);
-      console.error('[v0] Error message:', errorMsg);
-      console.error('[v0] Error stack:', error.stack);
+      console.error('[v0] ❌ CAUGHT ERROR in handleCreate');
+      console.error('[v0] Error type:', typeof error);
+      console.error('[v0] Error name:', error?.name);
+      console.error('[v0] Error message:', error?.message);
+      console.error('[v0] Error toString:', String(error));
+      console.error('[v0] Full error object:', error);
+      if (error?.stack) {
+        console.error('[v0] Error stack:', error.stack);
+      }
+      
+      const errorMsg = error?.message || 'Failed to create application. Please try again.';
       setError(errorMsg);
-      alert(`Error: ${errorMsg}`);
+      alert(`❌ Error: ${errorMsg}\n\nCheck browser console (F12) for more details.`);
     } finally {
       setIsLoading(false);
       console.log('[v0] ====== END APPLICATION CREATION ======');
