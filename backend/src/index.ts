@@ -6,6 +6,7 @@ import 'dotenv/config';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import http from 'http';
+import mongoose from 'mongoose';
 import { createEvaluationRouter } from './api/routes';
 import { applicationsRouter } from './api/applicationsRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
@@ -19,6 +20,26 @@ import { createDatabase } from './services/database';
 import { createEvaluationService } from './services/evaluation';
 import { createWebSocketService } from './services/websocket';
 import { scheduledBatchJobService } from './services/ScheduledBatchJobService';
+
+async function initializeMongoDB(): Promise<void> {
+  const mongoUrl = process.env.DATABASE_URL || 'mongodb://admin:password@localhost:27017/rag-evaluation';
+  const mongoOptions = {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  };
+
+  console.log('[MongoDB] Connecting to MongoDB...');
+  console.log('[MongoDB] URL:', mongoUrl.replace(/password:[^@]*@/, 'password:***@'));
+
+  try {
+    await mongoose.connect(mongoUrl, mongoOptions);
+    console.log('[MongoDB] Connected successfully');
+  } catch (error) {
+    console.error('[MongoDB] Connection failed:', error);
+    throw new Error('Failed to connect to MongoDB. Check DATABASE_URL and ensure MongoDB is running.');
+  }
+}
 
 async function createServer(): Promise<Express> {
   const app = express();
@@ -51,6 +72,9 @@ async function createServer(): Promise<Express> {
   // Initialize services
   console.log('[Server] Initializing services...');
 
+  // Initialize MongoDB first
+  await initializeMongoDB();
+
   const database = createDatabase();
   await database.initialize();
 
@@ -62,7 +86,7 @@ async function createServer(): Promise<Express> {
   const registry = getFrameworkRegistry();
   await registry.initializeAll();
 
-  // Initialize scheduled batch jobs
+  // Initialize scheduled batch jobs (now that MongoDB is connected)
   await scheduledBatchJobService.initializeAllScheduledJobs();
 
   // API routes
