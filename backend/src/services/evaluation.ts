@@ -61,6 +61,11 @@ export class EvaluationService {
 
       const result = await fw.evaluate(request);
 
+      // Filter out undefined metrics for database storage (strict type requirement)
+      const cleanMetrics: Record<string, number> = Object.fromEntries(
+        Object.entries(result.metrics).filter(([_, value]) => value !== undefined) as [string, number][]
+      );
+
       // Persist to database
       await this.database.saveEvaluation({
         appId,
@@ -68,7 +73,7 @@ export class EvaluationService {
         response,
         frameworkUsed: fw.getMetadata().name,
         frameworkVersion: fw.getMetadata().version,
-        metrics: result.metrics,
+        metrics: cleanMetrics,
         overallScore: result.overallScore,
         executionTime: result.executionTime,
         documentsCount: retrievedDocuments.length,
