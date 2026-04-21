@@ -1,4 +1,4 @@
-export type DataSourceType = 'database' | 'azure-logs' | 'azure-blob' | 'splunk' | 'datadog';
+export type DataSourceType = 'local_folder' | 'database' | 'azure_blob' | 'splunk' | 'datadog';
 
 export interface BaseDataSourceConfig {
   id: string;
@@ -23,18 +23,16 @@ export interface DatabaseConfig extends BaseDataSourceConfig {
   };
 }
 
-export interface AzureLogsConfig extends BaseDataSourceConfig {
-  type: 'azure-logs';
+export interface LocalFolderConfig extends BaseDataSourceConfig {
+  type: 'local_folder';
   config: {
-    workspaceId: string;
-    primaryKey: string; // encrypted server-side
-    tableName: string;
-    query?: string;
+    folderPath: string;
+    fileName: string;
   };
 }
 
 export interface AzureBlobConfig extends BaseDataSourceConfig {
-  type: 'azure-blob';
+  type: 'azure_blob';
   config: {
     storageAccountName: string;
     containerName: string;
@@ -69,7 +67,7 @@ export interface DatadogConfig extends BaseDataSourceConfig {
 
 export type DataSourceConfig =
   | DatabaseConfig
-  | AzureLogsConfig
+  | LocalFolderConfig
   | AzureBlobConfig
   | SplunkConfig
   | DatadogConfig;

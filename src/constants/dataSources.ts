@@ -1,15 +1,15 @@
 import { DataSourceType } from '@/src/types/dataSource';
 
 export const DATA_SOURCE_TYPES: Record<DataSourceType, { label: string; description: string }> = {
+  'local_folder': {
+    label: 'Local Folder',
+    description: 'Read evaluation records from a local folder or CSV file',
+  },
   database: {
     label: 'Database',
     description: 'Connect to PostgreSQL, MySQL, SQL Server, or other relational databases',
   },
-  'azure-logs': {
-    label: 'Azure Log Analytics',
-    description: 'Azure Monitor Log Analytics workspace for storing evaluation metrics',
-  },
-  'azure-blob': {
+  'azure_blob': {
     label: 'Azure Blob Storage',
     description: 'Azure Blob Storage container for log files and metric data',
   },
@@ -31,9 +31,9 @@ export const METRIC_FIELD_OPTIONS = [
 ];
 
 export const SENSITIVE_FIELDS: Record<DataSourceType, string[]> = {
+  'local_folder': [],
   database: ['password'],
-  'azure-logs': ['primaryKey'],
-  'azure-blob': ['accountKey'],
+  'azure_blob': ['accountKey'],
   splunk: ['password'],
   datadog: ['apiKey', 'appKey'],
 };
