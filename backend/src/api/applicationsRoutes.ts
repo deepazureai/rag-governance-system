@@ -84,9 +84,12 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
  */
 applicationsRouter.post('/create', async (req: Request, res: Response) => {
   try {
+    console.log('[API] POST /api/applications/create - Request body:', JSON.stringify(req.body, null, 2));
+    
     const validation = createApplicationSchema.safeParse(req.body);
 
     if (!validation.success) {
+      console.error('[API] Validation failed:', validation.error.errors);
       return res.status(400).json({
         success: false,
         error: 'Validation error',
@@ -97,7 +100,8 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     const appData = validation.data;
     const applicationId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    console.log('[API] Creating application from wizard:', applicationId, appData);
+    console.log('[API] Creating application from wizard:', applicationId);
+    console.log('[API] Application data:', appData);
 
     // Create ApplicationMaster record
     const newApp = {
@@ -117,12 +121,15 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     // Trigger data ingestion job asynchronously
     if (appData.dataSource) {
       console.log('[API] Initiating data ingestion for application:', applicationId);
-      // Queue ingestion job - would call dataIngestionService.initiateIngestion(newApp)
+      console.log('[API] Data source type:', appData.dataSource.type);
+      console.log('[API] Data source config:', appData.dataSource.config);
+      
       setImmediate(() => {
-        console.log('[v0] Background ingestion task started for', applicationId, 'with data source', appData.dataSource.type);
+        console.log('[v0] Background ingestion task started for', applicationId, 'with data source', appData.dataSource?.type);
       });
     }
 
+    console.log('[API] Application created successfully:', applicationId);
     res.status(201).json({
       success: true,
       data: newApp,
@@ -130,10 +137,12 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       jobId: `job_${applicationId}`,
     });
   } catch (error: any) {
-    console.error('[API] Create application from wizard error:', error);
+    console.error('[API] Create application from wizard error:', error.message);
+    console.error('[API] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to create application',
+      details: error.stack,
     });
   }
 });

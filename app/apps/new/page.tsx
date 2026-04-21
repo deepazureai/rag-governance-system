@@ -38,7 +38,8 @@ export default function NewApplicationPage() {
   const [connectorConfig, setConnectorConfig] = useState<any>(null);
   const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [processingPreview, setProcessingPreview] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleNext = () => {
     if (step === 'app-info') {
@@ -69,6 +70,9 @@ export default function NewApplicationPage() {
   };
 
   const handleCreate = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const applicationPayload = {
         name: appData.name,
@@ -84,22 +88,37 @@ export default function NewApplicationPage() {
       console.log('[v0] Creating application with data:', applicationPayload);
       
       // API call to create application and trigger ingestion
-      const response = await fetch('/api/applications/create', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(applicationPayload),
       });
       
-      if (!response.ok) throw new Error('Failed to create application');
-      
       const result = await response.json();
-      console.log('[v0] Application created successfully:', result);
+      console.log('[v0] API Response:', result);
       
+      if (!response.ok) {
+        const errorMessage = result.details 
+          ? Array.isArray(result.details) 
+            ? result.details.map((d: any) => d.message).join(', ')
+            : result.details
+          : result.error || result.message || 'Failed to create application';
+        
+        console.error('[v0] Error response from backend:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      console.log('[v0] Application created successfully:', result);
       alert('Application created successfully! Data ingestion has been initiated.');
       window.location.href = '/apps';
-    } catch (error) {
+    } catch (error: any) {
+      const errorMsg = error.message || 'Failed to create application. Please try again.';
       console.error('[v0] Error creating application:', error);
-      alert('Failed to create application. Please try again.');
+      console.error('[v0] Error details:', { message: errorMsg, error });
+      setError(errorMsg);
+      alert(errorMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
