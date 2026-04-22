@@ -122,7 +122,8 @@ export function createBatchProcessingRouter(): Router {
   router.get('/application/:applicationId/history', async (req: Request, res: Response) => {
     try {
       const { applicationId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limitParam = req.query.limit;
+      const limit = typeof limitParam === 'string' ? parseInt(limitParam, 10) || 10 : 10;
 
       const batches = await batchProcessingService.getApplicationBatches(applicationId, limit);
 
@@ -359,7 +360,8 @@ export function createBatchProcessingRouter(): Router {
   router.get('/archive/application/:applicationId', async (req: Request, res: Response) => {
     try {
       const { applicationId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 30;
+      const limitParam = req.query.limit;
+      const limit = typeof limitParam === 'string' ? parseInt(limitParam, 10) || 30 : 30;
 
       const archives = await archiveService.getApplicationArchives(applicationId, limit);
 
