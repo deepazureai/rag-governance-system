@@ -4,6 +4,7 @@ import { batchProcessingService } from '../services/BatchProcessingService';
 import { scheduledBatchJobService } from '../services/ScheduledBatchJobService';
 import { archiveService } from '../services/ArchiveService';
 import { logger } from '../utils/logger';
+import { getStringParam, getNumberParam } from '../utils/paramParser';
 
 export function createBatchProcessingRouter(): Router {
   const router = express.Router();
@@ -14,12 +15,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.post('/validate-file', async (req: Request, res: Response) => {
     try {
-      const { folderPath, fileName } = req.body;
+      const jobId = getStringParam(req.params.jobId);
 
-      if (!folderPath || !fileName) {
+      if (!jobId) {
         return res.status(400).json({
           success: false,
-          message: 'Missing folderPath or fileName',
+          message: 'jobId is required',
         });
       }
 
@@ -54,12 +55,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.post('/execute', async (req: Request, res: Response) => {
     try {
-      const { applicationId, connectionId, sourceType, sourceConfig } = req.body;
+      const jobId = getStringParam(req.params.jobId);
 
-      if (!applicationId || !connectionId || !sourceType || !sourceConfig) {
+      if (!jobId) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields',
+          message: 'jobId is required',
         });
       }
 
@@ -92,12 +93,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/:batchId/status', async (req: Request, res: Response) => {
     try {
-      const { batchId } = req.params;
+      const jobId = getStringParam(req.params.jobId);
 
-      if (!batchId) {
+      if (!jobId) {
         return res.status(400).json({
           success: false,
-          message: 'batchId is required',
+          message: 'jobId is required',
         });
       }
 
@@ -128,9 +129,14 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/application/:applicationId/history', async (req: Request, res: Response) => {
     try {
-      const { applicationId } = req.params;
-      const limitParam = req.query.limit;
-      const limit = typeof limitParam === 'string' ? parseInt(limitParam, 10) || 10 : 10;
+      const applicationId = getStringParam(req.params.applicationId);
+      if (!applicationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId is required',
+        });
+      }
+      const limit = getNumberParam(req.query.limit, 10);
 
       const batches = await batchProcessingService.getApplicationBatches(applicationId, limit);
 
@@ -188,7 +194,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/schedule/:jobId', async (req: Request, res: Response) => {
     try {
-      const { jobId } = req.params;
+      const jobId = getStringParam(req.params.jobId);
 
       if (!jobId) {
         return res.status(400).json({
@@ -224,7 +230,14 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/schedule/application/:applicationId', async (req: Request, res: Response) => {
     try {
-      const { applicationId } = req.params;
+      const applicationId = getStringParam(req.params.applicationId);
+
+      if (!applicationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId is required',
+        });
+      }
 
       const jobs = await scheduledBatchJobService.getApplicationScheduledJobs(applicationId);
 
@@ -247,7 +260,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.put('/schedule/:jobId', async (req: Request, res: Response) => {
     try {
-      const { jobId } = req.params;
+      const jobId = getStringParam(req.params.jobId);
 
       if (!jobId) {
         return res.status(400).json({
@@ -374,7 +387,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/archive/:archiveId', async (req: Request, res: Response) => {
     try {
-      const { archiveId } = req.params;
+      const archiveId = getStringParam(req.params.archiveId);
 
       if (!archiveId) {
         return res.status(400).json({
@@ -410,9 +423,14 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/archive/application/:applicationId', async (req: Request, res: Response) => {
     try {
-      const { applicationId } = req.params;
-      const limitParam = req.query.limit;
-      const limit = typeof limitParam === 'string' ? parseInt(limitParam, 10) || 30 : 30;
+      const applicationId = getStringParam(req.params.applicationId);
+      if (!applicationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId is required',
+        });
+      }
+      const limit = getNumberParam(req.query.limit, 30);
 
       const archives = await archiveService.getApplicationArchives(applicationId, limit);
 

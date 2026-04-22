@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { batchProcessingService } from '../services/BatchProcessingService';
+import { getStringParam } from '../utils/paramParser';
 
 const applicationsRouter = Router();
 
