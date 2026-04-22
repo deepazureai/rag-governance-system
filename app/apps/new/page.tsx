@@ -53,7 +53,16 @@ export default function NewApplicationPage() {
         alert('Please select a data source type (Local Folder, Database, or Azure Blob)');
         return;
       }
-      setStep('connector-config');
+      if (!dataSourceConfig) {
+        alert('Please configure the data source');
+        return;
+      }
+      // For local_folder, no additional connector config needed - skip to review
+      if (selectedDataSource === 'local_folder') {
+        setStep('review');
+      } else {
+        setStep('connector-config');
+      }
     } else if (step === 'connector-config') {
       if (!connectorConfig && !dataSourceConfig) {
         alert('Please configure the connector');
@@ -66,7 +75,14 @@ export default function NewApplicationPage() {
   const handleBack = () => {
     if (step === 'data-source') setStep('app-info');
     else if (step === 'connector-config') setStep('data-source');
-    else if (step === 'review') setStep('connector-config');
+    else if (step === 'review') {
+      // From review, go back to connector-config if not local_folder, else go to data-source
+      if (selectedDataSource === 'local_folder') {
+        setStep('data-source');
+      } else {
+        setStep('connector-config');
+      }
+    }
   };
 
   const handleCreate = async () => {
