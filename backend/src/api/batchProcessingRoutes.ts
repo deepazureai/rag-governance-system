@@ -94,6 +94,13 @@ export function createBatchProcessingRouter(): Router {
     try {
       const { batchId } = req.params;
 
+      if (!batchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'batchId is required',
+        });
+      }
+
       const batch = await batchProcessingService.getBatchStatus(batchId);
 
       if (!batch) {
@@ -183,6 +190,13 @@ export function createBatchProcessingRouter(): Router {
     try {
       const { jobId } = req.params;
 
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'jobId is required',
+        });
+      }
+
       const job = await scheduledBatchJobService.getScheduledJob(jobId);
 
       if (!job) {
@@ -234,6 +248,14 @@ export function createBatchProcessingRouter(): Router {
   router.put('/schedule/:jobId', async (req: Request, res: Response) => {
     try {
       const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'jobId is required',
+        });
+      }
+
       const updates = req.body;
 
       const job = await scheduledBatchJobService.updateScheduledJob(jobId, updates);
@@ -257,6 +279,14 @@ export function createBatchProcessingRouter(): Router {
   router.patch('/schedule/:jobId/toggle', async (req: Request, res: Response) => {
     try {
       const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'jobId is required',
+        });
+      }
+
       const { isEnabled } = req.body;
 
       const job = await scheduledBatchJobService.toggleScheduledJob(jobId, isEnabled);
@@ -281,6 +311,13 @@ export function createBatchProcessingRouter(): Router {
     try {
       const { jobId } = req.params;
 
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'jobId is required',
+        });
+      }
+
       const deleted = await scheduledBatchJobService.deleteScheduledJob(jobId);
 
       res.json({
@@ -302,6 +339,13 @@ export function createBatchProcessingRouter(): Router {
   router.post('/schedule/:jobId/trigger', async (req: Request, res: Response) => {
     try {
       const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({
+          success: false,
+          message: 'jobId is required',
+        });
+      }
 
       const success = await scheduledBatchJobService.triggerBatchJobNow(jobId);
 
@@ -331,6 +375,13 @@ export function createBatchProcessingRouter(): Router {
   router.get('/archive/:archiveId', async (req: Request, res: Response) => {
     try {
       const { archiveId } = req.params;
+
+      if (!archiveId) {
+        return res.status(400).json({
+          success: false,
+          message: 'archiveId is required',
+        });
+      }
 
       const data = await archiveService.getArchiveData(archiveId);
 
