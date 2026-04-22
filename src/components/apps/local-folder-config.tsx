@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { FileUp, AlertCircle } from 'lucide-react';
 
 interface LocalFolderConfigProps {
@@ -93,10 +94,19 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
       <Button
         onClick={handleSubmit}
         disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700"
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-75"
       >
-        <FileUp className="w-4 h-4 mr-2" />
-        {isLoading ? 'Processing...' : 'Load and Process File'}
+        {isLoading ? (
+          <>
+            <Spinner className="w-4 h-4 mr-2" />
+            Processing your data...
+          </>
+        ) : (
+          <>
+            <FileUp className="w-4 h-4 mr-2" />
+            Load and Process File
+          </>
+        )}
       </Button>
     </Card>
   );
