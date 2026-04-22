@@ -19,7 +19,7 @@ const createApplicationSchema = z.object({
   status: z.enum(['active', 'inactive', 'archived']).default('active'),
   dataSource: z.object({
     type: z.enum(['local_folder', 'azure_blob', 'database', 'splunk', 'datadog']),
-    config: z.record(z.any()).optional(),
+    config: z.record(z.string(), z.any()).optional(),
   }).optional(),
 });
 
@@ -66,20 +66,10 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('[API] Error fetching applications:', error.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch applications',
       message: error.message,
-    });
-  }
-});
-  } catch (error: any) {
-    console.error('[API] Get applications error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Unable to load applications',
-      message: 'Failed to retrieve applications from the platform. Please try again later.',
-      details: error.message || 'Internal server error',
     });
   }
 });
@@ -95,11 +85,11 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     const validation = createApplicationSchema.safeParse(req.body);
 
     if (!validation.success) {
-      console.error('[API] Validation failed:', validation.error.errors);
+      console.error('[API] Validation failed:', validation.error.issues);
       return res.status(400).json({
         success: false,
         error: 'Validation error',
-        details: validation.error.errors,
+        details: validation.error.issues,
       });
     }
 
@@ -167,7 +157,7 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     }
 
     console.log('[API] Application created successfully:', applicationId);
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: newApp,
       message: 'Application created successfully. Data ingestion has been initiated in the background.',
@@ -176,7 +166,7 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[API] Create application from wizard error:', error.message);
     console.error('[API] Error stack:', error.stack);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to create application',
       details: error.stack,

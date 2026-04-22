@@ -81,7 +81,7 @@ export class EvaluationService {
       });
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[EvalService] Evaluation failed:', error);
       throw error;
     }
