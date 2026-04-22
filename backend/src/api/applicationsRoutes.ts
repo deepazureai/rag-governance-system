@@ -37,36 +37,40 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
   try {
     console.log('[API] GET /api/applications - Fetching all applications');
     
-    // TODO: Query MongoDB ApplicationMaster collection
-    // const db = getDatabase();
-    // const applications = await db.collection('ApplicationMaster')
-    //   .find({})
-    //   .sort({ createdAt: -1 })
-    //   .toArray();
-    // 
-    // if (applications.length === 0) {
-    //   return res.json({
-    //     success: true,
-    //     data: [],
-    //     count: 0,
-    //     message: 'No applications added to the RAG Evaluation Platform yet.',
-    //   });
-    // }
-    // 
-    // return res.json({
-    //   success: true,
-    //   data: applications,
-    //   count: applications.length,
-    //   message: `Found ${applications.length} application(s)`,
-    // });
+    // Query MongoDB ApplicationMaster collection
+    const mongoose = require('mongoose');
+    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+    
+    const applications = await ApplicationMasterCollection.find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    console.log('[API] Found', applications.length, 'applications in MongoDB');
 
-    // For now, return empty array with user-friendly message
-    res.json({
+    if (applications.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0,
+        message: 'No applications added to the RAG Evaluation Platform yet.',
+      });
+    }
+
+    return res.json({
       success: true,
-      data: [],
-      count: 0,
-      message: 'No applications added to the RAG Evaluation Platform yet.',
+      data: applications,
+      count: applications.length,
+      message: `Found ${applications.length} application(s)`,
     });
+  } catch (error: any) {
+    console.error('[API] Error fetching applications:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch applications',
+      message: error.message,
+    });
+  }
+});
   } catch (error: any) {
     console.error('[API] Get applications error:', error);
     res.status(500).json({
@@ -114,9 +118,20 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       dataSource: appData.dataSource || { type: 'database', config: {} },
       initialDataProcessingStatus: 'pending',
       metricsCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
+
+    // Save to MongoDB
+    console.log('[API] Saving application to MongoDB...');
+    const db = require('../models/database');
+    const mongoose = require('mongoose');
+    
+    // Get or create collection
+    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+    const result = await ApplicationMasterCollection.insertOne(newApp);
+    
+    console.log('[API] Application saved to MongoDB with _id:', result.insertedId);
 
     // Trigger data ingestion job asynchronously
     if (appData.dataSource) {
