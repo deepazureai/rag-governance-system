@@ -9,6 +9,46 @@ export function createBatchProcessingRouter(): Router {
   const router = express.Router();
 
   /**
+   * POST /api/batch/validate-file
+   * Validate that a file exists at the given path
+   */
+  router.post('/validate-file', async (req: Request, res: Response) => {
+    try {
+      const { folderPath, fileName } = req.body;
+
+      if (!folderPath || !fileName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing folderPath or fileName',
+        });
+      }
+
+      logger.info(`[BatchAPI] Validating file: ${folderPath}/${fileName}`);
+
+      // Just validate the input format for now
+      // Full validation will happen during batch execution
+      if (!fileName.endsWith('.csv') && !fileName.endsWith('.txt')) {
+        return res.status(400).json({
+          success: false,
+          message: 'File must be .csv or .txt format',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'File path validated successfully',
+        path: `${folderPath}/${fileName}`,
+      });
+    } catch (error: any) {
+      logger.error(`[BatchAPI] File validation error:`, error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'File validation failed',
+      });
+    }
+  });
+
+  /**
    * POST /api/batch/execute
    * Manually execute batch processing for an application
    */

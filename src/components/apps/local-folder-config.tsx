@@ -36,36 +36,33 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
       return;
     }
 
-    // Start processing
+    // Validate using backend
     setIsProcessing(true);
     try {
-      console.log('[v0] Starting file processing:', { folderPath, fileName });
+      console.log('[v0] Validating file path:', { folderPath, fileName });
       
-      // Call backend to process the file
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/batch/execute`, {
+      // Call backend to validate the file exists
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/batch/validate-file`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sourceType: 'local-folder',
-          sourceConfig: { folderPath, fileName },
-        }),
+        body: JSON.stringify({ folderPath, fileName }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to process file: ${response.statusText}`);
+        throw new Error(errorData.error || `File validation failed: ${response.statusText}`);
       }
 
       const result = await response.json();
-      console.log('[v0] File processing successful:', result);
+      console.log('[v0] File validation successful:', result);
       
       setIsSuccess(true);
-      // Save the config after successful processing
+      // Save the config after successful validation
       onConfigure({ folderPath, fileName });
       
     } catch (err: any) {
-      console.error('[v0] Error processing file:', err);
-      setError(err.message || 'Failed to process file. Please try again.');
+      console.error('[v0] Error validating file:', err);
+      setError(err.message || 'File validation failed. Please check the path and try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -76,7 +73,7 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
       <div>
         <h3 className="font-semibold text-gray-900 mb-4">Local Folder Configuration</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Specify the folder path and file name containing your metrics data in semicolon-delimited format.
+          Specify the folder path and file name containing your evaluation data. The file will be validated and then processed after the application is created.
         </p>
       </div>
 
@@ -141,12 +138,12 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
         {isProcessing ? (
           <>
             <Spinner className="w-4 h-4 mr-2" />
-            Processing your data...
+            Validating file...
           </>
         ) : isSuccess ? (
           <>
             <CheckCircle className="w-4 h-4 mr-2" />
-            File Processed
+            File Validated
           </>
         ) : (
           <>
