@@ -4,6 +4,11 @@ import { MockApiHandler } from './mock-handler';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
 
+console.log('[v0] API Configuration:');
+console.log('[v0] NEXT_PUBLIC_API_URL env var:', process.env.NEXT_PUBLIC_API_URL);
+console.log('[v0] API_BASE_URL resolved to:', API_BASE_URL);
+console.log('[v0] USE_MOCK_API:', USE_MOCK_API);
+
 class ApiClient {
   private client: AxiosInstance;
   private useMockApi: boolean;
