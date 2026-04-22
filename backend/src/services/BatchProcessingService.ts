@@ -1,110 +1,134 @@
 import { v4 as uuidv4 } from 'uuid';
-import { BatchProcess, IBatchProcess } from '../models/BatchProcess';
-import { RawDataRecord } from '../models/RawDataRecord';
-import { Archive } from '../models/Archive';
-import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
-import { archiveService } from './ArchiveService';
 import { logger } from '../utils/logger';
-import * as crypto from 'crypto';
+import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
+import { evaluateWithRagas } from './evaluation';
 
 export class BatchProcessingService {
   /**
-   * Execute complete batch process: read file → archive → delete old → insert new
+   * Execute complete batch process: read file → evaluate → save results
    */
   async executeBatchProcess(
     applicationId: string,
     connectionId: string,
-    sourceType: 'local-folder' | 'azure-blob',
+    sourceType: string,
     sourceConfig: any
-  ): Promise<IBatchProcess> {
+  ): Promise<any> {
     const batchId = uuidv4();
     const startTime = new Date();
+    const mongoose = require('mongoose');
 
     logger.info(`[BatchProcessingService] Starting batch process ${batchId} for app ${applicationId}`);
 
-    let batchProcess = await this.createBatchProcess(
-      applicationId,
-      connectionId,
-      batchId,
-      sourceType,
-      sourceConfig
-    );
-
     try {
       // Phase 1: Read Data
-      batchProcess = await this.updateBatchStatus(batchId, 'reading', 'Reading raw data file');
+      logger.info(`[BatchProcessingService] Phase 1: Reading data from ${sourceType}`);
       const { records, fileSize, fileName, error: readError } = await this.readDataFromSource(
         sourceType,
         sourceConfig,
         applicationId
       );
 
-      if (readError) {
-        throw new Error(`File read failed: ${readError.message}`);
+      if (readError || !records || records.length === 0) {
+        logger.error(`[BatchProcessingService] Failed to read data:`, readError?.message || 'No records found');
+        throw new Error(`File read failed: ${readError?.message || 'No records found'}`);
       }
 
-      batchProcess.metadata.fileSize = fileSize;
-      batchProcess.metadata.fileName = fileName;
-      batchProcess.metadata.recordCount = records.length;
-      batchProcess.progress.totalRecords = records.length;
+      logger.info(`[BatchProcessingService] Read ${records.length} records from ${fileName}`);
 
-      // Phase 2: Archive existing data
-      batchProcess = await this.updateBatchStatus(batchId, 'archiving', 'Archiving existing records');
-      const archiveId = await archiveService.archiveExistingRecords(applicationId, batchId);
-      batchProcess.archiveFileId = archiveId;
-
-      // Phase 3: Delete old records
-      batchProcess = await this.updateBatchStatus(
-        batchId,
-        'deleting',
-        'Deleting old records from database'
-      );
-      const deletedCount = await RawDataRecord.deleteMany({ applicationId });
-      logger.info(
-        `[BatchProcessingService] Deleted ${deletedCount.deletedCount} old records for app ${applicationId}`
-      );
-
-      // Phase 4: Insert new records with validation
-      batchProcess = await this.updateBatchStatus(batchId, 'inserting', 'Inserting new records');
-      const insertedCount = await this.insertRecordsWithValidation(
+      // Phase 2: Save raw data records
+      logger.info(`[BatchProcessingService] Phase 2: Saving raw data records`);
+      const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+      const rawRecords = records.map((record: ParsedRecord, index: number) => ({
         applicationId,
         connectionId,
+        sourceType,
         batchId,
-        records,
-        sourceType
+        recordData: record.data,
+        lineNumber: record.lineNumber,
+        fileName,
+        processedAt: new Date(),
+        status: 'processed',
+      }));
+
+      const insertedRaw = await RawDataCollection.insertMany(rawRecords);
+      logger.info(`[BatchProcessingService] Inserted ${insertedRaw.insertedCount} raw records`);
+
+      // Phase 3: Evaluate with RAGAS
+      logger.info(`[BatchProcessingService] Phase 3: Evaluating records with RAGAS`);
+      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+      
+      for (const record of records) {
+        try {
+          const evaluation = await evaluateWithRagas(record.data);
+          
+          const evaluationRecord = {
+            applicationId,
+            connectionId,
+            batchId,
+            recordData: record.data,
+            evaluation: {
+              faithfulness: evaluation.faithfulness || 0,
+              answer_relevancy: evaluation.answer_relevancy || 0,
+              context_relevancy: evaluation.context_relevancy || 0,
+              context_precision: evaluation.context_precision || 0,
+              context_recall: evaluation.context_recall || 0,
+              correctness: evaluation.correctness || 0,
+              overall_score: evaluation.overall_score || 0,
+            },
+            evaluatedAt: new Date(),
+            status: 'completed',
+          };
+          
+          await EvaluationCollection.insertOne(evaluationRecord);
+        } catch (evalError: any) {
+          logger.error(`[BatchProcessingService] Evaluation failed for record:`, evalError.message);
+        }
+      }
+
+      logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
+
+      // Update application status
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { 
+          $set: { 
+            initialDataProcessingStatus: 'completed',
+            metricsCount: records.length,
+            updatedAt: new Date(),
+          } 
+        }
       );
 
-      // Complete
-      batchProcess.progress.processedRecords = insertedCount;
-      batchProcess.timestamps.completedAt = new Date();
-      batchProcess.status = 'completed';
-      await batchProcess.save();
-
-      logger.info(
-        `[BatchProcessingService] Batch ${batchId} completed successfully. Inserted ${insertedCount} records`
-      );
-
-      return batchProcess;
+      return {
+        batchId,
+        status: 'completed',
+        recordsProcessed: records.length,
+        completedAt: new Date(),
+      };
     } catch (error: any) {
       logger.error(`[BatchProcessingService] Batch process failed:`, error);
 
-      // Mark as failed and save error details
-      batchProcess.status = 'failed';
-      batchProcess.errorDetails = {
-        phase: 'batch_execution',
-        message: error.message,
-        code: 'BATCH_FAILED',
-        timestamp: new Date(),
-      };
-      batchProcess.timestamps.completedAt = new Date();
-      await batchProcess.save();
+      // Update application status to failed
+      const mongoose = require('mongoose');
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { 
+          $set: { 
+            initialDataProcessingStatus: 'failed',
+            error: error.message,
+            updatedAt: new Date(),
+          } 
+        }
+      ).catch((err: any) => logger.error('Failed to update app status:', err));
 
       throw error;
     }
   }
 
   private async readDataFromSource(
-    sourceType: 'local-folder' | 'azure-blob',
+    sourceType: string,
     sourceConfig: any,
     applicationId: string
   ): Promise<{
@@ -113,10 +137,9 @@ export class BatchProcessingService {
     fileName: string;
     error?: FileAccessError;
   }> {
-    if (sourceType === 'local-folder') {
+    if (sourceType === 'local_folder') {
       const { folderPath, fileName } = sourceConfig;
       const connector = new LocalFolderConnector({ folderPath });
-      await connector.connect();
       
       const result = await connector.readDataFile(folderPath, fileName, applicationId);
 
@@ -135,127 +158,21 @@ export class BatchProcessingService {
         fileSize,
         fileName,
       };
-    } else if (sourceType === 'azure-blob') {
-      // TODO: Implement Azure Blob reading
-      const fileName = sourceConfig.blobName;
-      return {
-        records: [],
-        fileSize: 0,
-        fileName,
-      };
     }
 
     throw new Error(`Unsupported source type: ${sourceType}`);
   }
 
-  private async insertRecordsWithValidation(
-    applicationId: string,
-    connectionId: string,
-    batchId: string,
-    records: ParsedRecord[],
-    sourceType: string
-  ): Promise<number> {
-    const validationErrors: string[] = [];
-    const recordsToInsert: any[] = [];
-
-    for (const record of records) {
-      try {
-        const processedRecord = {
-          applicationId,
-          connectionId,
-          sourceType,
-          recordData: record.data,
-          lineNumber: record.lineNumber,
-          batchId,
-          fileName: '', // Will be set from batch context
-          processedAt: new Date(),
-          status: 'processed',
-        };
-
-        recordsToInsert.push(processedRecord);
-      } catch (error: any) {
-        validationErrors.push(`Line ${record.lineNumber}: ${error.message}`);
-      }
-    }
-
-    if (recordsToInsert.length === 0) {
-      throw new Error('No valid records to insert after validation');
-    }
-
-    // Batch insert with retry logic
-    const inserted = await RawDataRecord.insertMany(recordsToInsert, { ordered: false });
-
-    logger.info(
-      `[BatchProcessingService] Successfully inserted ${inserted.length} records for batch ${batchId}`
-    );
-
-    return inserted.length;
+  async getBatchStatus(batchId: string): Promise<any> {
+    const mongoose = require('mongoose');
+    const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
+    return BatchCollection.findOne({ batchId });
   }
 
-  private async createBatchProcess(
-    applicationId: string,
-    connectionId: string,
-    batchId: string,
-    sourceType: 'local-folder' | 'azure-blob',
-    sourceConfig: any
-  ): Promise<IBatchProcess> {
-    const batchProcess = new BatchProcess({
-      applicationId,
-      connectionId,
-      batchId,
-      sourceType,
-      status: 'pending',
-      progress: {
-        totalRecords: 0,
-        processedRecords: 0,
-        failedRecords: 0,
-        currentStep: 'Initializing',
-      },
-      metadata: {
-        fileName: sourceConfig.fileName || sourceConfig.blobName || '',
-        recordCount: 0,
-        duplicateRecordsRemoved: 0,
-        validationErrors: [],
-        ...(sourceType === 'local-folder' && { folderPath: sourceConfig.folderPath }),
-        ...(sourceType === 'azure-blob' && { containerName: sourceConfig.containerName }),
-      },
-      timestamps: {
-        startedAt: new Date(),
-      },
-    });
-
-    await batchProcess.save();
-    logger.info(`[BatchProcessingService] Created batch process ${batchId}`);
-    return batchProcess;
-  }
-
-  private async updateBatchStatus(
-    batchId: string,
-    status: string,
-    currentStep: string
-  ): Promise<IBatchProcess> {
-    const updated = await BatchProcess.findOneAndUpdate(
-      { batchId },
-      {
-        status,
-        'progress.currentStep': currentStep,
-      },
-      { new: true }
-    );
-
-    if (!updated) {
-      throw new Error(`Batch ${batchId} not found`);
-    }
-
-    return updated;
-  }
-
-  async getBatchStatus(batchId: string): Promise<IBatchProcess | null> {
-    return BatchProcess.findOne({ batchId });
-  }
-
-  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<IBatchProcess[]> {
-    return BatchProcess.find({ applicationId }).sort({ createdAt: -1 }).limit(limit);
+  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<any[]> {
+    const mongoose = require('mongoose');
+    const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
+    return BatchCollection.find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
   }
 }
 

@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { batchProcessingService } from '../services/BatchProcessingService';
 
 const applicationsRouter = Router();
 
@@ -133,14 +134,34 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     
     console.log('[API] Application saved to MongoDB with _id:', result.insertedId);
 
-    // Trigger data ingestion job asynchronously
+    // Trigger data ingestion job asynchronously (Phase 1)
     if (appData.dataSource) {
       console.log('[API] Initiating data ingestion for application:', applicationId);
       console.log('[API] Data source type:', appData.dataSource.type);
       console.log('[API] Data source config:', appData.dataSource.config);
       
-      setImmediate(() => {
-        console.log('[v0] Background ingestion task started for', applicationId, 'with data source', appData.dataSource?.type);
+      // Start batch processing in background (don't await)
+      const connectionId = `conn_${Date.now()}`;
+      setImmediate(async () => {
+        try {
+          console.log('[API] Starting batch processing in background...');
+          await batchProcessingService.executeBatchProcess(
+            applicationId,
+            connectionId,
+            appData.dataSource.type,
+            appData.dataSource.config
+          );
+          console.log('[API] Batch processing completed for:', applicationId);
+        } catch (error: any) {
+          console.error('[API] Background batch processing failed:', error.message);
+          // Update application status to failed
+          const mongoose = require('mongoose');
+          const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+          await ApplicationMasterCollection.updateOne(
+            { id: applicationId },
+            { $set: { initialDataProcessingStatus: 'failed', error: error.message } }
+          );
+        }
       });
     }
 
