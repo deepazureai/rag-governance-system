@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { batchProcessingService } from '../services/BatchProcessingService';
 import { getStringParam } from '../utils/paramParser';
+import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks';
 
 const applicationsRouter = Router();
 
@@ -124,6 +125,21 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     const result = await ApplicationMasterCollection.insertOne(newApp);
     
     console.log('[API] Application saved to MongoDB with _id:', result.insertedId);
+
+    // AUTO-CREATE SLA Configuration with Industry Benchmarks
+    console.log('[API] Creating SLA configuration with industry benchmarks for:', applicationId);
+    const SLACollection = mongoose.connection.collection('applicationslas');
+    const slaConfig = {
+      applicationId,
+      applicationName: appData.name,
+      metrics: INDUSTRY_STANDARD_SLA.metrics,
+      overallScoreThresholds: INDUSTRY_STANDARD_SLA.overallScoreThresholds,
+      usesCustomThresholds: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await SLACollection.insertOne(slaConfig);
+    console.log('[API] SLA configuration created with industry benchmarks');
 
     // Trigger data ingestion job asynchronously (Phase 1)
     if (appData.dataSource) {

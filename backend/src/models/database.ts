@@ -64,6 +64,62 @@ export interface ApplicationMaster {
   updatedAt: Date;
 }
 
+/**
+ * Application SLA Configuration - Per-application benchmark settings
+ * Each application can have unique thresholds based on business requirements
+ * Linked to ApplicationMaster via applicationId as partition key
+ */
+export interface ApplicationSLA {
+  _id?: string;
+  applicationId: string; // Partition key linking to ApplicationMaster
+  applicationName: string;
+  
+  // Metric-specific thresholds (% values: 0-100)
+  metrics: {
+    faithfulness: {
+      excellent: number; // >=this is excellent
+      good: number;      // >=this is good, <excellent is yellow
+      poor: number;      // <this is poor (red)
+    };
+    answer_relevancy: {
+      excellent: number;
+      good: number;
+      poor: number;
+    };
+    context_relevancy: {
+      excellent: number;
+      good: number;
+      poor: number;
+    };
+    context_precision: {
+      excellent: number;
+      good: number;
+      poor: number;
+    };
+    context_recall: {
+      excellent: number;
+      good: number;
+      poor: number;
+    };
+    correctness: {
+      excellent: number;
+      good: number;
+      poor: number;
+    };
+  };
+  
+  // Overall health thresholds
+  overallScoreThresholds: {
+    excellent: number;
+    good: number;
+  };
+  
+  // Metadata
+  usesCustomThresholds: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface LocalFolderConfig {
   folderPath: string;
   fileName?: string;
