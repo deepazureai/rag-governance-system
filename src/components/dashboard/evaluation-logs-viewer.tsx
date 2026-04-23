@@ -4,23 +4,24 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EvaluationRecord, EvaluationMetric } from '@/src/hooks/useApplicationMetrics';
 import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import { ApplicationSLA } from '@/src/types/application';
+import { evaluateMetricHealth } from '@/src/utils/sla-comparison';
 
 interface EvaluationLogsViewerProps {
   records: EvaluationRecord[];
   isLoading: boolean;
+  applicationSLA?: ApplicationSLA; // Per-application SLA settings
 }
 
-// SLA Thresholds
-const SLA_THRESHOLDS = {
-  HEALTHY: 70, // >= 70% = Healthy (green)
-  WARNING: 50, // 50-69% = Warning (yellow)
-  CRITICAL: 0, // < 50% = Critical (red)
-};
+function getHealthStatus(score: number, metricName: string, applicationSLA?: ApplicationSLA) {
+  if (!applicationSLA) {
+    // Fallback to hardcoded thresholds if no SLA provided
+    if (score >= 70) return 'healthy';
+    if (score >= 50) return 'warning';
+    return 'critical';
+  }
 
-function getHealthStatus(score: number) {
-  if (score >= SLA_THRESHOLDS.HEALTHY) return 'healthy';
-  if (score >= SLA_THRESHOLDS.WARNING) return 'warning';
-  return 'critical';
+  return evaluateMetricHealth(score, metricName, applicationSLA);
 }
 
 function getStatusColor(status: string) {
@@ -62,8 +63,8 @@ function getStatusLabel(status: string) {
   }
 }
 
-function MetricRow({ label, value }: { label: string; value: number }) {
-  const healthStatus = getHealthStatus(value);
+function MetricRow({ label, value, applicationSLA }: { label: string; value: number; applicationSLA?: ApplicationSLA }) {
+  const healthStatus = getHealthStatus(value, label, applicationSLA);
   const bgColor =
     healthStatus === 'healthy'
       ? 'bg-green-100'
@@ -83,7 +84,7 @@ function MetricRow({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function EvaluationLogsViewer({ records, isLoading }: EvaluationLogsViewerProps) {
+export function EvaluationLogsViewer({ records, isLoading, applicationSLA }: EvaluationLogsViewerProps) {
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -104,9 +105,9 @@ export function EvaluationLogsViewer({ records, isLoading }: EvaluationLogsViewe
 
   // Group records by health status
   const groupedRecords = {
-    healthy: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0) === 'healthy'),
-    warning: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0) === 'warning'),
-    critical: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0) === 'critical'),
+    healthy: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0, 'overall_score', applicationSLA) === 'healthy'),
+    warning: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0, 'overall_score', applicationSLA) === 'warning'),
+    critical: records.filter(r => getHealthStatus(r.evaluation?.overall_score || 0, 'overall_score', applicationSLA) === 'critical'),
   };
 
   return (

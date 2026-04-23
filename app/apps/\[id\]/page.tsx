@@ -7,10 +7,11 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { EvaluationLogsViewer } from '@/src/components/dashboard/evaluation-logs-viewer';
 import { useApplicationMetrics } from '@/src/hooks/useApplicationMetrics';
+import { useApplicationSLA } from '@/src/hooks/useApplicationSLA';
 
 interface Application {
   id: string;
@@ -39,6 +40,7 @@ export default function ApplicationDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const { records, metrics, isLoading: metricsLoading, error: metricsError } = useApplicationMetrics(applicationId);
+  const { slaConfig, isLoading: slaLoading } = useApplicationSLA(applicationId);
 
   // Fetch application details
   useEffect(() => {
@@ -137,11 +139,17 @@ export default function ApplicationDetailPage() {
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 mr-2"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Link href={`/apps/${applicationId}/settings`}>
+            <Button variant="outline" size="sm">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          </Link>
         </div>
 
         {/* Application Info Card */}
@@ -258,7 +266,11 @@ export default function ApplicationDetailPage() {
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-4">
-              <EvaluationLogsViewer records={records} isLoading={metricsLoading} />
+              <EvaluationLogsViewer 
+                records={records} 
+                isLoading={metricsLoading}
+                applicationSLA={slaConfig}
+              />
             </TabsContent>
           </Tabs>
         )}
