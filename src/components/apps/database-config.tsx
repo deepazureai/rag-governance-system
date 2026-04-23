@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface DatabaseConfigProps {
   onConfigure: (config: DatabaseConfigWithMapping) => void;
+  applicationId?: string; // Added to link connection to application
   isLoading?: boolean;
   onValidationChange?: (isValid: boolean) => void;
 }
@@ -37,7 +38,7 @@ interface TableColumn {
   type: string;
 }
 
-export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: DatabaseConfigProps) {
+export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValidationChange }: DatabaseConfigProps) {
   const [step, setStep] = useState<Step>('connection');
   const [type, setType] = useState<'sql_server' | 'postgresql' | 'mysql'>('postgresql');
   const [host, setHost] = useState('');
@@ -197,23 +198,98 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
       return;
     }
 
-    console.log('[v0] Column mapping saved:', columnMapping);
-    
-    const config: DatabaseConfigWithMapping = {
-      type,
-      host,
-      port,
-      database,
-      table,
-      username,
-      password,
-      columnMapping,
-    };
+    if (!applicationId) {
+      setError('Application ID is required to save connection');
+      return;
+    }
 
-    onConfigure(config);
-    setSuccess('Database configuration saved successfully!');
-    onValidationChange?.(true);
-    setStep('complete');
+    setIsConnecting(true);
+    setError('');
+
+    try {
+      console.log('[v0] Saving connection and schema mapping to backend...');
+
+      // Step 1: Save connection with encrypted credentials
+      const connectionResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/connections/save-connection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId,
+          connectionName: `${type} - ${host}:${port}/${database}`,
+          type,
+          server: host,
+          port,
+          database,
+          username,
+          password,
+          authType: 'username_password',
+        }),
+      });
+
+      if (!connectionResponse.ok) {
+        const errorData = await connectionResponse.json();
+        throw new Error(errorData.message || 'Failed to save database connection');
+      }
+
+      const connectionData = await connectionResponse.json();
+      const connectionId = connectionData.data.connectionId;
+
+      console.log('[v0] Connection saved:', connectionId);
+
+      // Step 2: Save schema mapping
+      const mappingResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/schema-mappings/save-schema-mapping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId,
+          connectionId,
+          tableName: table,
+          columnMappings: {
+            prompt: columnMapping.promptColumn,
+            context: columnMapping.contextColumn || null,
+            response: columnMapping.responseColumn,
+            userId: columnMapping.userIdColumn,
+            timestamp: columnMapping.timestampColumn || null,
+          },
+          columnTypes: tableColumns.reduce((acc, col) => {
+            acc[col.name] = col.type;
+            return acc;
+          }, {} as Record<string, string>),
+          pollingIntervalMinutes: 60,
+          recordsPerPoll: 1000,
+        }),
+      });
+
+      if (!mappingResponse.ok) {
+        const errorData = await mappingResponse.json();
+        throw new Error(errorData.message || 'Failed to save schema mapping');
+      }
+
+      console.log('[v0] Schema mapping saved successfully');
+
+      setSuccess('Connection and schema mapping saved! Polling service will begin data ingestion.');
+      
+      const config: DatabaseConfigWithMapping = {
+        type,
+        host,
+        port,
+        database,
+        table,
+        username,
+        password,
+        columnMapping,
+      };
+
+      onConfigure(config);
+      onValidationChange?.(true);
+      setStep('complete');
+    } catch (err: any) {
+      console.error('[v0] Error saving connection:', err);
+      setError(err.message || 'Failed to save connection and schema mapping');
+      onValidationChange?.(false);
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const ColumnSelect = ({ label, value, onChange, required }: any) => (

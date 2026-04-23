@@ -16,7 +16,86 @@ export interface EvaluationRecord {
   documentsCount: number;
   createdAt: Date;
   updatedAt: Date;
-  rawData?: string; // JSON stringified
+}
+
+/**
+ * Database Connection Configuration
+ * Stores credentials and connection details for database sources
+ * Credentials are encrypted and referenced via KeyVault
+ */
+export interface DatabaseConnection {
+  _id?: string;
+  connectionId: string; // Unique identifier for this connection
+  applicationId: string; // Linked to ApplicationMaster
+  connectionName: string; // User-friendly name (e.g., "Production DB", "Analytics DB")
+  
+  // Connection Type
+  type: 'postgresql' | 'mysql' | 'mssql' | 'azure_sql' | 'oracle' | 'dynamodb';
+  
+  // Connection Details (server info)
+  server: string; // Database server hostname/IP
+  port: number; // Database port
+  database: string; // Database name
+  
+  // Authentication - stored as reference to KeyVault
+  authType: 'username_password' | 'managed_identity' | 'connection_string';
+  credentials: {
+    keyVaultReference: string; // Reference to encrypted secret in KeyVault/environment
+    credentialType: 'username_password' | 'managed_identity' | 'connection_string';
+    encryptedAt?: Date;
+  };
+  
+  // Connection Status
+  isConnected: boolean;
+  lastTestedAt?: Date;
+  testStatus?: 'success' | 'failed';
+  testError?: string;
+  
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Database Schema Mapping
+ * Maps database table columns to standard evaluation record fields
+ * Enables generic data fetching from any database
+ */
+export interface DatabaseSchemaMapping {
+  _id?: string;
+  mappingId: string; // Unique identifier
+  applicationId: string; // Linked to ApplicationMaster
+  connectionId: string; // References DatabaseConnection
+  
+  // Table Configuration
+  tableName: string; // Name of the table to fetch from
+  
+  // Column Mappings (field name → column name)
+  columnMappings: {
+    prompt: string; // Column containing user prompt/query
+    context?: string; // Column containing context/documents (optional)
+    response: string; // Column containing LLM response
+    userId?: string; // Column containing user identifier (optional)
+    timestamp?: string; // Column containing record timestamp (optional)
+  };
+  
+  // Column Type Information (auto-detected)
+  columnTypes: {
+    [columnName: string]: string; // e.g., { "prompt": "TEXT", "response": "VARCHAR", "user_id": "INT" }
+  };
+  
+  // Polling Configuration (for data ingestion service)
+  pollingConfig: {
+    isEnabled: boolean;
+    intervalMinutes: number; // How often to poll for new data (default: 60)
+    lastPolledAt?: Date;
+    nextPollAt?: Date;
+    recordsPerPoll: number; // Max records to fetch per poll (default: 1000)
+  };
+  
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface BatchEvaluationRecord {

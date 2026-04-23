@@ -14,6 +14,8 @@ import { applicationsRouter } from './api/applicationsRoutes';
 import { applicationRecordsRouter } from './api/applicationRecordsRoutes';
 import { slaConfigRouter } from './api/slaConfigRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
+import { connectionsManagementRouter } from './api/connectionsManagementRoutes';
+import { schemaMappingRouter } from './api/schemaMappingRoutes';
 import { batchProcessingRouter } from './api/batchProcessingRoutes';
 import { dataIngestionRouter } from './api/dataIngestionRoutes';
 import { metricsRouter } from './api/metricsRoutes';
@@ -124,6 +126,8 @@ async function createServer(): Promise<Express> {
   app.use('/api/alert-thresholds', alertThresholdsRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/database', databaseSchemaRouter);
+  app.use('/api/connections', connectionsManagementRouter);
+  app.use('/api/schema-mappings', schemaMappingRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {
