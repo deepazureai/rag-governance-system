@@ -297,3 +297,94 @@ export interface DataIngestionJob {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Alert Record - Tracks SLA deviations at row and aggregated level
+ * Supports full lifecycle: open → acknowledged → dismissed
+ * Includes audit trail with user comments
+ */
+export interface Alert {
+  _id?: string;
+  alertId: string;
+  applicationId: string;
+  
+  // Alert Level (row-level or app-level aggregation)
+  alertLevel: 'row' | 'aggregated';
+  sourceRecordId?: string; // If row-level, reference to rawdatarecords
+  
+  // Alert Details
+  metricName: string; // e.g., "faithfulness", "answer_relevancy"
+  actualValue: number; // e.g., 65 (percentage)
+  slaThreshold: number; // e.g., 70 (the "good" threshold for this app)
+  deviation: number; // % by which actual falls below threshold
+  
+  // Status Management
+  status: 'open' | 'acknowledged' | 'dismissed';
+  acknowledgedAt?: Date;
+  dismissedAt?: Date;
+  acknowledgedBy?: string; // User who acknowledged
+  dismissedBy?: string; // User who dismissed
+  userComment?: string; // Comment when closing alert
+  
+  // Audit & Metadata
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Governance Metrics - Calculated metrics per application
+ * Aggregated daily/weekly/monthly for trend analysis
+ * Includes all calculable metrics from available data
+ */
+export interface GovernanceMetrics {
+  _id?: string;
+  applicationId: string;
+  applicationName: string;
+  
+  // Period Configuration
+  period: 'daily' | 'weekly' | 'monthly';
+  periodDate: Date; // Date of the period (e.g., 2024-01-15 for daily)
+  
+  // Calculable Metrics from Raw Data
+  totalTokensUsed: number; // Approximated: (prompt_words + response_words) / 0.75
+  avgResponseLatency: number; // milliseconds (from timestamps if available)
+  throughputQueriesPerMin: number; // Records processed per minute
+  p95Latency: number; // 95th percentile latency in ms
+  errorRate: number; // % of failed/invalid records
+  
+  // SLA Compliance Metrics
+  complianceRate: number; // % of records meeting all SLA thresholds
+  slaDeviationRate: number; // % of records deviating from SLA
+  
+  // Content Metrics
+  avgPromptLength: number; // Average words in prompt
+  avgContextLength: number; // Average words in context
+  avgResponseLength: number; // Average words in response
+  
+  // User Distribution
+  uniqueUsers: number; // Count of distinct userIds
+  recordsPerUser: number; // Average records per user
+  
+  // Per-Metric Compliance
+  metricCompliance: {
+    [metricName: string]: number; // e.g., "faithfulness": 78.5 (% of records meeting threshold)
+  };
+  
+  // Trend Analysis
+  previousPeriodMetrics?: {
+    complianceRate?: number;
+    throughputQueriesPerMin?: number;
+    avgResponseLatency?: number;
+    errorRate?: number;
+  };
+  
+  trend: {
+    complianceRateTrend: 'up' | 'down' | 'stable'; // Up=improving, Down=degrading
+    latencyTrend: 'up' | 'down' | 'stable'; // Down=improving (lower latency better)
+    errorRateTrend: 'up' | 'down' | 'stable'; // Down=improving (lower error rate better)
+  };
+  
+  // Metadata
+  calculatedAt: Date;
+  createdAt: Date;
+}
