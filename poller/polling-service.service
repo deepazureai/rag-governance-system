@@ -1,0 +1,32 @@
+[Unit]
+Description=Data Polling Service
+Documentation=https://your-docs.com/polling-service
+After=network.target mongodb.service
+
+[Service]
+Type=simple
+User=poller
+WorkingDirectory=/opt/polling-service
+ExecStart=/usr/bin/node /opt/polling-service/dist/src/index.js
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables
+EnvironmentFile=/etc/polling-service/.env
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+# Timeouts
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
