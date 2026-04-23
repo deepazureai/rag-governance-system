@@ -11,6 +11,7 @@ import http from 'http';
 import mongoose from 'mongoose';
 import { createEvaluationRouter } from './api/routes';
 import { applicationsRouter } from './api/applicationsRoutes';
+import { applicationRecordsRouter } from './api/applicationRecordsRoutes';
 import { connectionsRouter } from './api/connectionsRoutes';
 import { batchProcessingRouter } from './api/batchProcessingRoutes';
 import { dataIngestionRouter } from './api/dataIngestionRoutes';
@@ -112,6 +113,7 @@ async function createServer(): Promise<Express> {
   const evaluationRouter = createEvaluationRouter(evaluationService);
   app.use('/api/evaluations', evaluationRouter);
   app.use('/api/applications', applicationsRouter);
+  app.use('/api/applications', applicationRecordsRouter);
   app.use('/api/connections', connectionsRouter);
   app.use('/api/batch', batchProcessingRouter);
   app.use('/api/data', dataIngestionRouter);
