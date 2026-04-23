@@ -18,6 +18,7 @@ export interface EvaluationRecord {
   applicationId: string;
   query: string;
   response: string;
+  userId?: string;
   retrievedDocuments: any[];
   evaluation: EvaluationMetric;
   evaluatedAt: string;

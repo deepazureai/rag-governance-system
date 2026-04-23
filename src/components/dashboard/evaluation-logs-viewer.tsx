@@ -185,7 +185,7 @@ function RecordCard({ record, status }: { record: EvaluationRecord; status: stri
         <div className="flex-shrink-0 mt-1">{getStatusIcon(status)}</div>
 
         <div className="flex-1 min-w-0">
-          {/* Header */}
+          {/* Header with User ID */}
           <div className="flex items-center justify-between mb-3">
             <Badge className={`text-xs ${
               status === 'healthy'
@@ -196,6 +196,11 @@ function RecordCard({ record, status }: { record: EvaluationRecord; status: stri
             }`}>
               {getStatusLabel(status)} • {overallScore.toFixed(1)}%
             </Badge>
+            {record.userId && (
+              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                User: {record.userId}
+              </span>
+            )}
           </div>
 
           {/* Query and Response */}
