@@ -6,6 +6,7 @@ import 'dotenv/config';
 import path from 'path';
 import dotenv from 'dotenv';
 import express, { Express, Request, Response } from 'express';
+import cors from 'cors';
 import http from 'http';
 import mongoose from 'mongoose';
 import { createEvaluationRouter } from './api/routes';
