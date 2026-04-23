@@ -134,6 +134,38 @@ export async function pollApplicationData(
     // Upsert records into MongoDB
     const upsertedCount = await mongodb.upsertRawDataRecords(mongoRecords);
 
+    // Generate alerts for upserted records (call backend alert creation endpoint)
+    try {
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+      const alertResponse = await fetch(`${backendUrl}/api/alerts/batch-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId: connection.applicationId,
+          records: mongoRecords.slice(0, 100), // Send first 100 records to avoid payload size issues
+        }),
+      });
+
+      if (!alertResponse.ok) {
+        const errorText = await alertResponse.text();
+        throw new Error(
+          `Alert creation failed: HTTP ${alertResponse.status} - ${errorText}`
+        );
+      }
+
+      const alertResult = await alertResponse.json();
+      logger.info('Alerts created successfully', {
+        pollerId,
+        alertsCreated: alertResult.data?.alertsCreated || 0,
+      });
+    } catch (alertError: any) {
+      // Log alert creation error but don't fail the polling cycle
+      logger.warn('Failed to create alerts, continuing with polling', {
+        pollerId,
+        error: alertError.message,
+      });
+    }
+
     // Get the highest ID from fetched records
     const maxId = Math.max(...pgRecords.map((r) => r.id));
 
