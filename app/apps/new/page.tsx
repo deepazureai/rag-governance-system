@@ -32,7 +32,7 @@ export default function NewApplicationPage() {
     name: '',
     description: '',
     ragFramework: '',
-    owner: '',
+    email: '', // Changed from owner to email (mandatory)
   });
   const [selectedDataSource, setSelectedDataSource] = useState<string | null>(null);
   const [connectorConfig, setConnectorConfig] = useState<any>(null);
@@ -40,11 +40,18 @@ export default function NewApplicationPage() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFileValidated, setIsFileValidated] = useState(false); // Track file validation state
 
   const handleNext = () => {
     if (step === 'app-info') {
-      if (!appData.name || !appData.description) {
-        alert('Please fill in all required fields');
+      if (!appData.name || !appData.description || !appData.email) {
+        alert('Please fill in all required fields (Name, Description, and Email)');
+        return;
+      }
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(appData.email)) {
+        alert('Please enter a valid email address');
         return;
       }
       setStep('data-source');
@@ -55,6 +62,11 @@ export default function NewApplicationPage() {
       }
       if (!dataSourceConfig) {
         alert('Please configure the data source');
+        return;
+      }
+      // For local_folder, check if file is validated
+      if (selectedDataSource === 'local_folder' && !isFileValidated) {
+        alert('Please validate the file before proceeding');
         return;
       }
       // For local_folder, no additional connector config needed - skip to review
@@ -117,7 +129,7 @@ export default function NewApplicationPage() {
         name: appData.name,
         description: appData.description,
         framework: appData.ragFramework,
-        owner: appData.owner,
+        owner: appData.email, // Send email as owner field to backend
         dataSource: {
           type: selectedDataSource,
           config: dataSourceConfig || connectorConfig,
@@ -265,12 +277,15 @@ export default function NewApplicationPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-1">Owner</Label>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-600">*</span></Label>
                   <Input
-                    placeholder="e.g., Support Team"
-                    value={appData.owner}
-                    onChange={(e) => setAppData({ ...appData, owner: e.target.value })}
+                    type="email"
+                    placeholder="your.email@company.com"
+                    value={appData.email}
+                    onChange={(e) => setAppData({ ...appData, email: e.target.value })}
+                    required
                   />
+                  <p className="text-xs text-gray-500 mt-1">Used for notifications and contact regarding this application</p>
                 </div>
               </div>
             </div>
@@ -287,6 +302,7 @@ export default function NewApplicationPage() {
               {selectedDataSource === 'local_folder' && (
                 <LocalFolderConfig
                   onConfigure={setDataSourceConfig}
+                  onValidationChange={setIsFileValidated}
                 />
               )}
               {selectedDataSource === 'database' && (
@@ -341,8 +357,8 @@ export default function NewApplicationPage() {
               <h2 className="text-2xl font-bold text-gray-900">Review & Create</h2>
               <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Application Name</p>
-                  <p className="font-semibold text-gray-900">{appData.name}</p>
+                  <p className="text-sm text-gray-600">Contact Email</p>
+                  <p className="font-semibold text-gray-900">{appData.email}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Description</p>
@@ -373,7 +389,11 @@ export default function NewApplicationPage() {
       Previous
     </Button>
           {step !== 'review' && (
-            <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button 
+              onClick={handleNext} 
+              disabled={step === 'data-source' && selectedDataSource === 'local_folder' && !isFileValidated}
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+            >
               Next
             </Button>
           )}

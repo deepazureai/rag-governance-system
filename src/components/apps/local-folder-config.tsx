@@ -1,47 +1,75 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { FileUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileUp, AlertCircle, CheckCircle, Folder, File } from 'lucide-react';
 
 interface LocalFolderConfigProps {
   onConfigure: (config: { folderPath: string; fileName: string }) => void;
   isLoading?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
 }
 
-export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigProps) {
+export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }: LocalFolderConfigProps) {
   const [folderPath, setFolderPath] = useState('');
   const [fileName, setFileName] = useState('');
+  const [selectedFilePath, setSelectedFilePath] = useState('');
   const [error, setError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async () => {
+  // Detect OS
+  const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac');
+
+  // Handle file browser click
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle file selection from browser
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const filePath = file.name;
+    const fileName = filePath.split(/[\\/]/).pop() || '';
+    const fullPath = file.webkitRelativePath || file.name;
+    const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/') || fullPath.lastIndexOf('\\')) || '/selected/folder';
+
+    setSelectedFilePath(fullPath);
+    setFileName(fileName);
+    setFolderPath(folderPath);
+    setIsValidated(false);
     setError('');
-    setIsSuccess(false);
+    
+    console.log('[v0] File selected:', { fileName, folderPath, fullPath });
+  };
 
-    if (!folderPath.trim()) {
-      setError('Folder path is required');
-      return;
-    }
+  // Validate file
+  const handleValidateFile = async () => {
+    setError('');
+    setIsValidated(false);
 
     if (!fileName.trim()) {
-      setError('File name is required');
+      setError('Please select a file first using the Browse button');
+      onValidationChange?.(false);
       return;
     }
 
     if (!fileName.endsWith('.csv') && !fileName.endsWith('.txt')) {
-      setError('File must be .csv or .txt');
+      setError('File must be .csv or .txt format');
+      onValidationChange?.(false);
       return;
     }
 
-    // Validate using backend
-    setIsProcessing(true);
+    setIsValidating(true);
     try {
-      console.log('[v0] Validating file path:', { folderPath, fileName });
+      console.log('[v0] Validating file:', { folderPath, fileName });
       
-      // Call backend to validate the file exists
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/batch/validate-file`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,63 +78,73 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `File validation failed: ${response.statusText}`);
+        throw new Error(errorData.message || `File validation failed: ${response.statusText}`);
       }
 
       const result = await response.json();
       console.log('[v0] File validation successful:', result);
       
-      setIsSuccess(true);
-      // Save the config after successful validation
+      setIsValidated(true);
+      onValidationChange?.(true);
       onConfigure({ folderPath, fileName });
       
     } catch (err: any) {
       console.error('[v0] Error validating file:', err);
-      setError(err.message || 'File validation failed. Please check the path and try again.');
+      setError(err.message || 'File validation failed. Please check the file and try again.');
+      onValidationChange?.(false);
     } finally {
-      setIsProcessing(false);
+      setIsValidating(false);
     }
   };
 
   return (
     <Card className="p-6 space-y-4">
       <div>
-        <h3 className="font-semibold text-gray-900 mb-4">Local Folder Configuration</h3>
+        <h3 className="font-semibold text-gray-900 mb-2">Local Folder Configuration</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Specify the folder path and file name containing your evaluation data. The file will be validated and then processed after the application is created.
+          Select your evaluation data file. The file will be validated before proceeding.
         </p>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Folder Path
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Data File
           </label>
-          <Input
-            placeholder="/path/to/folder"
-            value={folderPath}
-            onChange={(e) => setFolderPath(e.target.value)}
-            disabled={isProcessing || isLoading}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt"
+            onChange={handleFileSelected}
+            className="hidden"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Example: C:/Users/user/Documents/data or /home/user/metrics
-          </p>
+          <Button
+            onClick={handleBrowseClick}
+            variant="outline"
+            className="w-full justify-start text-left font-normal"
+            disabled={isValidating || isLoading}
+          >
+            <Folder className="w-4 h-4 mr-2 flex-shrink-0" />
+            {fileName ? `${fileName}` : `Browse Files (${isWindows ? 'Windows' : isMac ? 'macOS' : 'Linux'})`}
+          </Button>
+          {selectedFilePath && (
+            <p className="text-xs text-gray-500 mt-2">
+              Selected: <code className="bg-gray-100 px-1 rounded">{selectedFilePath}</code>
+            </p>
+          )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            File Name
-          </label>
-          <Input
-            placeholder="metrics.csv"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            disabled={isProcessing || isLoading}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Format: semicolon-delimited with comma-separated key=value pairs
-          </p>
-        </div>
+        {fileName && (
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm">
+            <div className="flex items-start gap-2">
+              <File className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-blue-900">File: {fileName}</p>
+                <p className="text-xs text-blue-800 mt-1">Format: .csv or .txt (semicolon-delimited)</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -116,31 +154,32 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
         </div>
       )}
 
-      {isSuccess && (
+      {isValidated && (
         <div className="flex gap-2 p-3 bg-green-50 border border-green-200 rounded">
           <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-green-600">File processed successfully! Ready to proceed.</p>
+          <p className="text-sm text-green-600">File validated successfully! You can now proceed to create the application.</p>
         </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm">
-        <p className="text-blue-900 font-medium mb-1">Expected Data Format:</p>
-        <code className="text-xs text-blue-800 block mt-1">
+      <div className="bg-amber-50 border border-amber-200 p-3 rounded text-sm">
+        <p className="text-amber-900 font-medium mb-2">Expected Data Format:</p>
+        <code className="text-xs text-amber-800 block whitespace-normal break-words">
           user_prompt="text", context="data", response="result", user_id="123"; user_prompt="text2", ...
         </code>
+        <p className="text-xs text-amber-700 mt-2">Each row is a semicolon-separated record with comma-separated key=value pairs</p>
       </div>
 
       <Button
-        onClick={handleSubmit}
-        disabled={isProcessing || isLoading || isSuccess}
+        onClick={handleValidateFile}
+        disabled={isValidating || isLoading || !fileName || isValidated}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-75"
       >
-        {isProcessing ? (
+        {isValidating ? (
           <>
             <Spinner className="w-4 h-4 mr-2" />
-            Validating file...
+            Validating File...
           </>
-        ) : isSuccess ? (
+        ) : isValidated ? (
           <>
             <CheckCircle className="w-4 h-4 mr-2" />
             File Validated
@@ -148,7 +187,7 @@ export function LocalFolderConfig({ onConfigure, isLoading }: LocalFolderConfigP
         ) : (
           <>
             <FileUp className="w-4 h-4 mr-2" />
-            Load and Process File
+            Validate File
           </>
         )}
       </Button>
