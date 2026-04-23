@@ -1,5 +1,33 @@
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { Alert } from '../models/database';
+
+// Type definitions for service parameters
+interface RawDataRecord {
+  _id?: string;
+  id?: string;
+  userId?: string;
+  evaluation?: {
+    metrics: Record<string, number>;
+  };
+}
+
+interface ApplicationSLAConfig {
+  metrics: Record<string, number>;
+  overallScoreThresholds?: {
+    good?: number;
+    excellent?: number;
+  };
+}
+
+interface GovernanceMetricsData {
+  complianceRate: number;
+  errorRate: number;
+}
+
+interface AlertCollection {
+  updateOne(filter: Record<string, any>, update: Record<string, any>, options: Record<string, any>): Promise<void>;
+}
 
 /**
  * Alert Generation Service
@@ -14,17 +42,17 @@ export class AlertGenerationService {
    */
   static async generateAlertsForBatch(
     applicationId: string,
-    records: any[],
-    applicationSLA: any,
-    alertsCollection: any
-  ): Promise<any[]> {
+    records: RawDataRecord[],
+    applicationSLA: ApplicationSLAConfig,
+    alertsCollection: AlertCollection
+  ): Promise<Alert[]> {
     try {
       if (!applicationSLA || !applicationSLA.metrics) {
         logger.warn(`[AlertService] No SLA metrics found for app ${applicationId}`);
         return [];
       }
 
-      const createdAlerts: any[] = [];
+      const createdAlerts: Alert[] = [];
       const currentTime = new Date();
 
       // Process each record
@@ -46,7 +74,7 @@ export class AlertGenerationService {
             if (metricValue < slaThreshold) {
               const deviation = ((slaThreshold - metricValue) / slaThreshold) * 100;
 
-              const alert = {
+              const alert: Alert = {
                 alertId: uuidv4(),
                 applicationId,
                 alertLevel: 'row',
@@ -97,16 +125,16 @@ export class AlertGenerationService {
   static async generateAggregatedAlerts(
     applicationId: string,
     period: 'daily' | 'weekly' | 'monthly',
-    governanceMetrics: any,
-    applicationSLA: any,
-    alertsCollection: any
-  ): Promise<any[]> {
+    governanceMetrics: GovernanceMetricsData,
+    applicationSLA: ApplicationSLAConfig,
+    alertsCollection: AlertCollection
+  ): Promise<Alert[]> {
     try {
       if (!governanceMetrics || !applicationSLA) {
         return [];
       }
 
-      const createdAlerts: any[] = [];
+      const createdAlerts: Alert[] = [];
       const currentTime = new Date();
 
       // Define aggregate metric thresholds
@@ -122,7 +150,7 @@ export class AlertGenerationService {
             aggregateThresholds.complianceRate) *
           100;
 
-        const alert = {
+        const alert: Alert = {
           alertId: uuidv4(),
           applicationId,
           alertLevel: 'aggregated',
@@ -151,7 +179,7 @@ export class AlertGenerationService {
             aggregateThresholds.errorRate) *
           100;
 
-        const alert = {
+        const alert: Alert = {
           alertId: uuidv4(),
           applicationId,
           alertLevel: 'aggregated',
