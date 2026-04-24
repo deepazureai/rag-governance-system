@@ -230,39 +230,114 @@ export interface ApplicationMetric {
   applicationName: string;
   batchId?: string;
   recordIndex: number;
-  rawData: Record<string, unknown>;
+  
+  // User & Session Information (REQUIRED for user distribution metrics)
+  userId: string; // User identifier - REQUIRED for recordsPerUser calculation
+  sessionId?: string; // Session identifier for grouping related queries
+  
+  // Raw Input Data (REQUIRED for latency calculation)
+  userPrompt: string; // User's original query/prompt
+  context?: string; // Retrieved documents/context provided to LLM
+  llmResponse: string; // LLM's response
+  
+  // Timestamps (REQUIRED for latency & throughput)
+  promptTimestamp: Date; // When user submitted prompt
+  contextRetrievalStartTime?: Date; // When context retrieval started
+  contextRetrievalEndTime?: Date; // When context retrieval ended
+  llmRequestStartTime: Date; // When LLM request was sent
+  llmResponseEndTime: Date; // When LLM response was received (includes streaming)
+  recordCreatedTime: Date; // When record was created in system
+  
+  // RAGA Framework Metrics (All 5 core metrics - REQUIRED)
+  ragaMetrics: {
+    // 1. Faithfulness: Is the response grounded in the provided context?
+    // Range: 0-100 (%)
+    // Calculation: (Number of statements in response grounded in context) / (Total statements in response) * 100
+    faithfulness: number; // 0-100: % of response grounded in context
+    
+    // 2. Answer Relevancy: How relevant is the answer to the user's question?
+    // Range: 0-100 (%)
+    // Calculation: Cosine similarity between answer and question embeddings
+    answerRelevancy: number; // 0-100: % of relevance to user question
+    
+    // 3. Context Precision: Is the retrieved context relevant to the question?
+    // Range: 0-100 (%)
+    // Calculation: (Number of relevant context chunks) / (Total context chunks) * 100
+    contextPrecision: number; // 0-100: % of context relevant to question
+    
+    // 4. Context Recall: Did we retrieve all relevant information?
+    // Range: 0-100 (%)
+    // Calculation: (Number of retrieved relevant chunks) / (Total relevant chunks in corpus) * 100
+    contextRecall: number; // 0-100: % of relevant context retrieved
+    
+    // 5. Correctness: Is the answer factually correct?
+    // Range: 0-100 (%)
+    // Calculation: Manual or LLM-based evaluation against ground truth
+    correctness: number; // 0-100: % factual correctness
+  };
+  
+  // Additional Evaluation Metrics
+  otherMetrics?: {
+    coherenceScore?: number; // 0-100: Response coherence
+    similarityScore?: number; // 0-100: Similarity to ground truth
+    summaryScore?: number; // 0-100: Summarization quality if applicable
+    [key: string]: number | undefined;
+  };
+  
+  // Latency Metrics (CALCULATED from timestamps)
+  latencyMetrics: {
+    // Total end-to-end latency (ms) from prompt submission to response completion
+    totalLatencyMs: number; // promptTimestamp → llmResponseEndTime
+    
+    // Context retrieval latency (ms)
+    contextRetrievalLatencyMs?: number; // contextRetrievalStartTime → contextRetrievalEndTime
+    
+    // LLM processing latency (ms)
+    llmProcessingLatencyMs: number; // llmRequestStartTime → llmResponseEndTime
+    
+    // Time-to-first-token (ms) - important for streaming responses
+    timeToFirstTokenMs?: number; // llmRequestStartTime → first token received
+  };
+  
+  // Throughput Supporting Data
+  contextChunkCount: number; // Number of context chunks/documents used
+  contextTotalLengthWords: number; // Total words in all context chunks
+  promptLengthWords: number; // Number of words in prompt
+  responseLengthWords: number; // Number of words in response
+  
+  // Token Information (for token counting)
+  estimatedPromptTokens?: number; // Approximate tokens in prompt (words / 0.75)
+  estimatedContextTokens?: number; // Approximate tokens in context
+  estimatedResponseTokens?: number; // Approximate tokens in response
+  
+  // Processing Status & Quality
+  rawData: Record<string, unknown>; // Original unprocessed data
   processedMetrics: {
-    userPrompt?: string;
-    context?: string;
-    response?: string;
-    userId?: string;
-    relevanceScore?: number;
-    coherenceScore?: number;
-    similarityScore?: number;
-    summaryScore?: number;
-    customScores?: Record<string, number>;
     [key: string]: unknown;
   };
-  evaluationResults?: {
-    overallScore: number;
-    framework: string;
-    frameworkVersion?: string;
-    executionTime?: number;
-  };
-  ingestionJobId?: string;
-  sourceFile?: string;
+  
   dataQuality: {
     completeFields: string[];
     missingFields: string[];
     validationStatus: 'valid' | 'partial' | 'invalid';
+    allRagaMetricsAvailable: boolean; // TRUE only if ALL 5 RAGA metrics are captured
   };
+  
+  // Metadata
   metadata: {
     ingestionDate: Date;
     processingDate?: Date;
-    sourceType: 'local_folder' | 'azure_blob' | 'database' | 'splunk' | 'datadog';
+    sourceType: 'local_folder' | 'azure_blob' | 'database' | 'splunk' | 'datadog' | 'api';
     checksum?: string;
     isDuplicate: boolean;
+    evaluationFramework?: string; // e.g., "ragas", "custom", "manual"
+    evaluationFrameworkVersion?: string;
   };
+  
+  ingestionJobId?: string;
+  sourceFile?: string;
+  
+  // Audit Trail
   createdAt: Date;
   updatedAt: Date;
 }

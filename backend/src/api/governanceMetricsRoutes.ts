@@ -195,6 +195,7 @@ governanceMetricsRouter.get('/applications/:applicationId', async (req: Request,
 
 /**
  * Calculate all governance metrics from raw records
+ * Implements complete RAGA framework coverage with all 5 metrics
  */
 function calculateMetrics(records: any[], appSLA: any): any {
   const totalRecords = records.length;
@@ -206,7 +207,17 @@ function calculateMetrics(records: any[], appSLA: any): any {
   let totalPromptWords = 0;
   let totalContextWords = 0;
   let totalResponseWords = 0;
+  let totalContextChunks = 0;
   const userIds = new Set<string>();
+
+  // RAGA Metrics Aggregation (ALL 5 metrics)
+  const ragaMetricsAggregation = {
+    faithfulness: { sum: 0, count: 0, values: [] as number[] },
+    answerRelevancy: { sum: 0, count: 0, values: [] as number[] },
+    contextPrecision: { sum: 0, count: 0, values: [] as number[] },
+    contextRecall: { sum: 0, count: 0, values: [] as number[] },
+    correctness: { sum: 0, count: 0, values: [] as number[] },
+  };
 
   const metricCompliance: any = {};
   if (appSLA?.metrics) {
@@ -217,81 +228,196 @@ function calculateMetrics(records: any[], appSLA: any): any {
 
   // Process each record
   for (const record of records) {
-    // Count users
+    // 1. USER DISTRIBUTION (for throughput per user)
     if (record.userId) {
       userIds.add(record.userId);
     }
 
-    // Calculate token approximation (avg 1.3 tokens per word, using 0.75 words per token)
-    const promptWords = (record.query || '').split(/\s+/).length;
-    const responseWords = (record.response || '').split(/\s+/).length;
+    // 2. CONTENT LENGTH METRICS (for token and throughput calculations)
+    const promptWords = (record.userPrompt || record.query || '').split(/\s+/).length;
+    const responseWords = (record.llmResponse || record.response || '').split(/\s+/).length;
     const contextWords = (record.context || '').split(/\s+/).length;
 
-    totalTokens += (promptWords + responseWords) / 0.75;
+    totalTokens += (promptWords + responseWords + contextWords) / 0.75;
     totalPromptWords += promptWords;
     totalContextWords += contextWords;
     totalResponseWords += responseWords;
+    totalContextChunks += record.contextChunkCount || 1;
 
-    // Calculate latency (if timestamps available)
-    if (record.createdAt && record.evaluatedAt) {
+    // 3. LATENCY METRICS (from detailed timestamps)
+    if (record.latencyMetrics?.totalLatencyMs) {
+      // New schema: use latencyMetrics.totalLatencyMs (milliseconds)
+      const latency = record.latencyMetrics.totalLatencyMs;
+      totalLatency += latency;
+      latencies.push(latency);
+    } else if (record.promptTimestamp && record.llmResponseEndTime) {
+      // Calculate from timestamps
+      const latency = new Date(record.llmResponseEndTime).getTime() - new Date(record.promptTimestamp).getTime();
+      totalLatency += latency;
+      latencies.push(latency);
+    } else if (record.createdAt && record.evaluatedAt) {
+      // Fallback: old schema
       const latency = new Date(record.evaluatedAt).getTime() - new Date(record.createdAt).getTime();
       totalLatency += latency;
       latencies.push(latency);
     }
 
-    // Check for errors
-    if (record.status === 'failed' || record.status === 'error') {
+    // 4. ERROR DETECTION
+    if (record.status === 'failed' || record.status === 'error' || record.dataQuality?.validationStatus === 'invalid') {
       errorCount++;
     }
 
-    // Check SLA compliance
+    // 5. RAGA METRICS AGGREGATION (all 5 core metrics)
+    if (record.ragaMetrics) {
+      // Faithfulness: Is response grounded in context?
+      if (typeof record.ragaMetrics.faithfulness === 'number') {
+        ragaMetricsAggregation.faithfulness.sum += record.ragaMetrics.faithfulness;
+        ragaMetricsAggregation.faithfulness.count++;
+        ragaMetricsAggregation.faithfulness.values.push(record.ragaMetrics.faithfulness);
+      }
+
+      // Answer Relevancy: Is answer relevant to question?
+      if (typeof record.ragaMetrics.answerRelevancy === 'number') {
+        ragaMetricsAggregation.answerRelevancy.sum += record.ragaMetrics.answerRelevancy;
+        ragaMetricsAggregation.answerRelevancy.count++;
+        ragaMetricsAggregation.answerRelevancy.values.push(record.ragaMetrics.answerRelevancy);
+      }
+
+      // Context Precision: Is retrieved context relevant?
+      if (typeof record.ragaMetrics.contextPrecision === 'number') {
+        ragaMetricsAggregation.contextPrecision.sum += record.ragaMetrics.contextPrecision;
+        ragaMetricsAggregation.contextPrecision.count++;
+        ragaMetricsAggregation.contextPrecision.values.push(record.ragaMetrics.contextPrecision);
+      }
+
+      // Context Recall: Did we retrieve all relevant information?
+      if (typeof record.ragaMetrics.contextRecall === 'number') {
+        ragaMetricsAggregation.contextRecall.sum += record.ragaMetrics.contextRecall;
+        ragaMetricsAggregation.contextRecall.count++;
+        ragaMetricsAggregation.contextRecall.values.push(record.ragaMetrics.contextRecall);
+      }
+
+      // Correctness: Is answer factually correct?
+      if (typeof record.ragaMetrics.correctness === 'number') {
+        ragaMetricsAggregation.correctness.sum += record.ragaMetrics.correctness;
+        ragaMetricsAggregation.correctness.count++;
+        ragaMetricsAggregation.correctness.values.push(record.ragaMetrics.correctness);
+      }
+    }
+
+    // 6. SLA COMPLIANCE CHECK (against all RAGA metrics)
     let recordCompliant = true;
-    if (record.evaluation?.metrics && appSLA?.metrics) {
-      for (const [metricName, threshold] of Object.entries(appSLA.metrics)) {
-        const metricValue = record.evaluation.metrics[metricName as string];
-        if (typeof metricValue === 'number' && typeof threshold === 'number') {
-          if (metricValue >= threshold) {
-            metricCompliance[metricName] = (metricCompliance[metricName] || 0) + 1;
+    if (record.ragaMetrics && appSLA?.metrics) {
+      // Map RAGA metrics to SLA thresholds
+      const ragaToSLAMapping = {
+        faithfulness: 'faithfulness',
+        answerRelevancy: 'answer_relevancy',
+        contextPrecision: 'context_precision',
+        contextRecall: 'context_recall',
+        correctness: 'correctness',
+      };
+
+      for (const [ragaKey, slaKey] of Object.entries(ragaToSLAMapping)) {
+        const ragaValue = record.ragaMetrics[ragaKey as keyof typeof ragaToSLAMapping];
+        const slaThreshold = appSLA.metrics[slaKey];
+
+        if (typeof ragaValue === 'number' && slaThreshold?.good) {
+          if (ragaValue >= slaThreshold.good) {
+            // Metric meets SLA "good" threshold
+            metricCompliance[slaKey] = (metricCompliance[slaKey] || 0) + 1;
           } else {
+            // Metric falls below SLA threshold - record is non-compliant
             recordCompliant = false;
           }
         }
       }
     }
 
-    if (recordCompliant) {
+    if (recordCompliant && record.ragaMetrics) {
       complianceCount++;
     }
   }
 
-  // Calculate averages and percentages
+  // Calculate averages for RAGA metrics
+  const avgFaithfulness = ragaMetricsAggregation.faithfulness.count > 0
+    ? Math.round((ragaMetricsAggregation.faithfulness.sum / ragaMetricsAggregation.faithfulness.count) * 100) / 100
+    : 0;
+
+  const avgAnswerRelevancy = ragaMetricsAggregation.answerRelevancy.count > 0
+    ? Math.round((ragaMetricsAggregation.answerRelevancy.sum / ragaMetricsAggregation.answerRelevancy.count) * 100) / 100
+    : 0;
+
+  const avgContextPrecision = ragaMetricsAggregation.contextPrecision.count > 0
+    ? Math.round((ragaMetricsAggregation.contextPrecision.sum / ragaMetricsAggregation.contextPrecision.count) * 100) / 100
+    : 0;
+
+  const avgContextRecall = ragaMetricsAggregation.contextRecall.count > 0
+    ? Math.round((ragaMetricsAggregation.contextRecall.sum / ragaMetricsAggregation.contextRecall.count) * 100) / 100
+    : 0;
+
+  const avgCorrectness = ragaMetricsAggregation.correctness.count > 0
+    ? Math.round((ragaMetricsAggregation.correctness.sum / ragaMetricsAggregation.correctness.count) * 100) / 100
+    : 0;
+
+  // Calculate latency metrics
   const avgLatency = latencies.length > 0 ? totalLatency / latencies.length : 0;
   const p95Latency = calculatePercentile(latencies, 95);
   const errorRate = (errorCount / totalRecords) * 100;
   const complianceRate = (complianceCount / totalRecords) * 100;
 
-  // Calculate throughput (queries per minute assuming records created over ~24 hours)
-  const throughput = (totalRecords / (24 * 60)) * 100; // Approximate
+  // Calculate throughput (records per minute, assuming recorded over period)
+  const throughput = totalRecords > 0 ? (totalRecords / (24 * 60)) : 0; // Approx for 24-hour period
 
   // Normalize metric compliance percentages
   for (const metricName of Object.keys(metricCompliance)) {
-    metricCompliance[metricName] = (metricCompliance[metricName] / totalRecords) * 100;
+    metricCompliance[metricName] = totalRecords > 0 ? (metricCompliance[metricName] / totalRecords) * 100 : 0;
   }
 
+  // Calculate overall compliance rate as average of all 5 RAGA metrics
+  const overallComplianceRate = (avgFaithfulness + avgAnswerRelevancy + avgContextPrecision + avgContextRecall + avgCorrectness) / 5;
+
   return {
+    // Token & Content Metrics
     totalTokensUsed: Math.round(totalTokens),
+    
+    // Latency Metrics
     avgResponseLatency: Math.round(avgLatency),
-    throughputQueriesPerMin: Math.round(throughput * 100) / 100,
     p95Latency: Math.round(p95Latency),
+    
+    // Throughput Metrics
+    throughputQueriesPerMin: Math.round((throughput * 100) / 100 * 100) / 100,
+    
+    // Error & Compliance Metrics
     errorRate: Math.round(errorRate * 100) / 100,
-    complianceRate: Math.round(complianceRate * 100) / 100,
-    slaDeviationRate: Math.round((100 - complianceRate) * 100) / 100,
+    complianceRate: Math.round(overallComplianceRate * 100) / 100, // Overall RAGA compliance
+    slaDeviationRate: Math.round((100 - overallComplianceRate) * 100) / 100,
+    
+    // Content Length Metrics
     avgPromptLength: Math.round(totalPromptWords / totalRecords),
     avgContextLength: Math.round(totalContextWords / totalRecords),
     avgResponseLength: Math.round(totalResponseWords / totalRecords),
+    
+    // User Distribution
     uniqueUsers: userIds.size,
-    recordsPerUser: Math.round((totalRecords / userIds.size) * 100) / 100,
-    metricCompliance,
+    recordsPerUser: userIds.size > 0 ? Math.round((totalRecords / userIds.size) * 100) / 100 : 0,
+    
+    // Per-Metric Compliance (all 5 RAGA metrics)
+    metricCompliance: {
+      faithfulness: Math.round(metricCompliance['faithfulness'] * 100) / 100,
+      answer_relevancy: Math.round(metricCompliance['answer_relevancy'] * 100) / 100,
+      context_precision: Math.round(metricCompliance['context_precision'] * 100) / 100,
+      context_recall: Math.round(metricCompliance['context_recall'] * 100) / 100,
+      correctness: Math.round(metricCompliance['correctness'] * 100) / 100,
+    },
+    
+    // RAGA Metrics Averages (for reference in governance report)
+    ragaMetricsAverages: {
+      faithfulness: avgFaithfulness,
+      answerRelevancy: avgAnswerRelevancy,
+      contextPrecision: avgContextPrecision,
+      contextRecall: avgContextRecall,
+      correctness: avgCorrectness,
+    },
   };
 }
 
