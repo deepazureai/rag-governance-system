@@ -227,7 +227,7 @@ pnpm dev
 If ports are in use:
 ```bash
 # Change frontend port
-PORT=3001 pnpm dev
+PORT=5000 pnpm dev
 
 # Change backend port in .env
 PORT=5001

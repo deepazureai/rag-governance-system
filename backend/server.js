@@ -1,6 +1,6 @@
 const app = require('./app');
 
-const PORT = process.env.BACKEND_PORT || 3001;
+const PORT = process.env.BACKEND_PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`[${new Date().toISOString()}] Backend server running on port ${PORT}`);

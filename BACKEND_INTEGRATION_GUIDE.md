@@ -289,7 +289,7 @@ Response:
 
 ## WebSocket Real-time Updates
 
-Connect to `ws://localhost:3001/ws` for real-time progress updates.
+Connect to `ws://localhost:5000/ws` for real-time progress updates.
 
 ### Subscribe to Batch
 
@@ -433,7 +433,7 @@ try {
 ### Frontend (.env.local)
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
 ```
 
 ### Backend (.env)

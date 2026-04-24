@@ -32,12 +32,12 @@ npm run dev
 cd backend
 npm install
 npm run dev
-# Backend runs on http://localhost:3001
+# Backend runs on http://localhost:5000
 ```
 
 2. **Update Frontend .env.local**
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
 NEXT_PUBLIC_USE_MOCK_API=false
 ```
 
@@ -126,7 +126,7 @@ src/hooks/
 NEXT_PUBLIC_USE_MOCK_API=true
 
 # Backend URL (when running real backend)
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
 
 # Optional: Debug logging
 NEXT_PUBLIC_DEBUG_API=true
@@ -135,7 +135,7 @@ NEXT_PUBLIC_DEBUG_API=true
 ### Backend (.env when ready)
 
 ```bash
-PORT=3001
+PORT=5000
 CORS_ORIGIN=http://localhost:3000
 RAGAS_ENABLED=true
 MICROSOFT_SDK_ENABLED=true
@@ -241,7 +241,7 @@ npm run dev
 3. **Phase 3:** Disable mock, use real API
    ```bash
    NEXT_PUBLIC_USE_MOCK_API=false
-   NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+   NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
    npm run dev
    ```
 

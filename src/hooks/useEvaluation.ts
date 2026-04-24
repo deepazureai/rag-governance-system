@@ -12,7 +12,7 @@ import { addAlert } from '@/src/store/slices/alertsSlice';
 import { apiClient } from '@/src/api/client';
 import { MockApiHandler } from '@/src/api/mock-handler';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/evaluations';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/evaluations';
 
 export interface FrameworkInfo {
   type: 'ragas' | 'microsoft';

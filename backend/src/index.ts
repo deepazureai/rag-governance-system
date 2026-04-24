@@ -158,7 +158,7 @@ async function createServer(): Promise<Express> {
 async function startServer(): Promise<void> {
   try {
     const app = await createServer();
-    const port = process.env.PORT || 3001;
+    const port = process.env.PORT || 5000;
 
     const server = http.createServer(app);
 

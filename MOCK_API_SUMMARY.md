@@ -109,11 +109,11 @@ NEXT_PUBLIC_USE_MOCK_API=true
 
 # Option 2: Use real backend if running, mock if not
 NEXT_PUBLIC_USE_MOCK_API=true
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
 
 # Option 3: Only real backend (backend must be running)
 NEXT_PUBLIC_USE_MOCK_API=false
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
 ```
 
 ## Integration Points

@@ -79,7 +79,7 @@ npm install
 Copy `.env.example` to `.env` and configure:
 
 ```env
-PORT=3001
+PORT=5000
 NODE_ENV=development
 
 # Frameworks
@@ -247,7 +247,7 @@ Response:
 
 ## WebSocket Events
 
-Connect to `ws://localhost:3001/ws` for real-time updates.
+Connect to `ws://localhost:5000/ws` for real-time updates.
 
 ### Messages
 
@@ -404,7 +404,7 @@ FROM node:18-alpine
 WORKDIR /app
 COPY backend ./
 RUN npm install && npm run build
-EXPOSE 3001
+EXPOSE 5000
 CMD ["npm", "start"]
 ```
 
