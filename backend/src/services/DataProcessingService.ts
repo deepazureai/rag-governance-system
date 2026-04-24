@@ -84,6 +84,7 @@ export class DataProcessingService {
           context,
           llmResponse,
           promptTimestamp,
+          recordCreatedTime: promptTimestamp,
           contextRetrievalStartTime,
           contextRetrievalEndTime,
           llmRequestStartTime,
