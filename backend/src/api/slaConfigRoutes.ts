@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser';
 import { logger } from '../utils/logger';
 import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks';
+import mongoose from 'mongoose';
 
 export const slaConfigRouter = Router();
 
@@ -20,7 +21,6 @@ slaConfigRouter.post('/:applicationId/sla', async (req: Request, res: Response) 
     }
 
     const { applicationName, customThresholds } = req.body;
-    const mongoose = require('mongoose');
 
     // Prepare SLA config with industry defaults or custom thresholds
     const slaConfig = {

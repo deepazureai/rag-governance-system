@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 
 export const alertsRouter = Router();
 
@@ -21,7 +22,7 @@ alertsRouter.post('/batch-create', async (req: Request, res: Response) => {
       });
     }
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
     const slaCollection = mongoose.connection.collection('applicationslas');
 
@@ -114,7 +115,7 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
 
     const { status, metricName, dateStart, dateEnd, alertLevel, page = 1, pageSize = 25 } = req.query;
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
 
     // Build query filter
@@ -195,7 +196,7 @@ alertsRouter.patch('/:alertId/acknowledge', async (req: Request, res: Response) 
 
     const { acknowledgedBy, userComment } = req.body;
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
 
     const updateData = {
@@ -253,7 +254,7 @@ alertsRouter.patch('/:alertId/dismiss', async (req: Request, res: Response) => {
 
     const { dismissedBy, userComment } = req.body;
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
 
     const updateData = {
@@ -310,7 +311,7 @@ alertsRouter.post('/bulk-action', async (req: Request, res: Response) => {
       });
     }
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
 
     let filter: any = { applicationId, status: 'open' };
@@ -374,7 +375,7 @@ alertsRouter.get('/summary/:applicationId', async (req: Request, res: Response) 
       });
     }
 
-    const mongoose = require('mongoose');
+
     const alertsCollection = mongoose.connection.collection('alerts');
 
     // Count by status

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
 import { createEvaluationService } from './evaluation';
+import mongoose from 'mongoose';
 
 export class BatchProcessingService {
   /**
@@ -15,7 +16,6 @@ export class BatchProcessingService {
   ): Promise<any> {
     const batchId = uuidv4();
     const startTime = new Date();
-    const mongoose = require('mongoose');
 
     logger.info(`[BatchProcessingService] Starting batch process ${batchId} for app ${applicationId}`);
 

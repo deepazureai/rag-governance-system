@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import { getStringParam } from '../utils/paramParser';
+import mongoose from 'mongoose';
 
 const router = Router();
 
@@ -20,8 +21,6 @@ router.get('/:applicationId/records', async (req: Request, res: Response) => {
     }
 
     logger.info(`[ApplicationRecordsAPI] Fetching records for application: ${applicationId}`);
-
-    const mongoose = require('mongoose');
     const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
 
     // Fetch evaluation records for the application

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { batchProcessingService } from '../services/BatchProcessingService';
 import { getStringParam } from '../utils/paramParser';
 import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks';
+import mongoose from 'mongoose';
 
 const applicationsRouter = Router();
 
@@ -41,7 +42,6 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
     console.log('[API] GET /api/applications - Fetching all applications');
     
     // Query MongoDB ApplicationMaster collection
-    const mongoose = require('mongoose');
     const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
     
     const applications = await ApplicationMasterCollection.find({})
@@ -117,8 +117,6 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
 
     // Save to MongoDB
     console.log('[API] Saving application to MongoDB...');
-    const db = require('../models/database');
-    const mongoose = require('mongoose');
     
     // Get or create collection
     const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
@@ -164,7 +162,6 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
         } catch (error: any) {
           console.error('[API] Background batch processing failed:', error.message);
           // Update application status to failed
-          const mongoose = require('mongoose');
           const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
           await ApplicationMasterCollection.updateOne(
             { id: applicationId },

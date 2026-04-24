@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser';
 import { logger } from '../utils/logger';
+import mongoose from 'mongoose';
 
 export const governanceMetricsRouter = Router();
 
@@ -20,7 +21,6 @@ governanceMetricsRouter.post('/calculate/:applicationId', async (req: Request, r
     }
 
     const { period = 'daily' } = req.body;
-    const mongoose = require('mongoose');
     const rawDataCollection = mongoose.connection.collection('rawdatarecords');
     const metricsCollection = mongoose.connection.collection('governancemetrics');
     const appsCollection = mongoose.connection.collection('applicationmaster');
