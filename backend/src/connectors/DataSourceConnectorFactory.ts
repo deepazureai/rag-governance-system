@@ -24,18 +24,18 @@ export class DataSourceConnectorFactory {
         return new LocalFolderConnector(dataSourceConfig.config);
 
       case 'database':
-        return new DatabaseConnector(dataSourceConfig.config);
+        return new DatabaseConnector(dataSourceConfig.config as any);
 
       case 'azure_blob':
-        return new AzureBlobConnector(dataSourceConfig.config);
+        return new AzureBlobConnector(dataSourceConfig.config as any);
 
       case 'splunk':
         logger.warn(`[v0] Splunk connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config);
+        return new DatabaseConnector(dataSourceConfig.config as any);
 
       case 'datadog':
         logger.warn(`[v0] Datadog connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config);
+        return new DatabaseConnector(dataSourceConfig.config as any);
 
       default:
         throw new Error(`Unsupported data source type: ${dataSourceConfig.type}`);

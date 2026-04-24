@@ -36,7 +36,7 @@ router.get('/:applicationId/records', async (req: Request, res: Response) => {
       success: true,
       data: {
         applicationId,
-        records: records.map((record) => ({
+        records: records.map((record: any) => ({
           _id: record._id?.toString() || '',
           applicationId: record.applicationId,
           query: record.query || record.recordData?.query || '',

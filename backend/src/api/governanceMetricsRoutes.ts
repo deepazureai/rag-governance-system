@@ -299,10 +299,10 @@ function calculateMetrics(records: any[], appSLA: any): any {
  * Calculate trend indicators for metrics
  */
 function calculateTrends(currentMetrics: any, previousMetricsDoc: any): any {
-  const trends = {
-    complianceRateTrend: 'stable' as const,
-    latencyTrend: 'stable' as const,
-    errorRateTrend: 'stable' as const,
+  const trends: any = {
+    complianceRateTrend: 'stable',
+    latencyTrend: 'stable',
+    errorRateTrend: 'stable',
   };
 
   if (!previousMetricsDoc) {

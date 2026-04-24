@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { INDUSTRY_STANDARD_THRESHOLDS, AlertThresholdConfig } from '../../types/index';
+import { INDUSTRY_STANDARD_THRESHOLDS, AlertThresholdConfig } from '@/types';
 
 export const alertThresholdsRouter = Router();
 

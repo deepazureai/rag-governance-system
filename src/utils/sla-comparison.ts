@@ -87,6 +87,29 @@ export function evaluateMetricsAgainstSLA(
 }
 
 /**
+ * Evaluate a single metric value against SLA settings
+ */
+export function evaluateMetricHealth(
+  score: number,
+  metricName: string,
+  applicationSLA?: any
+): 'healthy' | 'warning' | 'critical' {
+  const slaMetrics = applicationSLA?.metrics || INDUSTRY_STANDARD_SLA.metrics;
+  const metricThresholds = slaMetrics[metricName as keyof typeof slaMetrics] || {
+    excellent: 70,
+    good: 50,
+  };
+
+  if (score >= metricThresholds.excellent) {
+    return 'healthy';
+  } else if (score >= metricThresholds.good) {
+    return 'warning';
+  } else {
+    return 'critical';
+  }
+}
+
+/**
  * Group evaluation records by health status for display
  */
 export function groupRecordsByHealthStatus(

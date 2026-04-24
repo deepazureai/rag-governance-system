@@ -76,9 +76,9 @@ export class DataProcessingService {
     record: Record<string, unknown>,
     framework: string
   ) {
-    const userPrompt = record.query || record.user_prompt || record.userPrompt || '';
-    const context = record.context || '';
-    const response = record.response || '';
+    const userPrompt = (record.query || record.user_prompt || record.userPrompt || '') as string;
+    const context = (record.context || '') as string;
+    const response = (record.response || '') as string;
 
     if (framework === 'raga') {
       return await this.evaluateWithRAGA(userPrompt, context, response);
@@ -274,10 +274,13 @@ export class DataProcessingService {
       }
     }
 
+    const validationStatus: 'valid' | 'partial' | 'invalid' = 
+      missingFields.length === 0 ? 'valid' : missingFields.length < 2 ? 'partial' : 'invalid';
+
     return {
       completeFields,
       missingFields,
-      validationStatus: missingFields.length === 0 ? 'valid' : missingFields.length < 2 ? 'partial' : 'invalid',
+      validationStatus,
     };
   }
 

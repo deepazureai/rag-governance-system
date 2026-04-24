@@ -77,7 +77,7 @@ export class EvaluationService {
         overallScore: result.overallScore,
         executionTime: result.executionTime,
         documentsCount: retrievedDocuments.length,
-        rawData: JSON.stringify(result.rawData),
+        // rawData: JSON.stringify(result.rawData),
       });
 
       return result;

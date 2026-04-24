@@ -54,7 +54,7 @@ export class InMemoryDatabase implements IDatabase {
     offset: number = 0
   ): Promise<EvaluationRecord[]> {
     const appEvals = Array.from(this.evaluations.values())
-      .filter((eval) => eval.appId === appId)
+      .filter((evaluation) => evaluation.appId === appId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(offset, offset + limit);
 

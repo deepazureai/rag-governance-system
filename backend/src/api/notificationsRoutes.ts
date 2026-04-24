@@ -12,7 +12,7 @@ const notificationService = new NotificationService();
 notificationsRouter.get('/channels', async (req: Request, res: Response) => {
   try {
     // TODO: Query NotificationChannels collection from MongoDB
-    const channels = [];
+    const channels: any[] = [];
 
     res.json({
       success: true,
@@ -175,7 +175,7 @@ notificationsRouter.get('/rules', async (req: Request, res: Response) => {
     const { appId } = req.query;
 
     // TODO: Query NotificationRules collection from MongoDB
-    const rules = [];
+    const rules: any[] = [];
 
     res.json({
       success: true,
@@ -298,7 +298,7 @@ notificationsRouter.get('/logs', async (req: Request, res: Response) => {
     const { appId, status, limit = 50, skip = 0 } = req.query;
 
     // TODO: Query NotificationLogs collection from MongoDB with filters
-    const logs = [];
+    const logs: any[] = [];
 
     res.json({
       success: true,

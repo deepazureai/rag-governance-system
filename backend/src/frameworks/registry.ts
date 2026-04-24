@@ -82,7 +82,7 @@ export class FrameworkRegistry {
     const newFramework = this.frameworks.get(type)!;
 
     // Initialize if not already initialized
-    if (!newFramework['initialized']) {
+    if (!(newFramework as any).initialized) {
       await newFramework.initialize();
     }
 
