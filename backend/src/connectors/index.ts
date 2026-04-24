@@ -1,7 +1,10 @@
-export { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector';
+export { IDataSourceConnector } from './IDataSourceConnector';
+export type { RawDataRecord } from './IDataSourceConnector';
 export { DataSourceConnectorFactory } from './DataSourceConnectorFactory';
 export type { DataSourceConfig, DataSourceType } from './DataSourceConnectorFactory';
-export { LocalFolderConnector, FileAccessError, ParsedRecord } from './LocalFolderConnector';
-export { DatabaseConnector, DatabaseConnectorConfig } from './DatabaseConnector';
+export { LocalFolderConnector } from './LocalFolderConnector';
+export type { FileAccessError, ParsedRecord } from './LocalFolderConnector';
+export { DatabaseConnector } from './DatabaseConnector';
+export type { DatabaseConnectorConfig } from './DatabaseConnector';
 export { AzureBlobConnector } from './AzureBlobConnector';
 export type { BlobConfig } from './AzureBlobConnector';
