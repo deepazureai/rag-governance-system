@@ -152,12 +152,14 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       setImmediate(async () => {
         try {
           console.log('[API] Starting batch processing in background...');
-          await batchProcessingService.executeBatchProcess(
-            applicationId,
-            connectionId,
-            appData.dataSource.type,
-            appData.dataSource.config
-          );
+          if (appData.dataSource) {
+            await batchProcessingService.executeBatchProcess(
+              applicationId,
+              connectionId,
+              appData.dataSource.type,
+              appData.dataSource.config
+            );
+          }
           console.log('[API] Batch processing completed for:', applicationId);
         } catch (error: any) {
           console.error('[API] Background batch processing failed:', error.message);

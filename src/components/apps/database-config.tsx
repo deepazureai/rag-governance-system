@@ -190,7 +190,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
     }
   };
 
-  const handleSaveMapping = () => {
+  const handleSaveMapping = async () => {
     setError('');
     
     if (!columnMapping.promptColumn || !columnMapping.responseColumn || !columnMapping.userIdColumn) {

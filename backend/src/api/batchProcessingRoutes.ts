@@ -15,12 +15,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.post('/validate-file', async (req: Request, res: Response) => {
     try {
-      const jobId = getStringParam(req.params.jobId);
+      const { folderPath, fileName } = req.body;
 
-      if (!jobId) {
+      if (!folderPath || !fileName) {
         return res.status(400).json({
           success: false,
-          message: 'jobId is required',
+          message: 'folderPath and fileName are required',
         });
       }
 
@@ -55,12 +55,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.post('/execute', async (req: Request, res: Response) => {
     try {
-      const jobId = getStringParam(req.params.jobId);
+      const { applicationId, connectionId, sourceType, sourceConfig } = req.body;
 
-      if (!jobId) {
+      if (!applicationId) {
         return res.status(400).json({
           success: false,
-          message: 'jobId is required',
+          message: 'applicationId is required',
         });
       }
 
@@ -93,12 +93,12 @@ export function createBatchProcessingRouter(): Router {
    */
   router.get('/:batchId/status', async (req: Request, res: Response) => {
     try {
-      const jobId = getStringParam(req.params.jobId);
+      const batchId = getStringParam(req.params.batchId);
 
-      if (!jobId) {
+      if (!batchId) {
         return res.status(400).json({
           success: false,
-          message: 'jobId is required',
+          message: 'batchId is required',
         });
       }
 
