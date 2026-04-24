@@ -126,11 +126,11 @@ export class EvaluationService {
 
       const fw = this.registry.getFramework(frameworkType);
 
-      const requests: EvaluationRequest[] = evaluations.map((eval) => ({
+      const requests: EvaluationRequest[] = evaluations.map((evalItem) => ({
         id: uuidv4(),
-        query: eval.query,
-        response: eval.response,
-        retrievedDocuments: eval.retrievedDocuments,
+        query: evalItem.query,
+        response: evalItem.response,
+        retrievedDocuments: evalItem.retrievedDocuments,
       }));
 
       const batchRequest: BatchEvaluationRequest = {

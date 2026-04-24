@@ -263,6 +263,7 @@ export class DataProcessingService {
 
   private assessDataQuality(record: Record<string, unknown>) {
     const requiredFields = ['query', 'context', 'response'];
+    const ragaFields = ['faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall', 'correctness'];
     const completeFields: string[] = [];
     const missingFields: string[] = [];
 
@@ -274,10 +275,17 @@ export class DataProcessingService {
       }
     }
 
+    // Check if all 5 RAGA metrics are available
+    const ragaMetrics = (record.ragaMetrics || {}) as Record<string, unknown>;
+    const allRagaMetricsAvailable = ragaFields.every(field => 
+      typeof ragaMetrics[field] === 'number'
+    );
+
     return {
       completeFields,
       missingFields,
       validationStatus: missingFields.length === 0 ? 'valid' : missingFields.length < 2 ? 'partial' : 'invalid',
+      allRagaMetricsAvailable,
     };
   }
 
