@@ -1,5 +1,4 @@
-export { IDataSourceConnector } from './IDataSourceConnector';
-export type { RawDataRecord } from './IDataSourceConnector';
+export type { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector';
 export { DataSourceConnectorFactory } from './DataSourceConnectorFactory';
 export type { DataSourceConfig, DataSourceType } from './DataSourceConnectorFactory';
 export { LocalFolderConnector } from './LocalFolderConnector';
