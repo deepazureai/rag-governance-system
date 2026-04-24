@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger';
 import { ApplicationMetric } from '../models/database';
+import { extractDate, extractString, extractNumber, safeValidationStatus, getSafeSetSize } from '../utils/dataTypeHelpers';
 
 export class DataProcessingService {
   /**
@@ -33,24 +34,24 @@ export class DataProcessingService {
         duplicateSet.add(checksum);
 
         // Extract raw input data
-        const userPrompt = (record.userPrompt || record.user_prompt || record.query || '') as string;
-        const context = (record.context || '') as string;
-        const llmResponse = (record.llmResponse || record.llm_response || record.response || '') as string;
-        const userId = (record.userId || record.user_id || 'unknown') as string;
-        const sessionId = (record.sessionId || record.session_id) as string | undefined;
+        const userPrompt = extractString(record, 'userPrompt', 'user_prompt') || extractString(record, 'query', 'query', '');
+        const context = extractString(record, 'context', 'context', '');
+        const llmResponse = extractString(record, 'llmResponse', 'llm_response') || extractString(record, 'response', 'response', '');
+        const userId = extractString(record, 'userId', 'user_id', 'unknown');
+        const sessionId = extractString(record, 'sessionId', 'session_id');
 
-        // Extract timestamps
-        const promptTimestamp = new Date(record.promptTimestamp || record.prompt_timestamp || new Date());
-        const contextRetrievalStartTime = record.contextRetrievalStartTime ? new Date(record.contextRetrievalStartTime as string) : undefined;
-        const contextRetrievalEndTime = record.contextRetrievalEndTime ? new Date(record.contextRetrievalEndTime as string) : undefined;
-        const llmRequestStartTime = new Date(record.llmRequestStartTime || record.llm_request_start_time || new Date());
-        const llmResponseEndTime = new Date(record.llmResponseEndTime || record.llm_response_end_time || new Date());
+        // Extract timestamps using safe helper
+        const promptTimestamp = extractDate(record, 'promptTimestamp', 'prompt_timestamp');
+        const contextRetrievalStartTime = extractDate(record, 'contextRetrievalStartTime', 'context_retrieval_start_time');
+        const contextRetrievalEndTime = extractDate(record, 'contextRetrievalEndTime', 'context_retrieval_end_time');
+        const llmRequestStartTime = extractDate(record, 'llmRequestStartTime', 'llm_request_start_time');
+        const llmResponseEndTime = extractDate(record, 'llmResponseEndTime', 'llm_response_end_time');
 
-        // Calculate latency metrics
+        // Calculate latency metrics - use safe helper for optional timestamps
         const latencyMetrics = this.calculateLatencyMetrics(
           promptTimestamp,
-          contextRetrievalStartTime,
-          contextRetrievalEndTime,
+          contextRetrievalStartTime && contextRetrievalStartTime.getTime() > 0 ? contextRetrievalStartTime : undefined,
+          contextRetrievalEndTime && contextRetrievalEndTime.getTime() > 0 ? contextRetrievalEndTime : undefined,
           llmRequestStartTime,
           llmResponseEndTime
         );
@@ -286,7 +287,7 @@ export class DataProcessingService {
     const responseWords = response.toLowerCase().split(/\s+/);
     
     const retrievedWords = responseWords.filter(w => contextWords.has(w)).length;
-    const recall = Math.min(100, (retrievedWords / Math.max(contextWords.length, 1)) * 100);
+    const recall = Math.min(100, (retrievedWords / Math.max(getSafeSetSize(contextWords), 1)) * 100);
     
     return Math.round(Math.max(0, Math.min(100, recall + (Math.random() * 10 - 5))));
   }
@@ -330,10 +331,20 @@ export class DataProcessingService {
       typeof ragaMetrics[field] === 'number' && ragaMetrics[field] >= 0 && ragaMetrics[field] <= 100
     );
 
+    // Determine validation status
+    let validationStatusValue: 'valid' | 'partial' | 'invalid';
+    if (missingFields.length === 0) {
+      validationStatusValue = 'valid';
+    } else if (missingFields.length < 2) {
+      validationStatusValue = 'partial';
+    } else {
+      validationStatusValue = 'invalid';
+    }
+
     return {
       completeFields,
       missingFields,
-      validationStatus: missingFields.length === 0 ? 'valid' : missingFields.length < 2 ? 'partial' : 'invalid',
+      validationStatus: safeValidationStatus(validationStatusValue),
       allRagaMetricsAvailable,
     };
   }
