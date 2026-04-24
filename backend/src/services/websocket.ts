@@ -9,7 +9,7 @@ import { EvaluationService } from '../services/evaluation';
 import { FrameworkType } from '../frameworks/registry';
 
 export interface WebSocketMessage {
-  type: 'evaluation' | 'progress' | 'error' | 'complete';
+  type: 'evaluation' | 'evaluation_complete' | 'progress' | 'batch_progress' | 'batch_complete' | 'error' | 'complete' | 'subscribed' | 'pong';
   data: unknown;
 }
 
