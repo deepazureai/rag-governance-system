@@ -119,7 +119,7 @@ GET    /api/governance-metrics/applications/{appId} Fetch with trends
 cd backend
 npm run build
 npm run start
-# Verify: curl http://localhost:5000/api/health
+# Verify: curl http://localhost:5001/api/health
 ```
 
 ### 2. Deploy Frontend
@@ -140,12 +140,12 @@ npm run start
 ### 4. Test Alerts
 ```bash
 # Create alerts
-curl -X POST http://localhost:5000/api/alerts/batch-create \
+curl -X POST http://localhost:5001/api/alerts/batch-create \
   -H "Content-Type: application/json" \
   -d '{"applicationId":"app1","records":[...]}'
 
 # View alerts
-curl http://localhost:5000/api/alerts/summary/app1
+curl http://localhost:5001/api/alerts/summary/app1
 ```
 
 ---
@@ -154,7 +154,7 @@ curl http://localhost:5000/api/alerts/summary/app1
 
 **Backend (.env):**
 ```
-BACKEND_URL=http://localhost:5000
+BACKEND_URL=http://localhost:5001
 MONGODB_URI=mongodb://user:pass@host:port/db
 DATABASE_NAME=rag_governance
 LOG_LEVEL=info
@@ -162,12 +162,12 @@ LOG_LEVEL=info
 
 **Frontend (.env.local):**
 ```
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 ```
 
 **Poller (.env):**
 ```
-BACKEND_URL=http://localhost:5000
+BACKEND_URL=http://localhost:5001
 MONGODB_URI=mongodb://user:pass@host:port/db
 BACKOFF_MULTIPLIER=2
 BATCH_SIZE=1000

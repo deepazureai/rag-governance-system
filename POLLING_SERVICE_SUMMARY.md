@@ -164,7 +164,7 @@ BATCH_SIZE=100                   # Smaller batches for testing
 
 # Production
 POLL_INTERVAL_MINUTES=60         # Poll hourly (adjust per needs)
-BATCH_SIZE=5000                  # Larger batches
+BATCH_SIZE=5001                  # Larger batches
 BACKOFF_MULTIPLIER=3             # Aggressive backoff
 ```
 

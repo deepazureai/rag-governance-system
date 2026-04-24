@@ -123,7 +123,7 @@ MONGODB_URL=mongodb+srv://...
 POSTGRESQL_URL=postgresql://...
 JWT_SECRET=your_secret_key
 NODE_ENV=production
-PORT=5000
+PORT=5001
 LOG_LEVEL=info
 ```
 
@@ -136,7 +136,7 @@ NEXT_PUBLIC_API_URL=https://your-api-domain.com
 ```
 MONGODB_URL=mongodb+srv://...
 POSTGRESQL_URL=postgresql://...
-BACKEND_URL=http://backend-service:5000
+BACKEND_URL=http://backend-service:5001
 AZURE_KEYVAULT_URL=https://your-keyvault.vault.azure.net/
 NODE_ENV=production
 ```

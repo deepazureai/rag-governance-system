@@ -274,18 +274,18 @@ cd backend && npm run dev
 cd poller && npm run dev
 
 # 3. Monitor alerts created
-curl -X GET http://localhost:5000/api/alerts/summary/{appId}
+curl -X GET http://localhost:5001/api/alerts/summary/{appId}
 ```
 
 ### Test Governance Metrics
 ```bash
 # 1. Calculate metrics
-curl -X POST http://localhost:5000/api/governance-metrics/calculate/{appId} \
+curl -X POST http://localhost:5001/api/governance-metrics/calculate/{appId} \
   -H "Content-Type: application/json" \
   -d '{"period": "daily"}'
 
 # 2. Fetch metrics
-curl -X GET http://localhost:5000/api/governance-metrics/applications/{appId}?period=daily
+curl -X GET http://localhost:5001/api/governance-metrics/applications/{appId}?period=daily
 ```
 
 ### Test Frontend Pages

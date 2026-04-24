@@ -36,12 +36,12 @@ services:
     container_name: rag-backend-prod
     restart: always
     expose:
-      - "5000"
+      - "5001"
     environment:
       NODE_ENV: production
-      PORT: 5000
+      PORT: 5001
       DATABASE_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/rag-evaluation
-      BACKEND_PORT: 5000
+      BACKEND_PORT: 5001
       CORS_ORIGIN: ${CORS_ORIGIN}
       LOG_LEVEL: warn
       LOCAL_DATA_FOLDER: /app/local-data
@@ -52,7 +52,7 @@ services:
       # Production: only mount local data folder
       - ./local-data:/app/local-data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

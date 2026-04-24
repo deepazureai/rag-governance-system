@@ -39,7 +39,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         const endpoint = `${apiUrl}/api/applications`;
         console.log('[v0] Fetching applications from:', endpoint);
         
@@ -68,7 +68,7 @@ export default function DashboardPage() {
         
         // Add diagnostic information for network errors
         if (err instanceof TypeError && err.message.includes('fetch')) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
           errorMsg = `Unable to connect to backend at ${apiUrl}. Make sure the backend server is running. Error: ${err.message}`;
         }
         

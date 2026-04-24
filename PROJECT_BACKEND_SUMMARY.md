@@ -217,7 +217,7 @@ npm run dev
 ## Environment Variables
 
 ### Backend (.env)
-- `PORT` - Server port (default: 5000)
+- `PORT` - Server port (default: 5001)
 - `CORS_ORIGIN` - Frontend URL
 - `RAGAS_ENABLED` - Enable/disable RAGAS
 - `MICROSOFT_SDK_ENABLED` - Enable/disable Microsoft SDK
@@ -225,7 +225,7 @@ npm run dev
 - `AZURE_OPENAI_API_KEY` - For Microsoft SDK
 
 ### Frontend (.env.local)
-- `NEXT_PUBLIC_API_URL` - Backend API URL (http://localhost:5000/api/evaluations)
+- `NEXT_PUBLIC_API_URL` - Backend API URL (http://localhost:5001/api/evaluations)
 
 ## Code Statistics
 

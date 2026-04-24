@@ -34,7 +34,7 @@ if [ ! -d "backend/node_modules" ]; then
 fi
 
 echo ""
-echo -e "${GREEN}Starting Backend Server (Port 5000)${NC}"
+echo -e "${GREEN}Starting Backend Server (Port 5001)${NC}"
 echo "Running: cd backend && pnpm run dev"
 echo ""
 
@@ -61,7 +61,7 @@ echo ""
 echo -e "${GREEN}✓ Both servers are starting!${NC}"
 echo ""
 echo "Frontend: http://localhost:3000"
-echo "Backend: http://localhost:5000"
+echo "Backend: http://localhost:5001"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 echo ""

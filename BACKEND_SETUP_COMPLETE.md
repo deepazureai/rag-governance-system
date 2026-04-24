@@ -90,7 +90,7 @@ cp .env.example .env
 ```
 
 Edit `.env` and configure:
-- `PORT` (default: 5000)
+- `PORT` (default: 5001)
 - `CORS_ORIGIN` (frontend URL)
 - Framework settings (RAGAS_ENABLED, MICROSOFT_SDK_ENABLED)
 - API keys if needed
@@ -110,15 +110,15 @@ npm start
 
 ### 4. Test Integration
 
-The backend will be available at `http://localhost:5000`
+The backend will be available at `http://localhost:5001`
 
 Test endpoints:
 ```bash
 # List frameworks
-curl http://localhost:5000/api/evaluations/frameworks
+curl http://localhost:5001/api/evaluations/frameworks
 
 # Health check
-curl http://localhost:5000/api/evaluations/health
+curl http://localhost:5001/api/evaluations/health
 ```
 
 ### 5. Frontend Integration
@@ -251,7 +251,7 @@ const {
 
 ## Real-time Features
 
-WebSocket connection to `ws://localhost:5000/ws`:
+WebSocket connection to `ws://localhost:5001/ws`:
 
 ```json
 {
@@ -341,7 +341,7 @@ FROM node:18-alpine
 WORKDIR /app
 COPY backend ./
 RUN npm install && npm run build
-EXPOSE 5000
+EXPOSE 5001
 CMD ["npm", "start"]
 ```
 

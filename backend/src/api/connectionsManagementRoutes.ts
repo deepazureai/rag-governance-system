@@ -31,7 +31,7 @@ connectionsManagementRouter.post('/test-connection', async (req: Request, res: R
         database,
         user: username,
         password,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 5001,
       });
 
       try {

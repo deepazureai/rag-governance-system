@@ -129,14 +129,14 @@ cd ..
 ```bash
 cd backend
 npm run dev
-# Backend now running on http://localhost:5000
+# Backend now running on http://localhost:5001
 ```
 
 ### Step 3: Update Frontend
 ```bash
 # Update .env.local
 NEXT_PUBLIC_USE_MOCK_API=false
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/evaluations
 ```
 
 ### Step 4: Restart Frontend
@@ -157,7 +157,7 @@ NEXT_PUBLIC_USE_MOCK_API=true
 
 # Backend URL (when backend is running)
 # Only used if NEXT_PUBLIC_USE_MOCK_API=false
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/evaluations
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/evaluations
 ```
 
 ---

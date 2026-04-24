@@ -42,7 +42,7 @@ export function useMetricsFetch() {
 
     try {
       logger.info('[v0] Fetching metrics for apps:', applicationIds);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
       const response = await fetch(`${apiUrl}/api/metrics/fetch-multiple`, {
         method: 'POST',
@@ -86,7 +86,7 @@ export function useMetricsFetch() {
 
     try {
       logger.info('[v0] Refreshing metrics for apps:', applicationIds);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
       const response = await fetch(`${apiUrl}/api/metrics/refresh`, {
         method: 'POST',

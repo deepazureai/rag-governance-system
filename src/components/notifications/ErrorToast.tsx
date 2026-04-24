@@ -97,7 +97,7 @@ export const useToast = () => {
     setToasts((prev) => [...prev, newToast]);
 
     if (newToast.autoClose) {
-      setTimeout(() => removeToast(id), 5000);
+      setTimeout(() => removeToast(id), 5001);
     }
 
     return id;

@@ -20,12 +20,12 @@ cp .env.docker.example .env
 Edit `.env` with your configuration:
 ```env
 # Frontend
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 NODE_ENV=development
 PORT=3000
 
 # Backend
-BACKEND_PORT=5000
+BACKEND_PORT=5001
 DATABASE_URL=mongodb://mongo:27017/rag-evaluation
 POSTGRES_URL=postgresql://postgres:password@postgres:5432/rag_evaluation
 
@@ -56,7 +56,7 @@ docker-compose down
 ### Step 3: Access the Application
 
 - **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:5000
+- **Backend API:** http://localhost:5001
 - **MongoDB:** localhost:27017
 - **PostgreSQL:** localhost:5432
 
@@ -86,7 +86,7 @@ npm run dev
 # or
 pnpm dev
 
-# Backend runs at http://localhost:5000
+# Backend runs at http://localhost:5001
 ```
 
 ### Frontend Setup (in another terminal)
@@ -101,7 +101,7 @@ pnpm install
 cp .env.example .env
 
 # Update API URL for local backend
-# NEXT_PUBLIC_API_URL=http://localhost:5000
+# NEXT_PUBLIC_API_URL=http://localhost:5001
 
 # Start development server
 npm run dev
@@ -167,7 +167,7 @@ cd backend
 docker build -t rag-evaluation-backend:latest .
 docker run -d \
   --name rag-backend \
-  -p 5000:5000 \
+  -p 5001:5001 \
   -e DATABASE_URL=mongodb://mongo:27017/rag-evaluation \
   -e POSTGRES_URL=postgresql://postgres:pass@postgres:5432/rag_eval \
   rag-evaluation-backend:latest
@@ -180,7 +180,7 @@ docker build -t rag-evaluation-frontend:latest .
 docker run -d \
   --name rag-frontend \
   -p 3000:3000 \
-  -e NEXT_PUBLIC_API_URL=http://SERVER_A_IP:5000 \
+  -e NEXT_PUBLIC_API_URL=http://SERVER_A_IP:5001 \
   rag-evaluation-frontend:latest
 ```
 
@@ -191,7 +191,7 @@ docker run -d \
 ### Check Backend Health
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:5001/api/health
 ```
 
 Expected response:
@@ -253,7 +253,7 @@ SELECT * FROM applications;
 docker-compose logs backend
 
 # Common issues:
-# 1. Port 5000 already in use
+# 1. Port 5001 already in use
 #    - Change BACKEND_PORT in .env
 # 
 # 2. MongoDB not running

@@ -70,7 +70,7 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
     try {
       console.log('[v0] Validating file:', { folderPath, fileName });
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/batch/validate-file`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/batch/validate-file`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folderPath, fileName }),

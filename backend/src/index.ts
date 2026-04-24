@@ -51,8 +51,8 @@ async function initializeMongoDB(): Promise<void> {
   const mongoUrl = process.env.DATABASE_URL || 'mongodb://admin:password@localhost:27017/rag-evaluation';
   const mongoOptions = {
     maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 5001,
+    socketTimeoutMS: 45001,
   };
 
   console.log('[MongoDB] Connecting to MongoDB...');
@@ -158,7 +158,7 @@ async function createServer(): Promise<Express> {
 async function startServer(): Promise<void> {
   try {
     const app = await createServer();
-    const port = process.env.PORT || 5000;
+    const port = process.env.PORT || 5001;
 
     const server = http.createServer(app);
 

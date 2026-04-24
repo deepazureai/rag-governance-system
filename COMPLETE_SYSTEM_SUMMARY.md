@@ -303,7 +303,7 @@ index=rag | stats latest(groundedness_score) as value
 cd backend
 npm install
 npm run dev
-# Starts on http://localhost:5000
+# Starts on http://localhost:5001
 # Metrics collection starts automatically
 ```
 

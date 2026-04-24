@@ -40,7 +40,7 @@ LOG_LEVEL=info
 **backend/.env:**
 ```
 NODE_ENV=development
-BACKEND_PORT=5000
+BACKEND_PORT=5001
 DATABASE_URL=mongodb://admin:password@mongodb:27017/rag-evaluation
 CORS_ORIGIN=http://localhost:3000
 ```
@@ -66,7 +66,7 @@ docker-compose down
 
 **Access:**
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- Backend: http://localhost:5001
 - Nginx: http://localhost
 - MongoDB: localhost:27017
 - PostgreSQL: localhost:5432
@@ -118,7 +118,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "5000:5000"
+      - "5001:5001"
     environment:
       NODE_ENV: production
       DATABASE_URL: mongodb://admin:password@mongodb:27017/rag-evaluation
@@ -147,7 +147,7 @@ docker-compose -f docker-compose.backend.yml up -d
 
 # Update .env
 cat > .env << 'EOF'
-NEXT_PUBLIC_API_URL=http://192.168.1.10:5000
+NEXT_PUBLIC_API_URL=http://192.168.1.10:5001
 EOF
 
 # Create frontend-only docker-compose
@@ -162,7 +162,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://192.168.1.10:5000
+      NEXT_PUBLIC_API_URL: http://192.168.1.10:5001
       NODE_ENV: production
 EOF
 
@@ -172,7 +172,7 @@ docker-compose -f docker-compose.frontend.yml up -d
 
 **Access:**
 - Frontend: http://192.168.1.20:3000
-- Backend: http://192.168.1.10:5000
+- Backend: http://192.168.1.10:5001
 
 ---
 
@@ -180,7 +180,7 @@ docker-compose -f docker-compose.frontend.yml up -d
 
 **Prerequisites:**
 - AWS EC2 instances (t3.large or larger)
-- Security groups allowing ports 80, 443, 5000
+- Security groups allowing ports 80, 443, 5001
 - Domain name with DNS configured
 
 **Deployment:**
@@ -254,7 +254,7 @@ spec:
       - name: backend
         image: your-registry/rag-backend:latest
         ports:
-        - containerPort: 5000
+        - containerPort: 5001
         env:
         - name: DATABASE_URL
           valueFrom:
@@ -269,7 +269,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /api/health
-            port: 5000
+            port: 5001
           initialDelaySeconds: 40
           periodSeconds: 30
 ```

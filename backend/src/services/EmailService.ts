@@ -12,7 +12,7 @@ interface EmailConfig {
 export class EmailService {
   private config: EmailConfig;
   private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAYS = [1000, 5000, 15000]; // ms
+  private readonly RETRY_DELAYS = [1000, 5001, 15001]; // ms
 
   constructor(config: EmailConfig) {
     this.config = config;

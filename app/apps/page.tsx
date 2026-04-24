@@ -28,7 +28,7 @@ export default function AppsPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
         
         const response = await fetch(`${apiUrl}/api/applications`, {

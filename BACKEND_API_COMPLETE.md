@@ -256,7 +256,7 @@ pm2 start ecosystem.config.js --env production
 
 ```
 NODE_ENV=production
-BACKEND_PORT=5000
+BACKEND_PORT=5001
 DATABASE_URL=mongodb://...
 AZURE_KEY_VAULT_URL=https://your-keyvault.vault.azure.net/
 ENCRYPTION_KEY=your-32-char-key
@@ -290,7 +290,7 @@ CORS_ORIGIN=https://your-frontend.com
 ### Using cURL
 ```bash
 # Create application
-curl -X POST http://localhost:5000/api/applications \
+curl -X POST http://localhost:5001/api/applications \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test App",
@@ -298,10 +298,10 @@ curl -X POST http://localhost:5000/api/applications \
   }'
 
 # List applications
-curl http://localhost:5000/api/applications
+curl http://localhost:5001/api/applications
 
 # Create connection
-curl -X POST http://localhost:5000/api/connections \
+curl -X POST http://localhost:5001/api/connections \
   -H "Content-Type: application/json" \
   -d '{
     "appId": "app-id-here",
@@ -311,12 +311,12 @@ curl -X POST http://localhost:5000/api/connections \
   }'
 
 # Test connection
-curl -X POST http://localhost:5000/api/connections/conn-id/test
+curl -X POST http://localhost:5001/api/connections/conn-id/test
 ```
 
 ### Using Postman
 1. Import the backend routes into Postman
-2. Set base URL to `http://localhost:5000`
+2. Set base URL to `http://localhost:5001`
 3. Use collection variables for appId, connectionId
 4. Test each endpoint
 

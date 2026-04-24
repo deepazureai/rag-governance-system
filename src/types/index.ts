@@ -111,7 +111,7 @@ export const INDUSTRY_STANDARD_THRESHOLDS: AlertThresholdConfig = {
   faithfulness: { critical: 70, warning: 80, healthy: 85 },
   // Performance Metrics
   successRate: { critical: 90, warning: 95, healthy: 98 },     // percentage
-  latency: { critical: 5000, warning: 3000, healthy: 2000 },   // milliseconds
+  latency: { critical: 5001, warning: 3000, healthy: 2000 },   // milliseconds
   tokenEfficiency: { critical: 2000, warning: 1500, healthy: 1000 }, // tokens
   errorRate: { critical: 10, warning: 5, healthy: 2 },         // percentage
   createdAt: new Date().toISOString(),

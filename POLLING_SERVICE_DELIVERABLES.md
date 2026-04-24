@@ -174,9 +174,9 @@ A production-ready, **standalone polling service** as a complete TypeScript/Node
   applicationId: "app-123",
   connectionId: "conn-xyz",
   mappingId: "map-abc",
-  lastSeenId: 50000,           // KEY: Resume from here
+  lastSeenId: 50010,           // KEY: Resume from here
   lastPolledAt: 2024-01-15T10:30:00Z,
-  recordsProcessed: 50000,
+  recordsProcessed: 50010,
   status: "active",
   retryCount: 0
 }
@@ -186,7 +186,7 @@ A production-ready, **standalone polling service** as a complete TypeScript/Node
   applicationId: "app-123",
   connectionId: "conn-xyz",
   mappingId: "map-abc",
-  sourceId: 50001,             // Original DB ID (unique key)
+  sourceId: 50011,             // Original DB ID (unique key)
   prompt: "What is AI?",
   response: "AI is...",
   userId: "user-456",          // User-level tracking

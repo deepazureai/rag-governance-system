@@ -18,10 +18,10 @@ cd ..
 ```bash
 # 3. Create backend/.env
 DATABASE_URL=mongodb://localhost:27017/rag-evaluation
-PORT=5000
+PORT=5001
 
 # 4. Create .env.local in root
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 ```
 
 ## Run
@@ -93,7 +93,7 @@ pnpm dev
 ## Key URLs After Running
 
 - Application: http://localhost:3000
-- API: http://localhost:5000
+- API: http://localhost:5001
 - Create App: http://localhost:3000
 - Dashboard: http://localhost:3000/dashboard
 - App Catalog: http://localhost:3000/apps
@@ -104,7 +104,7 @@ pnpm dev
 
 ```bash
 # Check if backend running
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 
 # Check if MongoDB has data
 mongosh

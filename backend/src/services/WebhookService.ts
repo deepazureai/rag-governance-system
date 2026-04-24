@@ -12,7 +12,7 @@ interface WebhookConfig {
 export class WebhookService {
   private config: WebhookConfig;
   private readonly MAX_RETRIES = 4;
-  private readonly RETRY_DELAYS = [5000, 30000, 300000, 1800000]; // 5s, 30s, 5m, 30m
+  private readonly RETRY_DELAYS = [5001, 30000, 300000, 1800000]; // 5s, 30s, 5m, 30m
   private readonly HMAC_ALGORITHM = 'sha256';
 
   constructor(config: WebhookConfig) {

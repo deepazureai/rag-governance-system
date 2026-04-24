@@ -43,7 +43,7 @@ const fetcher = async (url: string) => {
 };
 
 export function useApplicationMetrics(applicationId: string) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
   
   // Fetch evaluation records for the application
   const { data: recordsData, error: recordsError, isLoading: recordsLoading } = useSWR(

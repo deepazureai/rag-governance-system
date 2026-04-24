@@ -119,7 +119,7 @@ Make sure MongoDB has these collections:
 
 No new environment variables needed. Existing ones should work:
 - `DATABASE_URL` - MongoDB connection string
-- `NEXT_PUBLIC_API_URL` - Backend URL (defaults to http://localhost:5000)
+- `NEXT_PUBLIC_API_URL` - Backend URL (defaults to http://localhost:5001)
 
 ---
 

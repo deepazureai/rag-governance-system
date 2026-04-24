@@ -114,7 +114,7 @@ export default function GovernancePage() {
 
   const fetchApplications = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/applications`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -137,7 +137,7 @@ export default function GovernancePage() {
   const fetchMetrics = async () => {
     setIsLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
       const metricPromises = selectedAppIds.map((appId) =>
         fetch(

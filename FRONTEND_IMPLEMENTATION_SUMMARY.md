@@ -155,7 +155,7 @@ Frontend Layer
 ```
 
 ## Environment Variables Required
-- `NEXT_PUBLIC_API_BASE_URL` - Backend API base URL (defaults to http://localhost:5000/api)
+- `NEXT_PUBLIC_API_BASE_URL` - Backend API base URL (defaults to http://localhost:5001/api)
 
 ## Next Steps for Backend Implementation
 

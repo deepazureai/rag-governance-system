@@ -48,7 +48,7 @@ export default function ApplicationDetailPage() {
 
     const fetchApplication = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         const response = await fetch(`${apiUrl}/api/applications/${applicationId}`, {
           headers: { 'Content-Type': 'application/json' },
         });

@@ -121,7 +121,7 @@ Continue with 64 more records with metrics:
 - Coherence: 68-80% (MIXED)
 - Faithfulness: 60-75% (CRITICAL/WARNING)
 - Success Rate: 80-92% (WARNING < 95%)
-- Latency: 3800-5500ms (WARNING 3000-5000ms, CRITICAL > 5000ms)
+- Latency: 3800-5500ms (WARNING 3000-5001ms, CRITICAL > 5001ms)
 - Token Efficiency: 1800-2400 (WARNING 1500-2000, CRITICAL > 2000)
 - Error Rate: 8-15% (WARNING 5-10%, CRITICAL > 10%)
 

@@ -46,12 +46,12 @@ pnpm install
 ```env
 DATABASE_URL=mongodb://localhost:27017/rag-evaluation
 NODE_ENV=development
-PORT=5000
+PORT=5001
 ```
 
 ### Frontend (.env.local in root)
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 ```
 
 ---
@@ -77,7 +77,7 @@ pnpm dev
 
 Expected output:
 ```
-[Server] HTTP server running on port 5000
+[Server] HTTP server running on port 5001
 [Server] MongoDB connected
 [Server] Ready to accept evaluation requests
 ```
@@ -171,7 +171,7 @@ pnpm dev
 ```
 
 ### API connection error (frontend can't reach backend)
-- Check backend running: http://localhost:5000/health
+- Check backend running: http://localhost:5001/health
 - Verify NEXT_PUBLIC_API_URL in .env.local
 - Check CORS settings in backend/src/index.ts
 
@@ -221,13 +221,13 @@ pnpm dev
 ## Ports Configuration
 
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- Backend: http://localhost:5001
 - MongoDB: localhost:27017 (default)
 
 If ports are in use:
 ```bash
 # Change frontend port
-PORT=5000 pnpm dev
+PORT=5001 pnpm dev
 
 # Change backend port in .env
 PORT=5001

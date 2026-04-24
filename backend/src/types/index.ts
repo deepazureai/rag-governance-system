@@ -36,7 +36,7 @@ export const INDUSTRY_STANDARD_THRESHOLDS: AlertThresholdConfig = {
   coherence: { critical: 75, warning: 85, healthy: 90 },
   faithfulness: { critical: 70, warning: 80, healthy: 85 },
   successRate: { critical: 90, warning: 95, healthy: 98 },
-  latency: { critical: 5000, warning: 3000, healthy: 2000 },
+  latency: { critical: 5001, warning: 3000, healthy: 2000 },
   tokenEfficiency: { critical: 2000, warning: 1500, healthy: 1000 },
   errorRate: { critical: 10, warning: 5, healthy: 2 },
   createdAt: new Date().toISOString(),

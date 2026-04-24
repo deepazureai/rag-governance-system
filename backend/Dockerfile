@@ -20,7 +20,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=5001
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -39,10 +39,10 @@ RUN mkdir -p logs && chown -R nodejs:nodejs logs
 
 USER nodejs
 
-EXPOSE 5000
+EXPOSE 5001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (res) => { if (res.statusCode !== 200) throw new Error(res.statusCode) })"
+    CMD node -e "require('http').get('http://localhost:5001/api/health', (res) => { if (res.statusCode !== 200) throw new Error(res.statusCode) })"
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 

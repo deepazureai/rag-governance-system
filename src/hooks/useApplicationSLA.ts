@@ -8,7 +8,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export function useApplicationSLA(applicationId: string | undefined) {
   // Fetch application SLA configuration
   const { data, error, isLoading, mutate } = useSWR(
-    applicationId ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/${applicationId}/sla` : null,
+    applicationId ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/sla` : null,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -31,7 +31,7 @@ export function useApplicationSLA(applicationId: string | undefined) {
 
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/${applicationId}/sla`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/sla`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -60,7 +60,7 @@ export function useApplicationSLA(applicationId: string | undefined) {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/${applicationId}/sla`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/sla`,
         {
           method: 'DELETE',
         }
@@ -81,7 +81,7 @@ export function useApplicationSLA(applicationId: string | undefined) {
 
   // Get industry standard defaults
   const { data: defaultsData } = useSWR(
-    applicationId ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/${applicationId}/sla/defaults` : null,
+    applicationId ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/sla/defaults` : null,
     fetcher,
     {
       revalidateOnFocus: false,

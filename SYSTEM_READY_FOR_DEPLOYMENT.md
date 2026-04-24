@@ -268,7 +268,7 @@
 **Health Checks:**
 ```bash
 # Backend
-curl http://localhost:5000/api/health
+curl http://localhost:5001/api/health
 
 # Database connectivity
 docker-compose logs backend  # Check for connection errors

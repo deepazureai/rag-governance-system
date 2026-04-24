@@ -12,7 +12,7 @@ import { addAlert } from '@/src/store/slices/alertsSlice';
 import { apiClient } from '@/src/api/client';
 import { MockApiHandler } from '@/src/api/mock-handler';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/evaluations';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/evaluations';
 
 export interface FrameworkInfo {
   type: 'ragas' | 'microsoft';
@@ -127,7 +127,7 @@ export function useEvaluation() {
           addAlert({
             type: 'error',
             message: errorMessage,
-            duration: 5000,
+            duration: 5001,
           })
         );
       } finally {
@@ -176,7 +176,7 @@ export function useEvaluation() {
           addAlert({
             type: 'error',
             message: errorMessage,
-            duration: 5000,
+            duration: 5001,
           })
         );
       } finally {
@@ -212,7 +212,7 @@ export function useEvaluation() {
           addAlert({
             type: 'error',
             message: errorMessage,
-            duration: 5000,
+            duration: 5001,
           })
         );
       }

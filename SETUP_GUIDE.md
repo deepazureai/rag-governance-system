@@ -251,7 +251,7 @@ Full TypeScript implementation ensures:
 ### Port Already in Use
 ```bash
 # Use a different port
-pnpm dev -- -p 5000
+pnpm dev -- -p 5001
 ```
 
 ### Module Not Found Errors

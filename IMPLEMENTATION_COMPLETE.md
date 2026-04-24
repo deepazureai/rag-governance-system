@@ -225,10 +225,10 @@ npm run build:azure-container
 ### Step 4: Verify Deployment
 ```bash
 # Test alerts endpoint
-curl -X GET http://localhost:5000/api/alerts/summary/{appId}
+curl -X GET http://localhost:5001/api/alerts/summary/{appId}
 
 # Test governance metrics endpoint
-curl -X GET http://localhost:5000/api/governance-metrics/applications/{appId}
+curl -X GET http://localhost:5001/api/governance-metrics/applications/{appId}
 
 # Test alerts page
 open http://localhost:3000/alerts
@@ -245,7 +245,7 @@ open http://localhost:3000/governance
 
 **Backend (.env):**
 ```
-BACKEND_URL=http://localhost:5000
+BACKEND_URL=http://localhost:5001
 MONGODB_URI=mongodb://user:pass@host:port/database
 DATABASE_NAME=rag_governance
 LOG_LEVEL=info
@@ -253,12 +253,12 @@ LOG_LEVEL=info
 
 **Frontend (.env.local):**
 ```
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 ```
 
 **Poller (.env):**
 ```
-BACKEND_URL=http://localhost:5000
+BACKEND_URL=http://localhost:5001
 MONGODB_URI=mongodb://user:pass@host:port/database
 DATABASE_NAME=rag_governance
 BACKOFF_MULTIPLIER=2
@@ -277,7 +277,7 @@ To automatically calculate governance metrics daily:
 
 ```bash
 # Add to crontab
-0 1 * * * curl -X POST http://localhost:5000/api/governance-metrics/calculate/{appId} \
+0 1 * * * curl -X POST http://localhost:5001/api/governance-metrics/calculate/{appId} \
   -H "Content-Type: application/json" \
   -d '{"period": "daily"}'
 ```
@@ -336,13 +336,13 @@ After this deployment, we will conduct a comprehensive OWASP security review cov
 
 ### Alert Creation Not Working?
 Check:
-1. Backend service is running: `curl http://localhost:5000/api/health`
+1. Backend service is running: `curl http://localhost:5001/api/health`
 2. MongoDB connection is active
 3. Poller logs show alert endpoint calls: `grep "Alerts created" poller.log`
 
 ### Governance Metrics Missing?
 Check:
-1. Call calculate endpoint: `curl -X POST http://localhost:5000/api/governance-metrics/calculate/{appId}`
+1. Call calculate endpoint: `curl -X POST http://localhost:5001/api/governance-metrics/calculate/{appId}`
 2. Check backend logs for calculation errors
 3. Verify raw data exists: Check MongoDB `rawdatarecords` collection
 

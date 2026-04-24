@@ -139,7 +139,7 @@ export default function NewApplicationPage() {
       console.log('[v0] Payload ready:', JSON.stringify(applicationPayload, null, 2));
       console.log('[v0] Step 3: Calling API...');
       
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/applications/create`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/create`;
       console.log('[v0] API URL:', apiUrl);
       
       // API call to create application and trigger ingestion

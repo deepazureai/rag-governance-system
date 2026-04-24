@@ -88,7 +88,7 @@ export default function AlertsPage() {
 
   const fetchApplications = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/applications`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +112,7 @@ export default function AlertsPage() {
   const fetchAlerts = async () => {
     setIsLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
       // Fetch alerts for each selected app
       const alertPromises = selectedAppIds.map((appId) =>
@@ -199,7 +199,7 @@ export default function AlertsPage() {
 
     setIsLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
       // Process bulk action for each selected app
       for (const appId of selectedAppIds) {

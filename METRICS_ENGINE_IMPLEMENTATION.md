@@ -324,7 +324,7 @@ db.applicationmetrics.findOne({ applicationId: ObjectId("...") })
 
 ### Manual Trigger
 ```bash
-curl -X POST http://localhost:5000/api/applications/:appId/metrics/fetch
+curl -X POST http://localhost:5001/api/applications/:appId/metrics/fetch
 ```
 
 ## Performance Notes

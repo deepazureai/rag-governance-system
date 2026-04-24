@@ -196,7 +196,7 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
                       <input
                         type="range"
                         min={metric.key.includes('Rate') ? 0 : 0}
-                        max={metric.key.includes('Rate') ? 100 : metric.key === 'latency' ? 10000 : metric.key === 'tokenEfficiency' ? 5000 : 100}
+                        max={metric.key.includes('Rate') ? 100 : metric.key === 'latency' ? 10000 : metric.key === 'tokenEfficiency' ? 5001 : 100}
                         value={threshold.critical}
                         onChange={(e) => updateThreshold(metric.key, 'critical', Number(e.target.value))}
                         className="w-full h-2 bg-red-100 rounded-lg appearance-none cursor-pointer accent-red-600"
@@ -215,7 +215,7 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
                       <input
                         type="range"
                         min={metric.key.includes('Rate') ? 0 : 0}
-                        max={metric.key.includes('Rate') ? 100 : metric.key === 'latency' ? 10000 : metric.key === 'tokenEfficiency' ? 5000 : 100}
+                        max={metric.key.includes('Rate') ? 100 : metric.key === 'latency' ? 10000 : metric.key === 'tokenEfficiency' ? 5001 : 100}
                         value={threshold.warning}
                         onChange={(e) => updateThreshold(metric.key, 'warning', Number(e.target.value))}
                         className="w-full h-2 bg-yellow-100 rounded-lg appearance-none cursor-pointer accent-yellow-600"

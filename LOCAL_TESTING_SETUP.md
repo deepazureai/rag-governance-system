@@ -66,7 +66,7 @@ Each evaluation record follows this JSON schema:
 | Coherence | < 75% | 75-85% | > 85% |
 | Faithfulness | < 70% | 70-80% | > 80% |
 | Success Rate | < 90% | 90-95% | > 95% |
-| Latency (ms) | > 5000 | 3000-5000 | < 3000 |
+| Latency (ms) | > 5001 | 3000-5001 | < 3000 |
 | Token Efficiency | > 2000 | 1500-2000 | < 1500 |
 | Error Rate | > 10% | 5-10% | < 5% |
 

@@ -82,7 +82,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
     try {
       console.log('[v0] Connecting to database:', { type, host, port, database, table });
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/database/test-connection`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/database/test-connection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +121,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
     try {
       console.log('[v0] Loading schema and tables...');
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/database/schema`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/database/schema`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -159,7 +159,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
     try {
       console.log('[v0] Loading table columns for:', table);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/database/columns`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/database/columns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -210,7 +210,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
       console.log('[v0] Saving connection and schema mapping to backend...');
 
       // Step 1: Save connection with encrypted credentials
-      const connectionResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/connections/save-connection`, {
+      const connectionResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/connections/save-connection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -237,7 +237,7 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
       console.log('[v0] Connection saved:', connectionId);
 
       // Step 2: Save schema mapping
-      const mappingResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/schema-mappings/save-schema-mapping`, {
+      const mappingResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/schema-mappings/save-schema-mapping`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

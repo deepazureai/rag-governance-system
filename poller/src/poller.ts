@@ -136,7 +136,7 @@ export async function pollApplicationData(
 
     // Generate alerts for upserted records (call backend alert creation endpoint)
     try {
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
       const alertResponse = await fetch(`${backendUrl}/api/alerts/batch-create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

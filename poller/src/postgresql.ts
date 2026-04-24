@@ -14,7 +14,7 @@ export async function initializePostgresPool(connection: DatabaseConnection): Pr
     password: connection.credentials.keyVaultReference.split(':')[1] || config.postgresPassword,
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 5001,
   });
 
   pgPool.on('error', (err) => {
@@ -42,7 +42,7 @@ export async function testConnection(connection: DatabaseConnection): Promise<bo
     database: connection.database,
     user: connection.credentials.keyVaultReference.split(':')[0],
     password: connection.credentials.keyVaultReference.split(':')[1],
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 5001,
   });
 
   try {

@@ -218,9 +218,9 @@ db.pollingstate.find({ applicationId: "your-app-id" })
 // {
 //   applicationId: "app-123",
 //   connectionId: "conn-456",
-//   lastSeenId: 5000,
+//   lastSeenId: 5001,
 //   lastPolledAt: "2024-01-15T10:30:00Z",
-//   recordsProcessed: 5000,
+//   recordsProcessed: 5001,
 //   status: "active"
 // }
 ```
