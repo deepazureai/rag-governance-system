@@ -180,7 +180,13 @@ metricsRouter.post('/calculate-alerts', async (req: Request, res: Response) => {
 
     // TODO: When database is connected, fetch threshold configs for each app
     // For now, use industry defaults
-    const { INDUSTRY_STANDARD_THRESHOLDS } = require('../../types/index');
+    const INDUSTRY_STANDARD_THRESHOLDS = {
+      faithfulness: { min: 0.7, warning: 0.8 },
+      answerRelevancy: { min: 0.7, warning: 0.8 },
+      contextPrecision: { min: 0.7, warning: 0.8 },
+      contextRecall: { min: 0.7, warning: 0.8 },
+      correctness: { min: 0.7, warning: 0.8 },
+    };
 
     const allAlerts = [];
 

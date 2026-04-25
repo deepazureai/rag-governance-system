@@ -138,7 +138,6 @@ export class BatchProcessingService {
       logger.error(`[BatchProcessingService] Batch process failed:`, error);
 
       // Update application status to failed
-      const mongoose = require('mongoose');
       const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
       await ApplicationMasterCollection.updateOne(
         { id: applicationId },
@@ -192,13 +191,11 @@ export class BatchProcessingService {
   }
 
   async getBatchStatus(batchId: string): Promise<any> {
-    const mongoose = require('mongoose');
     const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
     return BatchCollection.findOne({ batchId });
   }
 
   async getApplicationBatches(applicationId: string, limit: number = 10): Promise<any[]> {
-    const mongoose = require('mongoose');
     const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
     return BatchCollection.find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
   }

@@ -66,7 +66,6 @@ slaConfigRouter.get('/:applicationId/sla', async (req: Request, res: Response) =
       });
     }
 
-    const mongoose = require('mongoose');
     const SLACollection = mongoose.connection.collection('applicationslas');
     
     const slaConfig = await SLACollection.findOne({ applicationId });
@@ -114,7 +113,6 @@ slaConfigRouter.put('/:applicationId/sla', async (req: Request, res: Response) =
     }
 
     const { metrics, overallScoreThresholds } = req.body;
-    const mongoose = require('mongoose');
     const SLACollection = mongoose.connection.collection('applicationslas');
 
     const updateData = {
@@ -169,7 +167,6 @@ slaConfigRouter.delete('/:applicationId/sla', async (req: Request, res: Response
       });
     }
 
-    const mongoose = require('mongoose');
     const SLACollection = mongoose.connection.collection('applicationslas');
 
     const result = await SLACollection.findOneAndUpdate(

@@ -82,7 +82,6 @@ router.get('/:applicationId', async (req: Request, res: Response) => {
 
     logger.info(`[ApplicationRecordsAPI] Fetching application: ${applicationId}`);
 
-    const mongoose = require('mongoose');
     const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
 
     const application = await ApplicationMasterCollection.findOne({ id: applicationId });

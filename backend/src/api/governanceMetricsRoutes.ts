@@ -148,7 +148,6 @@ governanceMetricsRouter.get('/applications/:applicationId', async (req: Request,
 
     const { period = 'daily', limit = 10 } = req.query;
 
-    const mongoose = require('mongoose');
     const metricsCollection = mongoose.connection.collection('governancemetrics');
 
     // Validate period
