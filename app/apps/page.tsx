@@ -64,15 +64,15 @@ export default function AppsPage() {
   const filteredApps = useMemo(() => {
     return applications.filter((app) => {
       const matchesSearch =
-        app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.owner.toLowerCase().includes(searchQuery.toLowerCase());
+        app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.owner?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [applications, searchQuery, statusFilter]);
 
   return (
     <DashboardLayout>

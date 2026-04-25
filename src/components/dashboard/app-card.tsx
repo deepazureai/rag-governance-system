@@ -43,7 +43,7 @@ export function AppCard({ app }: AppCardProps) {
         <div>
           <p className="text-gray-600 text-xs">Deployed</p>
           <p className="text-gray-900 font-medium">
-            {new Date(app.deploymentDate).toISOString().split('T')[0]}
+            {app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : 'N/A'}
           </p>
         </div>
       </div>
