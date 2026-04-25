@@ -13,7 +13,6 @@ import {
 import { Play, RotateCcw, Eye } from 'lucide-react';
 import { useAppSelector } from '@/src/hooks/useRedux';
 import { batchClient } from '@/src/api/batchClient';
-import { FrontendLogger } from '@/src/utils/logger';
 import { BatchProgressModal } from './batch-progress-modal';
 
 interface Application {
@@ -64,7 +63,8 @@ export function BatchProcessingTab() {
           }
         }
       } catch (error: any) {
-        FrontendLogger.error('[BatchProcessing] Error fetching applications:', error);
+        // Silently fail - applications list may not be available
+        setApplications([]);
       } finally {
         setAppsLoading(false);
       }
@@ -93,7 +93,6 @@ export function BatchProcessingTab() {
 
     try {
       setExecuting(true);
-      FrontendLogger.info(`[BatchProcessing] Executing batch for app ${selectedAppId}`);
 
       // TODO: Get connection details and source config
       const result = await batchClient.executeBatch(
@@ -103,11 +102,9 @@ export function BatchProcessingTab() {
         {} // sourceConfig
       );
 
-      FrontendLogger.info('[BatchProcessing] Batch executed:', result);
       await fetchBatchHistory();
       alert('Batch processing started successfully');
     } catch (error: any) {
-      FrontendLogger.error('[BatchProcessing] Execution failed:', error);
       alert(`Failed to execute batch: ${error.message}`);
     } finally {
       setExecuting(false);

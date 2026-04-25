@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/select';
 import { Plus, Trash2, Play, Edit2, Clock } from 'lucide-react';
 import { batchClient } from '@/src/api/batchClient';
-import { FrontendLogger } from '@/src/utils/logger';
 import { ScheduleJobModal } from './schedule-job-modal';
 
 interface Application {
@@ -68,7 +67,8 @@ export function ScheduledJobsTab() {
           }
         }
       } catch (error: any) {
-        FrontendLogger.error('[ScheduledJobs] Error fetching applications:', error);
+        // Silently fail - applications list may not be available
+        setApplications([]);
       } finally {
         setAppsLoading(false);
       }
