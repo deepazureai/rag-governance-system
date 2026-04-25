@@ -174,26 +174,6 @@ export function BatchProcessingTab() {
         <p className="text-gray-600">View and manage batch data processing jobs</p>
       </div>
 
-      {/* Application Selector */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {mockApps.map((app) => (
-            <button
-              key={app.id}
-              onClick={() => setSelectedAppId(app.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedAppId === app.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {app.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {!selectedAppId ? (
         <Card className="p-8 bg-gray-50 text-center">
           <p className="text-gray-500">Select an application to view batch processing history</p>

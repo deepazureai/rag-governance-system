@@ -86,13 +86,6 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
 
     loadThresholds();
   }, [appId]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadThresholds();
-  }, [appId]);
 
   // Update a single metric threshold
   const updateThreshold = (metricKey: string, field: 'critical' | 'warning', value: number) => {
