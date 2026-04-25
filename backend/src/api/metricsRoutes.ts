@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { ApplicationMetricsService } from '../services/ApplicationMetricsService';
-import { AlertCalculationEngine } from '../services/AlertCalculationEngine';
+import { getStringParam } from '../utils/paramParser';
 import { logger } from '../utils/logger';
+import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index';
 
 const metricsRouter = Router();
 const metricsService = new ApplicationMetricsService();
@@ -177,16 +177,6 @@ metricsRouter.post('/calculate-alerts', async (req: Request, res: Response) => {
     }
 
     logger.info(`[v0] Calculating alerts for ${applicationIds.length} applications`);
-
-    // TODO: When database is connected, fetch threshold configs for each app
-    // For now, use industry defaults
-    const INDUSTRY_STANDARD_THRESHOLDS = {
-      faithfulness: { min: 0.7, warning: 0.8 },
-      answerRelevancy: { min: 0.7, warning: 0.8 },
-      contextPrecision: { min: 0.7, warning: 0.8 },
-      contextRecall: { min: 0.7, warning: 0.8 },
-      correctness: { min: 0.7, warning: 0.8 },
-    };
 
     const allAlerts = [];
 
