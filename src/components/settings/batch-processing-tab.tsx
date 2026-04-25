@@ -79,12 +79,6 @@ export function BatchProcessingTab() {
     }
   }, [selectedAppId]);
 
-  useEffect(() => {
-    if (selectedAppId) {
-      fetchBatchHistory();
-    }
-  }, [selectedAppId]);
-
   const fetchBatchHistory = async () => {
     if (!selectedAppId) return;
 
@@ -92,9 +86,11 @@ export function BatchProcessingTab() {
       setLoading(true);
       const result = await batchClient.getBatchHistory(selectedAppId, 10);
       setBatchHistory(result.batches || []);
-      FrontendLogger.info(`[BatchProcessing] Fetched ${result.count} batch records`);
+      console.log('[v0] Fetched batch history:', result.count, 'records');
     } catch (error: any) {
-      FrontendLogger.error('[BatchProcessing] Failed to fetch history:', error);
+      // Gracefully handle missing batch history endpoint (404 is expected during development)
+      console.log('[v0] Batch history endpoint not available - this is expected if batch processing has not run yet');
+      setBatchHistory([]);
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,10 @@
 import express, { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { batchProcessingService } from '../services/BatchProcessingService';
-import { scheduledBatchJobService } from '../services/ScheduledBatchJobService';
-import { archiveService } from '../services/ArchiveService';
-import { logger } from '../utils/logger';
-import { getStringParam, getNumberParam } from '../utils/paramParser';
+import { batchProcessingService } from '../services/BatchProcessingService.js';
+import { scheduledBatchJobService } from '../services/ScheduledBatchJobService.js';
+import { archiveService } from '../services/ArchiveService.js';
+import { logger } from '../utils/logger.js';
+import { getStringParam, getNumberParam } from '../utils/paramParser.js';
 
 export function createBatchProcessingRouter(): Router {
   const router = express.Router();
