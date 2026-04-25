@@ -50,6 +50,66 @@ export function createBatchProcessingRouter(): Router {
   });
 
   /**
+   * GET /api/batch/application/:applicationId/history
+   * Get batch history for an application - MUST come BEFORE /:batchId routes
+   */
+  router.get('/application/:applicationId/history', async (req: Request, res: Response) => {
+    try {
+      const applicationId = getStringParam(req.params.applicationId);
+      if (!applicationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId is required',
+        });
+      }
+      const limit = getNumberParam(req.query.limit, 10);
+
+      const batches = await batchProcessingService.getApplicationBatches(applicationId, limit);
+
+      res.json({
+        success: true,
+        batches,
+        count: batches.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/batch/schedule/application/:applicationId
+   * Get all scheduled jobs for an application - MUST come BEFORE /schedule/:jobId routes
+   */
+  router.get('/schedule/application/:applicationId', async (req: Request, res: Response) => {
+    try {
+      const applicationId = getStringParam(req.params.applicationId);
+
+      if (!applicationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId is required',
+        });
+      }
+
+      const jobs = await scheduledBatchJobService.getApplicationScheduledJobs(applicationId);
+
+      res.json({
+        success: true,
+        jobs,
+        count: jobs.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  /**
    * POST /api/batch/execute
    * Manually execute batch processing for an application
    */
@@ -89,7 +149,7 @@ export function createBatchProcessingRouter(): Router {
 
   /**
    * GET /api/batch/:batchId/status
-   * Get status of a batch process
+   * Get status of a batch process - LESS SPECIFIC, comes after /application/... routes
    */
   router.get('/:batchId/status', async (req: Request, res: Response) => {
     try {
@@ -116,71 +176,6 @@ export function createBatchProcessingRouter(): Router {
         batch,
       });
     } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  });
-
-  /**
-   * GET /api/batch/application/:applicationId/history
-   * Get batch history for an application
-   */
-  router.get('/application/:applicationId/history', async (req: Request, res: Response) => {
-    try {
-      const applicationId = getStringParam(req.params.applicationId);
-      if (!applicationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'applicationId is required',
-        });
-      }
-      const limit = getNumberParam(req.query.limit, 10);
-
-      const batches = await batchProcessingService.getApplicationBatches(applicationId, limit);
-
-      res.json({
-        success: true,
-        batches,
-        count: batches.length,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  });
-
-  /**
-   * POST /api/batch/schedule
-   * Create a scheduled batch job
-   */
-  router.post('/schedule', async (req: Request, res: Response) => {
-    try {
-      const { applicationId, connectionId, schedule, sourceConfig } = req.body;
-
-      if (!applicationId || !connectionId || !schedule) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields',
-        });
-      }
-
-      const job = await scheduledBatchJobService.createScheduledJob(
-        applicationId,
-        connectionId,
-        schedule,
-        sourceConfig
-      );
-
-      res.json({
-        success: true,
-        job,
-      });
-    } catch (error: any) {
-      logger.error(`[BatchAPI] Schedule creation error:`, error);
       res.status(500).json({
         success: false,
         message: error.message,
@@ -225,34 +220,9 @@ export function createBatchProcessingRouter(): Router {
   });
 
   /**
-   * GET /api/batch/schedule/application/:applicationId
-   * Get all scheduled jobs for an application
+   * GET /api/batch/schedule/application/:applicationId (DUPLICATE - removed)
+   * This route was moved to the top to prevent conflicts with /schedule/:jobId
    */
-  router.get('/schedule/application/:applicationId', async (req: Request, res: Response) => {
-    try {
-      const applicationId = getStringParam(req.params.applicationId);
-
-      if (!applicationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'applicationId is required',
-        });
-      }
-
-      const jobs = await scheduledBatchJobService.getApplicationScheduledJobs(applicationId);
-
-      res.json({
-        success: true,
-        jobs,
-        count: jobs.length,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  });
 
   /**
    * PUT /api/batch/schedule/:jobId
