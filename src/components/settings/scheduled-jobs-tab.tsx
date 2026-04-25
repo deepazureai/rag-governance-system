@@ -3,11 +3,23 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Trash2, Play, Edit2, Clock } from 'lucide-react';
-import { mockApps } from '@/src/data/mockData';
 import { batchClient } from '@/src/api/batchClient';
 import { FrontendLogger } from '@/src/utils/logger';
 import { ScheduleJobModal } from './schedule-job-modal';
+
+interface Application {
+  id: string;
+  name: string;
+  status: string;
+}
 
 interface ScheduledJob {
   jobId: string;
@@ -34,11 +46,36 @@ interface ScheduledJob {
 }
 
 export function ScheduledJobsTab() {
+  const [applications, setApplications] = useState<Application[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [scheduledJobs, setScheduledJobs] = useState<ScheduledJob[]>([]);
   const [loading, setLoading] = useState(false);
+  const [appsLoading, setAppsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null);
+
+  // Fetch applications on mount
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        const response = await fetch(`${apiUrl}/api/applications`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          setApplications(data.data);
+          if (data.data.length > 0) {
+            setSelectedAppId(data.data[0].id);
+          }
+        }
+      } catch (error: any) {
+        FrontendLogger.error('[ScheduledJobs] Error fetching applications:', error);
+      } finally {
+        setAppsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   useEffect(() => {
     if (selectedAppId) {
@@ -145,6 +182,25 @@ export function ScheduledJobsTab() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-6 bg-white">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
+        
+        <Select value={selectedAppId || ''} onValueChange={setSelectedAppId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an application..." />
+          </SelectTrigger>
+          <SelectContent>
+            {applications.map((app) => (
+              <SelectItem key={app.id} value={app.id}>
+                {app.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500 mt-2">
+          Select an application to view and configure scheduled batch jobs
+        </p>
+      </Card>
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Scheduled Batch Jobs</h2>
         <p className="text-gray-600">Set up automatic batch processing for offline hours</p>

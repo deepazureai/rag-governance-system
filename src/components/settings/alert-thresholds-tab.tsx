@@ -45,19 +45,47 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
   useEffect(() => {
     const loadThresholds = async () => {
       try {
-        const endpoint = appId
-          ? `/api/alert-thresholds/app/${appId}`
-          : '/api/alert-thresholds/defaults';
+        setIsLoading(true);
         
-        const response = await fetch(endpoint);
-        const data = await response.json();
+        if (!appId) {
+          // No app selected, use industry defaults
+          setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
+          setIsLoading(false);
+          return;
+        }
 
-        if (data.success) {
-          setThresholds(data.data);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        const endpoint = `${apiUrl}/api/alert-thresholds/app/${appId}`;
+        
+        try {
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setThresholds(data.data);
+            } else {
+              setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
+            }
+          } else {
+            // Endpoint doesn't exist (404) or other error, use defaults
+            console.log('[v0] Alert thresholds endpoint not available, using defaults');
+            setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
+          }
+        } catch (fetchError) {
+          // Network error or JSON parsing error, use defaults
+          console.log('[v0] Error fetching thresholds, using defaults');
+          setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
         }
       } catch (err) {
         console.error('[v0] Error loading thresholds:', err);
         setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadThresholds();
+  }, [appId]);
       } finally {
         setIsLoading(false);
       }
