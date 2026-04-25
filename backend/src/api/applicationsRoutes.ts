@@ -5,9 +5,9 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { batchProcessingService } from '../services/BatchProcessingService';
-import { getStringParam } from '../utils/paramParser';
-import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks';
+import { batchProcessingService } from '../services/BatchProcessingService.js';
+import { getStringParam } from '../utils/paramParser.js';
+import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks.js';
 import mongoose from 'mongoose';
 
 const applicationsRouter = Router();

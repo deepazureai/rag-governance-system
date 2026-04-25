@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
-import { logger } from '../utils/logger';
-import { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector';
+import { logger } from '../utils/logger.js';
+import { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector.js';
 
 export interface FileAccessError {
   code: string;

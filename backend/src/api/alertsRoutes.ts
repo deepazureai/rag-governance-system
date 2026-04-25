@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { getStringParam } from '../utils/paramParser';
-import { logger } from '../utils/logger';
+import { getStringParam } from '../utils/paramParser.js';
+import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 

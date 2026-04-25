@@ -5,8 +5,8 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server as HTTPServer } from 'http';
-import { EvaluationService } from '../services/evaluation';
-import { FrameworkType } from '../frameworks/registry';
+import { EvaluationService } from '../services/evaluation.js';
+import { FrameworkType } from '../frameworks/registry.js';
 
 export interface WebSocketMessage {
   type: 'evaluation' | 'evaluation_complete' | 'progress' | 'batch_progress' | 'batch_complete' | 'error' | 'complete' | 'subscribed' | 'pong';

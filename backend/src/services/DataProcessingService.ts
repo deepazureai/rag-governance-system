@@ -1,6 +1,6 @@
-import { logger } from '../utils/logger';
-import { ApplicationMetric } from '../models/database';
-import { extractDate, extractString, extractNumber, safeValidationStatus, getSafeSetSize } from '../utils/dataTypeHelpers';
+import { logger } from '../utils/logger.js';
+import { ApplicationMetric } from '../models/database.js';
+import { extractDate, extractString, extractNumber, safeValidationStatus, getSafeSetSize } from '../utils/dataTypeHelpers.js';
 
 export class DataProcessingService {
   /**

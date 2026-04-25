@@ -3,9 +3,9 @@
  * Manages available frameworks and handles framework switching
  */
 
-import { IEvaluationFramework } from './types';
-import { RagasFramework } from './ragas';
-import { MicrosoftEvaluationFramework } from './microsoft';
+import { IEvaluationFramework } from './types.js';
+import { RagasFramework } from './ragas.js';
+import { MicrosoftEvaluationFramework } from './microsoft.js';
 
 export enum FrameworkType {
   RAGAS = 'ragas',

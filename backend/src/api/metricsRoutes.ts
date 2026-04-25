@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { getStringParam } from '../utils/paramParser';
-import { logger } from '../utils/logger';
-import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index';
-import { ApplicationMetricsService } from '../services/ApplicationMetricsService';
-import { AlertCalculationEngine } from '../services/AlertCalculationEngine';
+import { getStringParam } from '../utils/paramParser.js';
+import { logger } from '../utils/logger.js';
+import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index.js';
+import { ApplicationMetricsService } from '../services/ApplicationMetricsService.js';
+import { AlertCalculationEngine } from '../services/AlertCalculationEngine.js';
 
 const metricsRouter = Router();
 const metricsService = new ApplicationMetricsService();

@@ -4,9 +4,9 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getFrameworkRegistry, FrameworkType } from '../frameworks/registry';
-import { IEvaluationFramework, EvaluationRequest, EvaluationResult, BatchEvaluationRequest, BatchEvaluationProgress } from '../frameworks/types';
-import { IDatabase } from './database';
+import { getFrameworkRegistry, FrameworkType } from '../frameworks/registry.js';
+import { IEvaluationFramework, EvaluationRequest, EvaluationResult, BatchEvaluationRequest, BatchEvaluationProgress } from '../frameworks/types.js';
+import { IDatabase } from './database.js';
 
 export interface EvaluationServiceConfig {
   defaultFramework?: FrameworkType;

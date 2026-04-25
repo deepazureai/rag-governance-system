@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { getStringParam } from '../utils/paramParser';
-import { logger } from '../utils/logger';
-import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks';
+import { getStringParam } from '../utils/paramParser.js';
+import { logger } from '../utils/logger.js';
+import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks.js';
 import mongoose from 'mongoose';
 
 export const slaConfigRouter = Router();

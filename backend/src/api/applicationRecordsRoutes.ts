@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { logger } from '../utils/logger';
-import { getStringParam } from '../utils/paramParser';
+import { logger } from '../utils/logger.js';
+import { getStringParam } from '../utils/paramParser.js';
 import mongoose from 'mongoose';
 
 const router = Router();

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../utils/logger';
-import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector';
-import { createEvaluationService } from './evaluation';
+import { logger } from '../utils/logger.js';
+import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector.js';
+import { createEvaluationService } from './evaluation.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {

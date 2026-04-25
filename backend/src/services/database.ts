@@ -3,7 +3,7 @@
  * Handles persistence of evaluations and framework configurations
  */
 
-import { EvaluationRecord, BatchEvaluationRecord, FrameworkConfigRecord } from '../models/database';
+import { EvaluationRecord, BatchEvaluationRecord, FrameworkConfigRecord } from '../models/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface IDatabase {

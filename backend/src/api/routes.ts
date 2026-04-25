@@ -3,8 +3,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { EvaluationService } from '../services/evaluation';
-import { FrameworkType } from '../frameworks/registry';
+import { EvaluationService } from '../services/evaluation.js';
+import { FrameworkType } from '../frameworks/registry.js';
 import { z } from 'zod';
 
 const evaluationRouter = Router();
