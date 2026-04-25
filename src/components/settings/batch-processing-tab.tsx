@@ -82,18 +82,10 @@ export function BatchProcessingTab() {
   const fetchBatchHistory = async () => {
     if (!selectedAppId) return;
 
-    try {
-      setLoading(true);
-      const result = await batchClient.getBatchHistory(selectedAppId, 10);
-      setBatchHistory(result.batches || []);
-      console.log('[v0] Fetched batch history:', result.count, 'records');
-    } catch (error: any) {
-      // Gracefully handle missing batch history endpoint (404 is expected during development)
-      console.log('[v0] Batch history endpoint not available - this is expected if batch processing has not run yet');
-      setBatchHistory([]);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const result = await batchClient.getBatchHistory(selectedAppId, 10);
+    setBatchHistory(result.batches || []);
+    setLoading(false);
   };
 
   const handleExecuteBatch = async () => {

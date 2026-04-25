@@ -86,18 +86,10 @@ export function ScheduledJobsTab() {
   const fetchScheduledJobs = async () => {
     if (!selectedAppId) return;
 
-    try {
-      setLoading(true);
-      const result = await batchClient.getApplicationScheduledJobs(selectedAppId);
-      setScheduledJobs(result.jobs || []);
-      console.log('[v0] Fetched scheduled jobs:', result.count, 'jobs');
-    } catch (error: any) {
-      // Gracefully handle missing scheduled jobs endpoint (404 is expected during development)
-      console.log('[v0] Scheduled jobs endpoint not available - this is expected if no scheduled jobs have been created yet');
-      setScheduledJobs([]);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const result = await batchClient.getApplicationScheduledJobs(selectedAppId);
+    setScheduledJobs(result.jobs || []);
+    setLoading(false);
   };
 
   const handleToggleJob = async (jobId: string, isCurrentlyEnabled: boolean) => {
