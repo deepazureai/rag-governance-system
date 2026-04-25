@@ -96,9 +96,7 @@ export function ScheduledJobsTab() {
     try {
       await batchClient.toggleScheduledJob(jobId, !isCurrentlyEnabled);
       await fetchScheduledJobs();
-      FrontendLogger.info(`[ScheduledJobs] Job ${jobId} toggled`);
     } catch (error: any) {
-      FrontendLogger.error('[ScheduledJobs] Failed to toggle job:', error);
       alert(`Failed to toggle job: ${error.message}`);
     }
   };
@@ -109,7 +107,6 @@ export function ScheduledJobsTab() {
       alert('Job triggered successfully');
       await fetchScheduledJobs();
     } catch (error: any) {
-      FrontendLogger.error('[ScheduledJobs] Failed to trigger job:', error);
       alert(`Failed to trigger job: ${error.message}`);
     }
   };
@@ -120,9 +117,7 @@ export function ScheduledJobsTab() {
     try {
       await batchClient.deleteScheduledJob(jobId);
       await fetchScheduledJobs();
-      FrontendLogger.info(`[ScheduledJobs] Job ${jobId} deleted`);
     } catch (error: any) {
-      FrontendLogger.error('[ScheduledJobs] Failed to delete job:', error);
       alert(`Failed to delete job: ${error.message}`);
     }
   };
@@ -143,7 +138,6 @@ export function ScheduledJobsTab() {
       setShowModal(false);
       setEditingJob(null);
     } catch (error: any) {
-      FrontendLogger.error('[ScheduledJobs] Failed to save job:', error);
       alert(`Failed to save job: ${error.message}`);
     }
   };
