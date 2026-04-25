@@ -98,6 +98,15 @@ async function createServer(): Promise<Express> {
   // Initialize services
   console.log('[Server] Initializing services...');
 
+  // Health check endpoint
+  app.get('/health', (req: Request, res: Response) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      mongoConnected: mongoose.connection.readyState === 1,
+    });
+  });
+
   // Initialize MongoDB first
   await initializeMongoDB();
 
