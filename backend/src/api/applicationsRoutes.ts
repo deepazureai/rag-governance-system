@@ -41,6 +41,16 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
   try {
     console.log('[API] GET /api/applications - Fetching all applications');
     
+    // Check if MongoDB connection is active
+    if (!mongoose.connection.db) {
+      console.error('[API] MongoDB connection not established');
+      return res.status(503).json({
+        success: false,
+        error: 'Database connection error',
+        message: 'MongoDB connection is not established',
+      });
+    }
+
     // Query MongoDB ApplicationMaster collection
     const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
     
@@ -67,10 +77,12 @@ applicationsRouter.get('/', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('[API] Error fetching applications:', error.message);
+    console.error('[API] Full error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to fetch applications',
       message: error.message,
+      details: error.stack,
     });
   }
 });

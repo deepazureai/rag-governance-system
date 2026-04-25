@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Lock, Palette, User, Database, Zap, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataSourcesTab } from '@/src/components/settings/data-sources-tab';
 import { ConnectionsTab } from '@/src/components/settings/connections-tab';
 import { BatchProcessingTab } from '@/src/components/settings/batch-processing-tab';
@@ -23,10 +23,42 @@ import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
 import { AlertThresholdsTab } from '@/src/components/settings/alert-thresholds-tab';
 import { NotificationsTab } from '@/src/components/settings/notifications-tab';
 
+interface Application {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export default function SettingsPage() {
   const [theme, setTheme] = useState('system');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>('');
+  const [appsLoading, setAppsLoading] = useState(true);
+
+  // Fetch applications on mount
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        const response = await fetch(`${apiUrl}/api/applications`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          setApplications(data.data);
+          if (data.data.length > 0) {
+            setSelectedAppId(data.data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Error fetching applications:', err);
+      } finally {
+        setAppsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   return (
     <DashboardLayout>
@@ -206,7 +238,32 @@ export default function SettingsPage() {
 
           {/* Alert Thresholds Tab */}
           <TabsContent value="alerts" className="space-y-6 mt-6">
-            <AlertThresholdsTab />
+            <Card className="p-6 bg-white">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Alert Thresholds</h3>
+              
+              <div className="mb-6">
+                <Label htmlFor="app-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Application
+                </Label>
+                <Select value={selectedAppId} onValueChange={setSelectedAppId}>
+                  <SelectTrigger id="app-select">
+                    <SelectValue placeholder="Select an application..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {applications.map((app) => (
+                      <SelectItem key={app.id} value={app.id}>
+                        {app.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Configure alert thresholds for individual applications
+                </p>
+              </div>
+            </Card>
+
+            {selectedAppId && <AlertThresholdsTab appId={selectedAppId} />}
           </TabsContent>
 
           {/* Scheduled Jobs Tab */}
