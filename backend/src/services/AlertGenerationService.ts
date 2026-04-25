@@ -1,6 +1,6 @@
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
-import { Alert } from '../models/database';
+import { Alert } from '../models/database.js';
 
 // Type definitions for service parameters
 interface RawDataRecord {

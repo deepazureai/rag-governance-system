@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger';
-import { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector';
+import { logger } from '../utils/logger.js';
+import { IDataSourceConnector, RawDataRecord } from './IDataSourceConnector.js';
 
 export interface DatabaseConnectorConfig {
   type: 'sql_server' | 'postgresql' | 'mysql';

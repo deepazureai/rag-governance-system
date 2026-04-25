@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { NotificationService } from '../services/NotificationService';
-import { logger } from '../utils/logger';
+import { NotificationService } from '../services/NotificationService.js';
+import { logger } from '../utils/logger.js';
 
 const notificationsRouter = Router();
 const notificationService = new NotificationService();

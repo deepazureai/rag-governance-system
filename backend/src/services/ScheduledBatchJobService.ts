@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import cron from 'node-cron';
-import { ScheduledBatchJob, IScheduledBatchJob } from '../models/ScheduledBatchJob';
-import { batchProcessingService } from './BatchProcessingService';
-import { logger } from '../utils/logger';
+import { ScheduledBatchJob, IScheduledBatchJob } from '../models/ScheduledBatchJob.js';
+import { batchProcessingService } from './BatchProcessingService.js';
+import { logger } from '../utils/logger.js';
 
 export class ScheduledBatchJobService {
   private cronJobs: Map<string, cron.ScheduledTask> = new Map();

@@ -1,6 +1,6 @@
-import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS, MetricThreshold } from '../types';
-import { NotificationService } from './NotificationService';
-import { logger } from '../utils/logger';
+import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS, MetricThreshold } from '../types/index.js';
+import { NotificationService } from './NotificationService.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * AlertCalculationEngine

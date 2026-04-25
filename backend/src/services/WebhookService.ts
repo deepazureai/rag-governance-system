@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { NotificationPayload } from '../types';
-import { logger } from '../utils/logger';
+import { NotificationPayload } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 interface WebhookConfig {
   url: string;

@@ -4,10 +4,10 @@ import {
   NotificationLog,
   NotificationPayload,
   NotificationChannelType,
-} from '../types';
-import { EmailService } from './EmailService';
-import { WebhookService } from './WebhookService';
-import { logger } from '../utils/logger';
+} from '../types/index.js';
+import { EmailService } from './EmailService.js';
+import { WebhookService } from './WebhookService.js';
+import { logger } from '../utils/logger.js';
 
 export class NotificationService {
   private emailService?: EmailService;

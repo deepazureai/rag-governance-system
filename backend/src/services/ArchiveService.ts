@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Archive, IArchive } from '../models/Archive';
-import { RawDataRecord } from '../models/RawDataRecord';
-import { logger } from '../utils/logger';
+import { Archive, IArchive } from '../models/Archive.js';
+import { RawDataRecord } from '../models/RawDataRecord.js';
+import { logger } from '../utils/logger.js';
 import * as crypto from 'crypto';
 import * as zlib from 'zlib';
 import * as fs from 'fs';

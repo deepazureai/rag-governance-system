@@ -1,5 +1,5 @@
-import { NotificationChannel, NotificationLog, NotificationPayload, EmailTemplate } from '../types';
-import { logger } from '../utils/logger';
+import { NotificationChannel, NotificationLog, NotificationPayload, EmailTemplate } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 interface EmailConfig {
   provider: 'smtp' | 'sendgrid' | 'mailgun';

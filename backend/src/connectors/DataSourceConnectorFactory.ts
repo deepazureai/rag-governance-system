@@ -1,8 +1,8 @@
-import { IDataSourceConnector } from './IDataSourceConnector';
-import { LocalFolderConnector } from './LocalFolderConnector';
-import { DatabaseConnector } from './DatabaseConnector';
-import { AzureBlobConnector } from './AzureBlobConnector';
-import { logger } from '../utils/logger';
+import { IDataSourceConnector } from './IDataSourceConnector.js';
+import { LocalFolderConnector } from './LocalFolderConnector.js';
+import { DatabaseConnector } from './DatabaseConnector.js';
+import { AzureBlobConnector } from './AzureBlobConnector.js';
+import { logger } from '../utils/logger.js';
 
 export type DataSourceType = 'local_folder' | 'database' | 'azure_blob' | 'splunk' | 'datadog';
 

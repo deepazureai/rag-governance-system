@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { DataIngestionService } from '../services/DataIngestionService';
-import { DataProcessingService } from '../services/DataProcessingService';
-import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors';
-import { logger } from '../utils/logger';
+import { DataIngestionService } from '../services/DataIngestionService.js';
+import { DataProcessingService } from '../services/DataProcessingService.js';
+import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors/index.js';
+import { logger } from '../utils/logger.js';
 
 export const dataIngestionRouter = Router();
 
