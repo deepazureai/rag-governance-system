@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser';
 import { logger } from '../utils/logger';
 import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index';
+import { ApplicationMetricsService } from '../services/ApplicationMetricsService';
+import { AlertCalculationEngine } from '../services/AlertCalculationEngine';
 
 const metricsRouter = Router();
 const metricsService = new ApplicationMetricsService();
