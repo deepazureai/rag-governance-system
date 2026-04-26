@@ -260,7 +260,7 @@ export default function AlertsPage() {
               <div className="flex flex-wrap gap-2">
                 {applications.map((app) => (
                   <Button
-                    key={app.applicationId}
+                    key={app._id}
                     onClick={() =>
                       setSelectedAppIds(
                         selectedAppIds.includes(app.applicationId)
