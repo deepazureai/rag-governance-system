@@ -162,15 +162,25 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       setImmediate(async () => {
         try {
           console.log('[API] Starting batch processing in background...');
-          if (appData.dataSource) {
+          if (appData.dataSource && appData.dataSource.type !== 'local_folder') {
+            // Only trigger batch processing for non-local-folder sources
+            // Local folder files need to be uploaded first
             await batchProcessingService.executeBatchProcess(
               applicationId,
               connectionId,
               appData.dataSource.type,
               appData.dataSource.config
             );
+            console.log('[API] Batch processing completed for:', applicationId);
+          } else if (appData.dataSource && appData.dataSource.type === 'local_folder') {
+            console.log('[API] Local folder selected - batch processing will start after file upload');
+            // Update status to waiting for file
+            const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+            await ApplicationMasterCollection.updateOne(
+              { id: applicationId },
+              { $set: { initialDataProcessingStatus: 'waiting_for_file' } }
+            );
           }
-          console.log('[API] Batch processing completed for:', applicationId);
         } catch (error: any) {
           console.error('[API] Background batch processing failed:', error.message);
           // Update application status to failed
@@ -346,6 +356,75 @@ applicationsRouter.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete application',
+    });
+  }
+});
+
+/**
+ * POST /api/applications/:id/batch-process
+ * Trigger batch processing for an application (e.g., after file upload)
+ */
+applicationsRouter.post('/:id/batch-process', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { dataSource } = req.body;
+
+    console.log('[API] POST /api/applications/:id/batch-process for app:', id);
+    console.log('[API] Data source:', dataSource);
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Application ID is required',
+      });
+    }
+
+    if (!dataSource || !dataSource.type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data source type is required',
+      });
+    }
+
+    // Trigger batch processing in background
+    const connectionId = `conn_${Date.now()}`;
+    setImmediate(async () => {
+      try {
+        console.log('[API] Starting batch processing for:', id);
+        await batchProcessingService.executeBatchProcess(
+          id,
+          connectionId,
+          dataSource.type,
+          dataSource.config || {}
+        );
+        console.log('[API] Batch processing completed for:', id);
+
+        // Update application status to processing_complete
+        const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+        await ApplicationMasterCollection.updateOne(
+          { id },
+          { $set: { initialDataProcessingStatus: 'completed' } }
+        );
+      } catch (error: any) {
+        console.error('[API] Batch processing failed:', error.message);
+        // Update application status to failed
+        const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+        await ApplicationMasterCollection.updateOne(
+          { id },
+          { $set: { initialDataProcessingStatus: 'failed', error: error.message } }
+        );
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Batch processing has been initiated. Metrics will be available shortly.',
+    });
+  } catch (error: any) {
+    console.error('[API] Batch process trigger error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to trigger batch processing',
     });
   }
 });

@@ -112,6 +112,49 @@ export default function DashboardPage() {
     }
   };
 
+  const handleTriggerBatchProcess = async () => {
+    if (selectedAppIds.length === 0) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log('[v0] Triggering batch process for apps:', selectedAppIds);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+      for (const appId of selectedAppIds) {
+        const selectedApp = applications.find((a) => a.id === appId);
+        if (!selectedApp) continue;
+
+        console.log('[v0] Triggering batch process for:', appId, 'with dataSource:', selectedApp.dataSource);
+
+        const response = await fetch(`${apiUrl}/api/applications/${appId}/batch-process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataSource: selectedApp.dataSource || { type: 'local_folder', config: {} },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to trigger batch process for ${appId}`);
+        }
+
+        const result = await response.json();
+        console.log('[v0] Batch process triggered:', result);
+      }
+
+      alert('Batch processing has been initiated. Metrics will be available shortly.');
+      // Refresh metrics after a delay
+      setTimeout(() => refreshMetrics(selectedAppIds), 2000);
+    } catch (err: any) {
+      console.error('[v0] Error triggering batch process:', err);
+      setError(err.message || 'Failed to trigger batch processing');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const allAlerts = getAggregatedAlerts();
   const unresolvedAlerts = allAlerts.filter((a) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a) => a.severity === 'critical');
@@ -177,7 +220,7 @@ export default function DashboardPage() {
 
         {/* Refresh Button for Selected Apps */}
         {selectedAppIds.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button
               onClick={handleRefresh}
               disabled={isLoading}
@@ -186,6 +229,19 @@ export default function DashboardPage() {
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? 'Refreshing...' : 'Refresh Metrics'}
             </Button>
+            
+            {/* Show trigger batch process button if app status is waiting_for_file */}
+            {applications.some((app) => selectedAppIds.includes(app.id) && app.initialDataProcessingStatus === 'waiting_for_file') && (
+              <Button
+                onClick={handleTriggerBatchProcess}
+                disabled={isLoading}
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Processing...' : 'Trigger Batch Process'}
+              </Button>
+            )}
+            
             {selectedAppIds.length > 1 && (
               <span className="text-sm text-gray-600 self-center">
                 Fetching metrics from {selectedAppIds.length} applications
