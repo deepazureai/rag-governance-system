@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+// Construct API_BASE_URL ensuring it has /api path
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+// Ensure /api is appended if not already present
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+
+const API_BASE_URL = apiUrl;
 
 console.log('[v0] batchClient API_BASE_URL:', API_BASE_URL);
 
