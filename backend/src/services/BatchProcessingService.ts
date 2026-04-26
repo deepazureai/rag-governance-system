@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector.js';
 import { createEvaluationService } from './evaluation.js';
 import MultiFrameworkEvaluator, { FrameworkResult, EvaluationMetrics } from './MultiFrameworkEvaluator.js';
+import AIActivityGovernanceService from './AIActivityGovernanceService.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {
@@ -36,23 +37,88 @@ export class BatchProcessingService {
 
       logger.info(`[BatchProcessingService] Read ${records.length} records from ${fileName}`);
 
-      // Phase 2: Save raw data records
-      logger.info(`[BatchProcessingService] Phase 2: Saving raw data records`);
+      // Phase 2: Save raw data records with timing fields
+      logger.info(`[BatchProcessingService] Phase 2: Saving raw data records with timing and token metrics`);
       const RawDataCollection = mongoose.connection.collection('rawdatarecords');
-      const rawRecords = records.map((record: ParsedRecord, index: number) => ({
-        applicationId,
-        connectionId,
-        sourceType,
-        batchId,
-        recordData: record.data,
-        lineNumber: record.lineNumber,
-        fileName,
-        processedAt: new Date(),
-        status: 'processed',
-      }));
+      const rawRecords = records.map((record: ParsedRecord, index: number) => {
+        // Extract timing fields from record data
+        const promptTimestamp = record.data.promptTimestamp ? new Date(record.data.promptTimestamp) : new Date();
+        const contextRetrievalStartTime = record.data.contextRetrievalStartTime ? new Date(record.data.contextRetrievalStartTime) : null;
+        const contextRetrievalEndTime = record.data.contextRetrievalEndTime ? new Date(record.data.contextRetrievalEndTime) : null;
+        const llmRequestStartTime = record.data.llmRequestStartTime ? new Date(record.data.llmRequestStartTime) : null;
+        const llmResponseEndTime = record.data.llmResponseEndTime ? new Date(record.data.llmResponseEndTime) : null;
+
+        // Calculate latencies in milliseconds
+        let retrievalLatencyMs = 0;
+        if (contextRetrievalStartTime && contextRetrievalEndTime) {
+          retrievalLatencyMs = contextRetrievalEndTime.getTime() - contextRetrievalStartTime.getTime();
+        }
+
+        let llmLatencyMs = 0;
+        if (llmRequestStartTime && llmResponseEndTime) {
+          llmLatencyMs = llmResponseEndTime.getTime() - llmRequestStartTime.getTime();
+        }
+
+        let totalLatencyMs = 0;
+        if (llmResponseEndTime) {
+          totalLatencyMs = llmResponseEndTime.getTime() - promptTimestamp.getTime();
+        }
+
+        // Extract token counts (from CSV or estimate from word count)
+        let promptTokenCount = record.data.promptTokenCount;
+        let responseTokenCount = record.data.responseTokenCount;
+        let totalTokenCount = record.data.totalTokenCount;
+
+        // If token counts not provided, estimate from word count (average 1.3 tokens per word)
+        if (!promptTokenCount && record.data.promptLengthWords) {
+          promptTokenCount = Math.ceil(record.data.promptLengthWords / 0.75);
+        }
+        if (!responseTokenCount && record.data.responseLengthWords) {
+          responseTokenCount = Math.ceil(record.data.responseLengthWords / 0.75);
+        }
+        if (!totalTokenCount && promptTokenCount && responseTokenCount) {
+          totalTokenCount = promptTokenCount + responseTokenCount;
+        }
+
+        return {
+          applicationId,
+          connectionId,
+          sourceType,
+          batchId,
+          recordData: record.data,
+          lineNumber: record.lineNumber,
+          fileName,
+          
+          // Core data
+          query: record.data.query,
+          response: record.data.response,
+          context: record.data.context,
+          
+          // Timing fields
+          promptTimestamp,
+          contextRetrievalStartTime,
+          contextRetrievalEndTime,
+          llmRequestStartTime,
+          llmResponseEndTime,
+          
+          // Calculated latencies (milliseconds)
+          retrievalLatencyMs,
+          llmLatencyMs,
+          totalLatencyMs,
+          
+          // Token metrics
+          promptTokenCount,
+          responseTokenCount,
+          totalTokenCount,
+          
+          // Status
+          status: 'processed',
+          processedAt: new Date(),
+        };
+      });
 
       const insertedRaw = await RawDataCollection.insertMany(rawRecords);
-      logger.info(`[BatchProcessingService] Inserted ${insertedRaw.insertedCount} raw records`);
+      logger.info(`[BatchProcessingService] Inserted ${insertedRaw.insertedCount} raw records with timing and token data`);
 
       // Phase 3: Evaluate with Multi-Framework Approach
       logger.info(`[BatchProcessingService] Phase 3: Evaluating records with multi-framework approach (RAGAS, BLEU/ROUGE, LlamaIndex)`);
@@ -124,6 +190,36 @@ export class BatchProcessingService {
       }
 
       logger.info(`[BatchProcessingService] Evaluated ${evaluatedCount}/${records.length} records successfully`);
+
+      // Phase 4: Calculate AI Activity Governance Metrics
+      logger.info(`[BatchProcessingService] Phase 4: Calculating AI Activity Governance metrics (latency, tokens, cost, errors)`);
+      try {
+        const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
+        
+        // Store governance metrics in governancemetrics collection
+        const GovernanceCollection = mongoose.connection.collection('governancemetrics');
+        await GovernanceCollection.updateOne(
+          { applicationId, batchId },
+          {
+            $set: {
+              applicationId,
+              batchId,
+              ...governanceMetrics,
+              calculatedAt: new Date(),
+            }
+          },
+          { upsert: true }
+        );
+
+        logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
+          p95Latency: governanceMetrics.latency.total.p95,
+          avgTokens: governanceMetrics.tokens.totalTokens.avg,
+          errorRate: governanceMetrics.errors.errorRate,
+        });
+      } catch (govError: any) {
+        logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, govError.message);
+        // Don't fail the batch if governance calculation fails
+      }
 
       logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
 

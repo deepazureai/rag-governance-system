@@ -3,8 +3,150 @@ import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 import GovernanceMetricsService from '../services/GovernanceMetricsService.js';
+import AIActivityGovernanceService from '../services/AIActivityGovernanceService.js';
 
 export const governanceMetricsRouter = Router();
+
+/**
+ * GET /api/governance-metrics/ai-activity/:applicationId
+ * Get AI Activity Governance metrics (latency, tokens, cost, errors)
+ * Query params:
+ *   - startDate: ISO date string (optional)
+ *   - endDate: ISO date string (optional)
+ */
+governanceMetricsRouter.get('/ai-activity/:applicationId', async (req: Request, res: Response) => {
+  try {
+    const applicationId = getStringParam(req.params.applicationId);
+    if (!applicationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'applicationId is required',
+      });
+    }
+
+    const { startDate, endDate } = req.query;
+    
+    logger.info('[Governance] GET AI Activity metrics:', { applicationId });
+
+    // Build date range
+    let dateRange: { startDate: Date; endDate: Date } | undefined;
+    if (startDate && endDate) {
+      dateRange = {
+        startDate: new Date(startDate as string),
+        endDate: new Date(endDate as string),
+      };
+    }
+
+    // Calculate metrics
+    const metrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId, dateRange);
+
+    res.json({
+      success: true,
+      data: metrics,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting AI activity metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/governance-metrics/ai-activity/:applicationId/latest
+ * Get latest stored AI Activity governance metrics for an application
+ */
+governanceMetricsRouter.get('/ai-activity/:applicationId/latest', async (req: Request, res: Response) => {
+  try {
+    const applicationId = getStringParam(req.params.applicationId);
+    if (!applicationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'applicationId is required',
+      });
+    }
+
+    logger.info('[Governance] GET latest AI Activity metrics:', { applicationId });
+
+    const GovernanceCollection = mongoose.connection.collection('governancemetrics');
+    const latestMetrics = await GovernanceCollection.findOne(
+      { applicationId },
+      { sort: { calculatedAt: -1 } }
+    );
+
+    if (!latestMetrics) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No governance metrics found yet. Run batch process to calculate.',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: latestMetrics,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting latest AI activity metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/governance-metrics/ai-activity/:applicationId/calculate
+ * Force recalculation of AI Activity governance metrics
+ */
+governanceMetricsRouter.post('/ai-activity/:applicationId/calculate', async (req: Request, res: Response) => {
+  try {
+    const applicationId = getStringParam(req.params.applicationId);
+    if (!applicationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'applicationId is required',
+      });
+    }
+
+    logger.info('[Governance] POST calculating AI Activity metrics:', { applicationId });
+
+    // Calculate metrics
+    const metrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
+
+    // Store in governancemetrics collection
+    const GovernanceCollection = mongoose.connection.collection('governancemetrics');
+    const result = await GovernanceCollection.updateOne(
+      { applicationId },
+      {
+        $set: {
+          applicationId,
+          ...metrics,
+          calculatedAt: new Date(),
+        }
+      },
+      { upsert: true }
+    );
+
+    logger.info('[Governance] AI Activity metrics calculated and stored', {
+      p95Latency: metrics.latency.total.p95,
+      errorRate: metrics.errors.errorRate,
+    });
+
+    res.json({
+      success: true,
+      data: metrics,
+      message: 'AI Activity metrics calculated successfully',
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error calculating AI activity metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
 /**
  * POST /api/governance-metrics/calculate/:applicationId
