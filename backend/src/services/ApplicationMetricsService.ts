@@ -105,10 +105,23 @@ export class ApplicationMetricsService {
     for (const key of metricKeys) {
       const sum = evaluations.reduce((acc: number, evaluation: any) => {
         const mapKey = this.mapMetricKey(key);
-        const value = evaluation.evaluation?.[mapKey] || 0;
+        const value = evaluation.evaluation?.[mapKey];
+        
+        // If value doesn't exist, try to derive it from other available metrics
+        if (value === undefined || value === null) {
+          // Use context_relevancy as a proxy for relevance if available
+          if (key === 'relevance' && evaluation.evaluation?.context_relevancy !== undefined) {
+            return acc + evaluation.evaluation.context_relevancy;
+          }
+          // Use correctness as a proxy for coherence/groundedness if available
+          if ((key === 'coherence' || key === 'groundedness') && evaluation.evaluation?.correctness !== undefined) {
+            return acc + evaluation.evaluation.correctness;
+          }
+          return acc;
+        }
         return acc + value;
       }, 0);
-      aggregated[key] = sum / evaluations.length;
+      aggregated[key] = evaluations.length > 0 ? sum / evaluations.length : 0;
     }
 
     return aggregated;
