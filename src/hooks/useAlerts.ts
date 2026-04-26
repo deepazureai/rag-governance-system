@@ -4,6 +4,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
 
+// Construct API_BASE_URL ensuring it has /api path
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+const API_BASE_URL = apiUrl;
+
 export interface UseAlertsReturn {
   alerts: Alert[];
   isLoading: boolean;
@@ -28,18 +35,26 @@ export function useAlerts(): UseAlertsReturn {
         return thresholdCache[appId];
       }
 
-      const response = await fetch(`/api/alert-thresholds/app/${appId}`);
+      const response = await fetch(`${API_BASE_URL}/alert-thresholds/app/${appId}`);
+      
+      if (!response.ok) {
+        console.warn(`[v0] Failed to load thresholds for app ${appId}, using defaults`);
+        return INDUSTRY_STANDARD_THRESHOLDS;
+      }
+      
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.data) {
         setThresholdCache((prev) => ({ ...prev, [appId]: data.data }));
         return data.data;
       }
 
       // Fallback to defaults
+      console.warn('[v0] Thresholds response invalid, using defaults');
       return INDUSTRY_STANDARD_THRESHOLDS;
     } catch (err) {
       console.error('[v0] Error loading thresholds:', err);
+      // Return defaults on error instead of throwing
       return INDUSTRY_STANDARD_THRESHOLDS;
     }
   }, [thresholdCache]);
