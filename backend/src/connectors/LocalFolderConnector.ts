@@ -237,42 +237,148 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
     let duplicateCount = 0;
     let errorCount = 0;
 
-    // Split by semicolon to get individual records
-    const rawRecords = fileContent.split(';').filter((r) => r.trim());
+    // Detect file format: CSV (has comma/newlines) or semicolon-delimited (one record per line)
+    const isCSV = fileContent.includes('\n') || fileContent.includes(',');
 
-    rawRecords.forEach((rawRecord, index) => {
-      const lineNumber = index + 1;
-      const validationErrors: string[] = [];
-
-      try {
-        const record = this.parseNameValuePairs(rawRecord.trim());
-
-        // Generate composite key for duplicate detection
-        const recordKey = JSON.stringify(record);
-        if (seenKeys.has(recordKey)) {
-          duplicateCount++;
-          validationErrors.push('Duplicate record detected and will be ignored');
-          return;
-        }
-        seenKeys.add(recordKey);
-
-        records.push({
-          lineNumber,
-          data: record,
-          validationErrors,
-        });
-      } catch (error: any) {
-        errorCount++;
-        logger.warn(`[LocalFolderConnector] Parse error at line ${lineNumber}: ${error.message}`);
-        validationErrors.push(`Parse error: ${error.message}`);
+    if (isCSV) {
+      // Parse as CSV format
+      const lines = fileContent.split('\n').map(l => l.trim()).filter(l => l);
+      
+      if (lines.length < 2) {
+        logger.warn('[LocalFolderConnector] CSV file has no header row');
+        return { records: [], duplicates: duplicateCount, errors: errorCount };
       }
-    });
+
+      // Parse header
+      const headerLine = lines[0];
+      const headers = this.parseCSVLine(headerLine);
+      
+      // Parse data rows
+      lines.slice(1).forEach((line, index) => {
+        const lineNumber = index + 2; // +2 because we skip header and start from 1
+        const validationErrors: string[] = [];
+
+        try {
+          const values = this.parseCSVLine(line);
+          const record: Record<string, any> = {};
+
+          // Map values to headers
+          headers.forEach((header, idx) => {
+            const value = values[idx] || '';
+            record[header] = this.parseValue(value);
+          });
+
+          // Generate composite key for duplicate detection
+          const recordKey = JSON.stringify(record);
+          if (seenKeys.has(recordKey)) {
+            duplicateCount++;
+            validationErrors.push('Duplicate record detected and will be ignored');
+            return;
+          }
+          seenKeys.add(recordKey);
+
+          records.push({
+            lineNumber,
+            data: record,
+            validationErrors,
+          });
+        } catch (error: any) {
+          errorCount++;
+          logger.warn(`[LocalFolderConnector] CSV parse error at line ${lineNumber}: ${error.message}`);
+          validationErrors.push(`Parse error: ${error.message}`);
+        }
+      });
+    } else {
+      // Parse as semicolon-delimited format (original format)
+      const rawRecords = fileContent.split(';').filter((r) => r.trim());
+
+      rawRecords.forEach((rawRecord, index) => {
+        const lineNumber = index + 1;
+        const validationErrors: string[] = [];
+
+        try {
+          const record = this.parseNameValuePairs(rawRecord.trim());
+
+          // Generate composite key for duplicate detection
+          const recordKey = JSON.stringify(record);
+          if (seenKeys.has(recordKey)) {
+            duplicateCount++;
+            validationErrors.push('Duplicate record detected and will be ignored');
+            return;
+          }
+          seenKeys.add(recordKey);
+
+          records.push({
+            lineNumber,
+            data: record,
+            validationErrors,
+          });
+        } catch (error: any) {
+          errorCount++;
+          logger.warn(`[LocalFolderConnector] Parse error at line ${lineNumber}: ${error.message}`);
+          validationErrors.push(`Parse error: ${error.message}`);
+        }
+      });
+    }
 
     logger.info(
       `[LocalFolderConnector] Parsed ${records.length} valid records, ${duplicateCount} duplicates, ${errorCount} errors`
     );
 
     return { records, duplicates: duplicateCount, errors: errorCount };
+  }
+
+  private parseCSVLine(line: string): string[] {
+    // Simple CSV parser that handles quoted values
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote
+          current += '"';
+          i++;
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+
+    // Add last field
+    result.push(current.trim());
+    return result;
+  }
+
+  private parseValue(value: string): any {
+    // Try to parse as number
+    if (!isNaN(Number(value)) && value !== '') {
+      return Number(value);
+    }
+    // Try to parse as boolean
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+    // Try to parse as JSON (for objects/arrays)
+    if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        // Fall through to return as string
+      }
+    }
+    // Return as string
+    return value;
   }
 
   private parseNameValuePairs(recordString: string): Record<string, any> {
