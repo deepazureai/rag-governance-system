@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
-import { AlertCalculationEngine } from '@/backend/src/services/AlertCalculationEngine';
 
 export interface UseAlertsReturn {
   alerts: Alert[];
@@ -49,17 +48,27 @@ export function useAlerts(): UseAlertsReturn {
     async (appId: string, metrics: Record<string, number>) => {
       try {
         setIsLoading(true);
-        const thresholds = await loadThresholds(appId);
-        const newAlerts = AlertCalculationEngine.generateAlertsForApp(appId, metrics, thresholds);
-        
-        // Update alerts: remove old ones from this app, add new ones
-        setAlerts((prev) => {
-          const otherAppAlerts = prev.filter((a) => a.appId !== appId);
-          return [...otherAppAlerts, ...newAlerts];
+        const response = await fetch('/api/alerts/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appId, metrics }),
         });
 
-        setError(null);
-        return newAlerts;
+        const data = await response.json();
+
+        if (data.success) {
+          const newAlerts = data.data || [];
+          // Update alerts: remove old ones from this app, add new ones
+          setAlerts((prev) => {
+            const otherAppAlerts = prev.filter((a) => a.appId !== appId);
+            return [...otherAppAlerts, ...newAlerts];
+          });
+
+          setError(null);
+          return newAlerts;
+        }
+
+        throw new Error(data.message || 'Failed to calculate alerts');
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Error calculating alerts';
         console.error('[v0] Error calculating alerts:', err);
@@ -69,7 +78,7 @@ export function useAlerts(): UseAlertsReturn {
         setIsLoading(false);
       }
     },
-    [loadThresholds]
+    []
   );
 
   // Get all alerts

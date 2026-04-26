@@ -99,6 +99,38 @@ alertsRouter.post('/batch-create', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/alerts/calculate
+ * Calculate alerts for an app based on current metrics
+ */
+alertsRouter.post('/calculate', async (req: Request, res: Response) => {
+  try {
+    const { appId, metrics } = req.body;
+
+    if (!appId || !metrics) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId and metrics are required',
+      });
+    }
+
+    // For now, return empty alerts array
+    // In production, this would calculate alerts based on SLA thresholds
+    const alerts: any[] = [];
+
+    res.json({
+      success: true,
+      data: alerts,
+    });
+  } catch (error: any) {
+    logger.error('[API] Error calculating alerts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to calculate alerts',
+    });
+  }
+});
+
+/**
  * GET /api/alerts/applications/:applicationId
  * Fetch alerts with filtering and pagination
  * Supports: status, metricName, dateRange, alertLevel
