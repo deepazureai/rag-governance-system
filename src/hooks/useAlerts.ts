@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
 
 export interface UseAlertsReturn {
@@ -43,32 +44,65 @@ export function useAlerts(): UseAlertsReturn {
     }
   }, [thresholdCache]);
 
-  // Calculate alerts for a single app
+  // Calculate alerts for a single app (client-side)
   const calculateAlertsForApp = useCallback(
     async (appId: string, metrics: Record<string, number>) => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/alerts/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ appId, metrics }),
+        
+        // Load thresholds for this app
+        const thresholds = await loadThresholds(appId);
+        
+        // Calculate alerts by comparing metrics to thresholds
+        const newAlerts: Alert[] = [];
+        const metricKeys = Object.keys(metrics);
+        
+        for (const metricKey of metricKeys) {
+          const metricValue = metrics[metricKey];
+          const threshold = thresholds.metrics[metricKey];
+          
+          if (!threshold) continue;
+          
+          // Check if metric is below critical threshold
+          if (metricValue < threshold.critical) {
+            newAlerts.push({
+              id: uuidv4(),
+              appId,
+              metric: metricKey,
+              value: metricValue,
+              threshold: threshold.critical,
+              severity: 'critical',
+              message: `${metricKey} is critically low: ${metricValue.toFixed(2)} (threshold: ${threshold.critical})`,
+              resolved: false,
+              createdAt: new Date().toISOString(),
+              resolvedAt: undefined,
+            });
+          }
+          // Check if metric is below warning threshold
+          else if (metricValue < threshold.warning) {
+            newAlerts.push({
+              id: uuidv4(),
+              appId,
+              metric: metricKey,
+              value: metricValue,
+              threshold: threshold.warning,
+              severity: 'warning',
+              message: `${metricKey} is below target: ${metricValue.toFixed(2)} (threshold: ${threshold.warning})`,
+              resolved: false,
+              createdAt: new Date().toISOString(),
+              resolvedAt: undefined,
+            });
+          }
+        }
+        
+        // Update alerts: remove old ones from this app, add new ones
+        setAlerts((prev) => {
+          const otherAppAlerts = prev.filter((a) => a.appId !== appId);
+          return [...otherAppAlerts, ...newAlerts];
         });
 
-        const data = await response.json();
-
-        if (data.success) {
-          const newAlerts = data.data || [];
-          // Update alerts: remove old ones from this app, add new ones
-          setAlerts((prev) => {
-            const otherAppAlerts = prev.filter((a) => a.appId !== appId);
-            return [...otherAppAlerts, ...newAlerts];
-          });
-
-          setError(null);
-          return newAlerts;
-        }
-
-        throw new Error(data.message || 'Failed to calculate alerts');
+        setError(null);
+        return newAlerts;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Error calculating alerts';
         console.error('[v0] Error calculating alerts:', err);
@@ -78,7 +112,7 @@ export function useAlerts(): UseAlertsReturn {
         setIsLoading(false);
       }
     },
-    []
+    [loadThresholds]
   );
 
   // Get all alerts
