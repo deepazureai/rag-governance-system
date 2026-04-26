@@ -430,6 +430,69 @@ applicationsRouter.post('/:id/batch-process', async (req: Request, res: Response
 });
 
 /**
+ * GET /api/applications/:id/raw-data-count
+ * Get count of raw data records for an application
+ */
+applicationsRouter.get('/:id/raw-data-count', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log('[API] Getting raw data count for app:', id);
+
+    const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+    const count = await RawDataCollection.countDocuments({ applicationId: id });
+    
+    console.log('[API] Raw data count for', id, ':', count);
+
+    res.json({
+      success: true,
+      applicationId: id,
+      rawDataCount: count,
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting raw data count:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/applications/:id/test-insert
+ * Test endpoint to verify MongoDB insertion works
+ */
+applicationsRouter.post('/:id/test-insert', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log('[API] Test insert endpoint called for app:', id);
+
+    const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+    const testRecord = {
+      applicationId: id,
+      testField: 'test_value',
+      timestamp: new Date(),
+    };
+
+    console.log('[API] Attempting test insert:', testRecord);
+    const result = await RawDataCollection.insertOne(testRecord);
+    
+    console.log('[API] Test insert result:', result);
+
+    res.json({
+      success: true,
+      message: 'Test insert successful',
+      insertedId: result.insertedId,
+    });
+  } catch (error: any) {
+    console.error('[API] Test insert error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * POST /api/applications/:id/upload-raw-data
  * Upload raw data for an application (CSV format)
  */
@@ -453,11 +516,15 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
     }
 
     console.log('[API] Uploading raw data for application:', id);
+    console.log('[API] Received CSV data length:', csvData?.length);
+    console.log('[API] CSV data first 200 chars:', csvData?.substring(0, 200));
 
     // Parse CSV data
     const lines = csvData.split('\n').map((l: string) => l.trim()).filter((l: string) => l);
+    console.log('[API] Total lines parsed:', lines.length);
     
     if (lines.length < 2) {
+      console.warn('[API] CSV has fewer than 2 lines');
       return res.status(400).json({
         success: false,
         message: 'CSV must have headers and at least one data row',
@@ -467,6 +534,7 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
     // Parse header
     const headerLine = lines[0];
     const headers = parseCSVLine(headerLine);
+    console.log('[API] Headers parsed:', headers);
 
     // Parse data rows
     const RawDataCollection = mongoose.connection.collection('rawdatarecords');
@@ -483,12 +551,16 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
         });
 
         rawRecords.push(record);
+        console.log('[API] Added record', i, ':', Object.keys(record).length, 'fields');
       } catch (error: any) {
         console.warn(`[API] Error parsing CSV row ${i + 1}:`, error.message);
       }
     }
 
+    console.log('[API] Total records to insert:', rawRecords.length);
+    
     if (rawRecords.length === 0) {
+      console.warn('[API] No valid records to insert');
       return res.status(400).json({
         success: false,
         message: 'No valid data rows found in CSV',
@@ -496,7 +568,18 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
     }
 
     // Insert raw data
-    await RawDataCollection.insertMany(rawRecords);
+    console.log('[API] Attempting to insert', rawRecords.length, 'records into rawdatarecords collection');
+    console.log('[API] Mongoose connection state:', mongoose.connection.readyState);
+    console.log('[API] First record sample:', JSON.stringify(rawRecords[0]));
+    
+    try {
+      const insertResult = await RawDataCollection.insertMany(rawRecords);
+      console.log('[API] Insert successful - insertedCount:', insertResult.insertedCount);
+      console.log('[API] Inserted IDs:', insertResult.insertedIds);
+    } catch (insertError: any) {
+      console.error('[API] Insert error:', insertError);
+      throw insertError;
+    }
 
     console.log('[API] Inserted', rawRecords.length, 'raw data records for app:', id);
 
