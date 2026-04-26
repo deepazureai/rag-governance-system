@@ -1,7 +1,15 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { MockApiHandler } from './mock-handler';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+// Construct API_BASE_URL ensuring it has /api path
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+// Ensure /api is appended if not already present
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+
+const API_BASE_URL = apiUrl;
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
 
 console.log('[v0] API Configuration:');
