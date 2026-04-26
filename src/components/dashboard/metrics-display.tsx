@@ -41,7 +41,14 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
   }
 
   if (!metrics) {
-    return null;
+    return (
+      <Card className="p-8 bg-amber-50 border border-amber-200">
+        <div className="text-center">
+          <p className="text-amber-900 font-medium mb-1">No metrics data available yet</p>
+          <p className="text-sm text-amber-700">Upload raw data and run the batch process to generate evaluation metrics. Metrics will appear here after processing completes.</p>
+        </div>
+      </Card>
+    );
   }
 
   const metricsArray = [

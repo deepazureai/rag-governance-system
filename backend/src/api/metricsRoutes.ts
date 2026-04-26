@@ -40,10 +40,70 @@ metricsRouter.get('/:applicationId', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/metrics/fetch-multiple
- * Fetch and aggregate metrics for multiple applications
+ * POST /api/metrics/refresh
+ * Recalculate and return metrics for multiple applications
  */
-metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
+metricsRouter.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    const { applicationIds } = req.body;
+
+    if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'applicationIds must be a non-empty array',
+      });
+    }
+
+    logger.info(`[v0] Refreshing metrics for ${applicationIds.length} applications`);
+
+    const metricsArray = await metricsService.fetchMetricsForApps(applicationIds);
+
+    if (metricsArray.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          type: 'empty',
+          message: 'No metrics data available yet for selected applications',
+        },
+      });
+    }
+
+    // If only one app, return its metrics directly
+    if (metricsArray.length === 1) {
+      return res.json({
+        success: true,
+        data: {
+          type: 'single',
+          metrics: metricsArray[0],
+          frameworksUsed: metricsArray[0].frameworksUsed,
+          slaCompliance: metricsArray[0].slaCompliance,
+        },
+      });
+    }
+
+    // If multiple apps, aggregate their metrics
+    const aggregatedMetrics = metricsService.aggregateMetrics(metricsArray);
+
+    res.json({
+      success: true,
+      data: {
+        type: 'aggregated',
+        metrics: aggregatedMetrics,
+        frameworksUsed: aggregatedMetrics.frameworksUsed,
+        slaCompliance: aggregatedMetrics.slaCompliance,
+        individualMetrics: metricsArray,
+      },
+    });
+  } catch (error) {
+    logger.error(`[v0] Metrics refresh error:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh metrics',
+    });
+  }
+});
+
+
   try {
     const { applicationIds } = req.body;
 

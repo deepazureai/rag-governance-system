@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { loader } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface RawDataItem {
   metric?: string;
@@ -194,7 +194,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     return (
       <Card className="p-8 bg-white">
         <div className="flex items-center justify-center gap-2">
-          <div className="animate-spin"><loader className="w-5 h-5" /></div>
+          <Spinner />
           <span className="text-gray-600">Loading raw data...</span>
         </div>
       </Card>
@@ -206,6 +206,17 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
       <Card className="p-6 bg-red-50 border border-red-200">
         <p className="text-red-900 font-medium">Error: {error}</p>
         <Button onClick={fetchRawData} variant="outline" className="mt-3">Retry</Button>
+      </Card>
+    );
+  }
+
+  if (!rawData || Object.keys(rawData).length === 0) {
+    return (
+      <Card className="p-8 bg-amber-50 border border-amber-200">
+        <div className="text-center">
+          <p className="text-amber-900 font-medium mb-1">No raw data available yet</p>
+          <p className="text-sm text-amber-700">Upload raw data and run the batch process to generate evaluation records. Raw data will appear here after processing completes.</p>
+        </div>
       </Card>
     );
   }
