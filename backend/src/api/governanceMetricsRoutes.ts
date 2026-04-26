@@ -121,8 +121,8 @@ governanceMetricsRouter.post('/ai-activity/:applicationId/calculate', async (req
       { applicationId },
       {
         $set: {
-          applicationId,
           ...metrics,
+          applicationId,
           calculatedAt: new Date(),
         }
       },

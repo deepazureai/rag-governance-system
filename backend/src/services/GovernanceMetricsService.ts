@@ -240,8 +240,8 @@ export class GovernanceMetricsService {
       
       const results = [];
       
-      for (const eval of evaluations) {
-        const metrics = await this.calculateGovernanceMetrics(eval);
+      for (const evaluation of evaluations) {
+        const metrics = await this.calculateGovernanceMetrics(evaluation);
         
         // Filter for the requested metric
         const metricData = metrics.slaCompliance.find(m => m.metricName === metricName);
@@ -292,8 +292,8 @@ export class GovernanceMetricsService {
       
       const results = [];
       
-      for (const eval of evaluations) {
-        const metrics = await this.calculateGovernanceMetrics(eval);
+      for (const evaluation of evaluations) {
+        const metrics = await this.calculateGovernanceMetrics(evaluation);
         
         // Filter for the requested status
         const metricsWithStatus = metrics.slaCompliance.filter(m => m.status === status);

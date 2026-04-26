@@ -124,7 +124,7 @@ export class AIActivityGovernanceService {
       const errors = this.calculateErrorMetrics(records);
       
       // Calculate trends
-      const trends = this.calculateTrends(applicationId, records, latency, tokens, errors);
+      const trends = await this.calculateTrends(applicationId, records, latency, tokens, errors);
 
       return {
         applicationId,

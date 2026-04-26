@@ -4,7 +4,7 @@ import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connecto
 import { createEvaluationService } from './evaluation.js';
 import MultiFrameworkEvaluator, { FrameworkResult, EvaluationMetrics } from './MultiFrameworkEvaluator.js';
 import AIActivityGovernanceService from './AIActivityGovernanceService.js';
-import AlertGenerationService from './AlertGenerationService.js';
+import { AlertGenerationService } from './AlertGenerationService.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {
@@ -203,9 +203,9 @@ export class BatchProcessingService {
           { applicationId, batchId },
           {
             $set: {
+              ...governanceMetrics,
               applicationId,
               batchId,
-              ...governanceMetrics,
               calculatedAt: new Date(),
             }
           },
