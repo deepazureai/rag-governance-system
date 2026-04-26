@@ -121,10 +121,13 @@ export default function AlertsPage() {
         apiUrl = apiUrl + '/api';
       }
 
+      // Build query params for alert type filtering
+      const typeFilter = alertType === 'all' ? '' : `&type=${alertType}`;
+
       // Fetch alerts for each selected app
       const alertPromises = selectedAppIds.map((appId) =>
         fetch(
-          `${apiUrl}/alerts/applications/${appId}?severity=${activeFilter}&page=${page}&pageSize=${pageSize}`,
+          `${apiUrl}/alerts/applications/${appId}?severity=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
           { method: 'GET', headers: { 'Content-Type': 'application/json' } }
         ).then((res) => res.json())
       );

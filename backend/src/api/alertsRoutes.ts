@@ -145,8 +145,7 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
       });
     }
 
-    const { status, metricName, dateStart, dateEnd, alertLevel, page = 1, pageSize = 25 } = req.query;
-
+    const { status, metricName, dateStart, dateEnd, alertLevel, type = 'all', page = 1, pageSize = 25 } = req.query;
 
     const alertsCollection = mongoose.connection.collection('alerts');
 
@@ -163,6 +162,17 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
 
     if (alertLevel) {
       filter.alertLevel = String(alertLevel);
+    }
+
+    // Filter by alert type (evaluation vs performance)
+    if (type && type !== 'all') {
+      if (type === 'evaluation') {
+        // Evaluation alerts have metricName prefixed with 'evaluation_' or contain evaluation metric names
+        filter.metricName = { $regex: '^evaluation_|^(groundedness|coherence|relevance|faithfulness|answerRelevancy|contextPrecision|contextRecall)' };
+      } else if (type === 'performance') {
+        // Performance alerts have metricName like p95Latency, errorRate, costPerQuery, etc.
+        filter.metricName = { $regex: '^(p95Latency|p99Latency|errorRate|latencyDegradation|costPerQuery|timeoutRate|retrievalLatency|llmLatency)' };
+      }
     }
 
     // Date range filter

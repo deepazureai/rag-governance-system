@@ -72,80 +72,86 @@ export class AlertGenerationService {
    * Compares each record's metrics against application SLA thresholds
    * Creates row-level alerts for violations
    */
+  /**
+   * Generate evaluation quality alerts for batch records
+   * Triggers on low groundedness, coherence, relevance scores
+   */
   static async generateAlertsForBatch(
     applicationId: string,
-    records: RawDataRecord[],
-    applicationSLA: ApplicationSLAConfig,
+    evaluations: any[],
     alertsCollection: AlertCollection
   ): Promise<Alert[]> {
     try {
-      if (!applicationSLA || !applicationSLA.metrics) {
-        logger.warn(`[AlertService] No SLA metrics found for app ${applicationId}`);
-        return [];
-      }
-
       const createdAlerts: Alert[] = [];
       const currentTime = new Date();
 
-      // Process each record
-      for (const record of records) {
-        if (!record.evaluation || !record.evaluation.metrics) {
+      // Define quality metric thresholds (0-100 scale)
+      const qualityThresholds = {
+        groundedness: 60, // Below 60 is poor groundedness
+        coherence: 60,
+        relevance: 60,
+        faithfulness: 65,
+        answerRelevancy: 65,
+        contextPrecision: 70,
+        contextRecall: 65,
+        overallScore: 65,
+      };
+
+      // Process each evaluation record
+      for (const evaluation of evaluations) {
+        if (!evaluation.evaluation || !evaluation.evaluation.groundedness) {
           continue; // Skip records without evaluation data
         }
 
-        const metrics = record.evaluation.metrics;
-        const userId = record.userId || 'unknown';
+        const metrics = evaluation.evaluation;
 
-        // Check each metric in SLA against record value
-        for (const [metricName, slaThreshold] of Object.entries(applicationSLA.metrics)) {
-          const metricValue = metrics[metricName as string];
+        // Check each quality metric
+        for (const [metricName, threshold] of Object.entries(qualityThresholds)) {
+          const metricValue = (metrics as any)[metricName];
 
-          // Only create alert if metric exists and is numeric
-          if (typeof metricValue === 'number' && typeof slaThreshold === 'number') {
-            // Alert if metric falls below threshold (threshold = "good" value)
-            if (metricValue < slaThreshold) {
-              const deviation = ((slaThreshold - metricValue) / slaThreshold) * 100;
+          // Only create alert if metric exists and is below threshold
+          if (typeof metricValue === 'number' && metricValue < (threshold as number)) {
+            const deviation = (((threshold as number) - metricValue) / (threshold as number)) * 100;
 
-              const alert: Alert = {
-                alertId: uuidv4(),
-                applicationId,
-                alertLevel: 'row',
-                sourceRecordId: record._id || record.id,
-                metricName,
-                actualValue: Number((metricValue as number).toFixed(2)),
-                slaThreshold: Number((slaThreshold as number).toFixed(2)),
-                deviation: Math.round(deviation * 100) / 100,
-                status: 'open',
-                createdAt: currentTime,
-                updatedAt: currentTime,
-              };
+            const alert: Alert = {
+              alertId: uuidv4(),
+              applicationId,
+              alertLevel: 'row',
+              sourceRecordId: evaluation._id?.toString() || evaluation.id,
+              metricName: `evaluation_${metricName}`, // Prefix to distinguish from performance metrics
+              actualValue: Number(metricValue.toFixed(2)),
+              slaThreshold: threshold as number,
+              deviation: Math.round(deviation * 100) / 100,
+              status: 'open',
+              createdAt: currentTime,
+              updatedAt: currentTime,
+            };
 
-              // Upsert to avoid duplicates (idempotent)
-              await alertsCollection.updateOne(
-                { sourceRecordId: record._id || record.id, metricName },
-                { $set: alert },
-                { upsert: true }
-              );
+            // Upsert to avoid duplicates
+            await alertsCollection.updateOne(
+              { sourceRecordId: evaluation._id?.toString() || evaluation.id, metricName: alert.metricName },
+              { $set: alert },
+              { upsert: true }
+            );
 
-              createdAlerts.push(alert);
+            createdAlerts.push(alert);
 
-              logger.debug(
-                `[AlertService] Alert: app=${applicationId}, metric=${metricName}, value=${metricValue}, sla=${slaThreshold}, user=${userId}`
-              );
-            }
+            logger.debug(
+              `[AlertService] Quality Alert: app=${applicationId}, metric=${metricName}, value=${metricValue}, threshold=${threshold}`
+            );
           }
         }
       }
 
       if (createdAlerts.length > 0) {
         logger.info(
-          `[AlertService] Created ${createdAlerts.length} alerts for app ${applicationId}`
+          `[AlertService] Created ${createdAlerts.length} evaluation quality alerts for app ${applicationId}`
         );
       }
 
       return createdAlerts;
     } catch (error: any) {
-      logger.error(`[AlertService] Error generating alerts for app ${applicationId}:`, error);
+      logger.error(`[AlertService] Error generating evaluation alerts:`, error);
       throw error;
     }
   }

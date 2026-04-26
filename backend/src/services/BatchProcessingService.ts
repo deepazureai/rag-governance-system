@@ -4,6 +4,7 @@ import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connecto
 import { createEvaluationService } from './evaluation.js';
 import MultiFrameworkEvaluator, { FrameworkResult, EvaluationMetrics } from './MultiFrameworkEvaluator.js';
 import AIActivityGovernanceService from './AIActivityGovernanceService.js';
+import AlertGenerationService from './AlertGenerationService.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {
@@ -211,17 +212,58 @@ export class BatchProcessingService {
           { upsert: true }
         );
 
-        logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
-          p95Latency: governanceMetrics.latency.total.p95,
-          avgTokens: governanceMetrics.tokens.totalTokens.avg,
-          errorRate: governanceMetrics.errors.errorRate,
-        });
-      } catch (govError: any) {
-        logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, govError.message);
-        // Don't fail the batch if governance calculation fails
+      logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
+        p95Latency: governanceMetrics.latency.total.p95,
+        avgTokens: governanceMetrics.tokens.totalTokens.avg,
+        errorRate: governanceMetrics.errors.errorRate,
+      });
+    } catch (govError: any) {
+      logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, govError.message);
+      // Don't fail the batch if governance calculation fails
+    }
+
+    // Phase 5: Generate Alerts (Both Evaluation Quality and Performance Alerts)
+    logger.info(`[BatchProcessingService] Phase 5: Generating alerts from evaluation and governance metrics`);
+    try {
+      const AlertsCollection = mongoose.connection.collection('alerts');
+      
+      // Get all evaluations for this batch to generate quality alerts
+      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+      const evaluations = await EvaluationCollection.find({ batchId }).toArray();
+
+      // Generate evaluation quality alerts (groundedness, coherence, relevance, etc.)
+      if (evaluations.length > 0) {
+        logger.info(`[BatchProcessingService] Generating evaluation quality alerts for ${evaluations.length} records`);
+        const qualityAlerts = await AlertGenerationService.generateAlertsForBatch(
+          applicationId,
+          evaluations,
+          AlertsCollection
+        );
+        logger.info(`[BatchProcessingService] Generated ${qualityAlerts.length} evaluation quality alerts`);
       }
 
-      logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
+      // Generate performance alerts (latency, cost, errors, trends)
+      try {
+        const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
+        logger.info(`[BatchProcessingService] Generating performance alerts based on governance metrics`);
+        const performanceAlerts = await AlertGenerationService.generatePerformanceAlerts(
+          applicationId,
+          governanceMetrics,
+          {}, // SLA config - could be made configurable
+          AlertsCollection
+        );
+        logger.info(`[BatchProcessingService] Generated ${performanceAlerts.length} performance alerts`);
+      } catch (perfError: any) {
+        logger.warn(`[BatchProcessingService] Performance alerts generation failed (non-critical):`, perfError.message);
+      }
+
+      logger.info(`[BatchProcessingService] Alert generation completed`);
+    } catch (alertError: any) {
+      logger.error(`[BatchProcessingService] Error generating alerts:`, alertError.message);
+      // Don't fail the batch if alert generation fails
+    }
+
+    logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
 
       // Update application status
       const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
