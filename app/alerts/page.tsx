@@ -74,8 +74,13 @@ export default function AlertsPage() {
 
   const fetchApplications = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/applications`, {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      if (!apiUrl.endsWith('/api')) {
+        apiUrl = apiUrl + '/api';
+      }
+      console.log('[v0] Fetching applications from:', `${apiUrl}/applications`);
+      
+      const response = await fetch(`${apiUrl}/applications`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -98,18 +103,21 @@ export default function AlertsPage() {
   const fetchAlerts = async () => {
     setIsLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      if (!apiUrl.endsWith('/api')) {
+        apiUrl = apiUrl + '/api';
+      }
 
       // Fetch alerts for each selected app
       const alertPromises = selectedAppIds.map((appId) =>
         fetch(
-          `${apiUrl}/api/alerts/applications/${appId}?status=${activeFilter}&page=${page}&pageSize=${pageSize}`,
+          `${apiUrl}/alerts/applications/${appId}?severity=${activeFilter}&page=${page}&pageSize=${pageSize}`,
           { method: 'GET', headers: { 'Content-Type': 'application/json' } }
         ).then((res) => res.json())
       );
 
       const results = await Promise.all(alertPromises);
-      const allAlerts: Alert[] = [];
+      const allAlerts: AlertType[] = [];
       let totalRecords = 0;
 
       results.forEach((result) => {
@@ -124,26 +132,26 @@ export default function AlertsPage() {
 
       // Fetch summary for selected apps
       const summaryPromises = selectedAppIds.map((appId) =>
-        fetch(`${apiUrl}/api/alerts/summary/${appId}`, {
+        fetch(`${apiUrl}/alerts/summary/${appId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         }).then((res) => res.json())
       );
 
       const summaryResults = await Promise.all(summaryPromises);
-      let totalOpen = 0,
-        totalAck = 0,
-        totalDismissed = 0;
+      let totalCritical = 0,
+        totalWarning = 0,
+        totalHealthy = 0;
 
       summaryResults.forEach((result) => {
         if (result.success && result.data.summary) {
-          totalOpen += result.data.summary.open || 0;
-          totalAck += result.data.summary.acknowledged || 0;
-          totalDismissed += result.data.summary.dismissed || 0;
+          totalCritical += result.data.summary.critical || 0;
+          totalWarning += result.data.summary.warning || 0;
+          totalHealthy += result.data.summary.healthy || 0;
         }
       });
 
-      setSummary({ open: totalOpen, acknowledged: totalAck, dismissed: totalDismissed });
+      setSummary({ critical: totalCritical, warning: totalWarning, healthy: totalHealthy });
       setSelectedAlerts(new Set());
       setSelectAll(false);
     } catch (error) {
@@ -169,7 +177,7 @@ export default function AlertsPage() {
       setSelectedAlerts(new Set());
       setSelectAll(false);
     } else {
-      const allIds = new Set(alerts.map((a) => a.alertId));
+      const allIds = new Set(alerts.map((a) => a.id));
       setSelectedAlerts(allIds);
       setSelectAll(true);
     }
