@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Check, X, ChevronDown, MessageSquare } from 'lucide-react';
+import { Alert as AlertType } from '@/src/types/index';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,47 +10,32 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import Link from 'next/link';
 
-interface Alert {
-  _id: string;
-  alertId: string;
-  applicationId: string;
-  alertLevel: 'row' | 'aggregated';
-  metricName: string;
-  actualValue: number;
-  slaThreshold: number;
-  deviation: number;
-  status: 'open' | 'acknowledged' | 'dismissed';
-  userComment?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface Application {
   _id: string;
   applicationId: string;
   name: string;
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'open':
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'critical':
       return 'bg-red-100 text-red-800';
-    case 'acknowledged':
+    case 'warning':
       return 'bg-yellow-100 text-yellow-800';
-    case 'dismissed':
+    case 'healthy':
       return 'bg-green-100 text-green-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
 };
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'open':
+const getSeverityIcon = (severity: string) => {
+  switch (severity) {
+    case 'critical':
       return <AlertTriangle className="w-4 h-4" />;
-    case 'acknowledged':
+    case 'warning':
       return <ChevronDown className="w-4 h-4" />;
-    case 'dismissed':
+    case 'healthy':
       return <Check className="w-4 h-4" />;
     default:
       return null;
@@ -60,18 +46,18 @@ export default function AlertsPage() {
   const [mounted, setMounted] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>('open');
+  const [activeFilter, setActiveFilter] = useState<string>('critical');
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [bulkAction, setBulkAction] = useState<'close' | 'acknowledge' | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
-  const [summary, setSummary] = useState({ open: 0, acknowledged: 0, dismissed: 0 });
+  const [summary, setSummary] = useState({ critical: 0, warning: 0, healthy: 0 });
 
   // Fetch applications on mount
   useEffect(() => {
@@ -287,22 +273,22 @@ export default function AlertsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status Filter</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Severity Filter</label>
               <div className="flex gap-2">
-                {['open', 'acknowledged', 'dismissed'].map((status) => (
+                {['critical', 'warning', 'healthy'].map((severity) => (
                   <Button
-                    key={status}
+                    key={severity}
                     onClick={() => {
-                      setActiveFilter(status);
+                      setActiveFilter(severity);
                       setPage(1);
                     }}
                     className={
-                      activeFilter === status
+                      activeFilter === severity
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-800'
                     }
                   >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {severity.charAt(0).toUpperCase() + severity.slice(1)}
                   </Button>
                 ))}
               </div>
@@ -369,27 +355,27 @@ export default function AlertsPage() {
                   </thead>
                   <tbody>
                     {alerts.map((alert) => (
-                      <tr key={alert.alertId} className="border-b hover:bg-gray-50">
+                      <tr key={alert.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <input
                             type="checkbox"
-                            checked={selectedAlerts.has(alert.alertId)}
-                            onChange={() => handleAlertSelect(alert.alertId)}
+                            checked={selectedAlerts.has(alert.id)}
+                            onChange={() => handleAlertSelect(alert.id)}
                             className="rounded"
                           />
                         </td>
                         <td className="py-3 px-4 font-medium">{alert.metricName}</td>
-                        <td className="py-3 px-4">{alert.actualValue.toFixed(2)}</td>
-                        <td className="py-3 px-4">{alert.slaThreshold.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-red-600 font-medium">-{alert.deviation}%</td>
+                        <td className="py-3 px-4">{alert.metricValue.toFixed(2)}</td>
+                        <td className="py-3 px-4">{alert.threshold.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-red-600 font-medium">-{((alert.threshold - alert.metricValue) / alert.threshold * 100).toFixed(1)}%</td>
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(alert.status)}`}>
-                            {getStatusIcon(alert.status)}
-                            {alert.status}
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                            {getSeverityIcon(alert.severity)}
+                            {alert.severity}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-xs text-gray-500">
-                          {new Date(alert.createdAt).toLocaleDateString()}
+                          {new Date(alert.timestamp).toLocaleDateString()}
                         </td>
                       </tr>
                     ))}
