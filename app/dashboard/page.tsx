@@ -24,6 +24,11 @@ interface Application {
   status: 'active' | 'inactive' | 'archived';
   framework?: string;
   createdAt: string;
+  dataSource?: {
+    type: string;
+    config?: Record<string, any>;
+  };
+  initialDataProcessingStatus?: string;
 }
 
 export default function DashboardPage() {
@@ -115,9 +120,6 @@ export default function DashboardPage() {
   const handleTriggerBatchProcess = async () => {
     if (selectedAppIds.length === 0) return;
 
-    setIsLoading(true);
-    setError(null);
-
     try {
       console.log('[v0] Triggering batch process for apps:', selectedAppIds);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -149,9 +151,7 @@ export default function DashboardPage() {
       setTimeout(() => refreshMetrics(selectedAppIds), 2000);
     } catch (err: any) {
       console.error('[v0] Error triggering batch process:', err);
-      setError(err.message || 'Failed to trigger batch processing');
-    } finally {
-      setIsLoading(false);
+      alert(`Error: ${err.message || 'Failed to trigger batch processing'}`);
     }
   };
 
