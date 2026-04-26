@@ -103,9 +103,9 @@ export class ApplicationMetricsService {
 
     // Average each metric across all evaluations
     for (const key of metricKeys) {
-      const sum = evaluations.reduce((acc: number, eval: any) => {
+      const sum = evaluations.reduce((acc: number, evaluation: any) => {
         const mapKey = this.mapMetricKey(key);
-        const value = eval.evaluation?.[mapKey] || 0;
+        const value = evaluation.evaluation?.[mapKey] || 0;
         return acc + value;
       }, 0);
       aggregated[key] = sum / evaluations.length;

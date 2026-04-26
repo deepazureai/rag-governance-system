@@ -184,6 +184,7 @@ export class BatchProcessingService {
       // Convert MongoDB documents to ParsedRecord format
       const records: ParsedRecord[] = rawDataRecords.map((record: any, index: number) => ({
         lineNumber: index + 1,
+        validationErrors: [],
         data: {
           userId: record.userId,
           sessionId: record.sessionId,
