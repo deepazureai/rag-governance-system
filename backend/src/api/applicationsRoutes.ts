@@ -429,4 +429,135 @@ applicationsRouter.post('/:id/batch-process', async (req: Request, res: Response
   }
 });
 
+/**
+ * POST /api/applications/:id/upload-raw-data
+ * Upload raw data for an application (CSV format)
+ */
+applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { csvData } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Application ID is required',
+      });
+    }
+
+    if (!csvData) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV data is required',
+      });
+    }
+
+    console.log('[API] Uploading raw data for application:', id);
+
+    // Parse CSV data
+    const lines = csvData.split('\n').map((l: string) => l.trim()).filter((l: string) => l);
+    
+    if (lines.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV must have headers and at least one data row',
+      });
+    }
+
+    // Parse header
+    const headerLine = lines[0];
+    const headers = parseCSVLine(headerLine);
+
+    // Parse data rows
+    const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+    const rawRecords = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      try {
+        const values = parseCSVLine(lines[i]);
+        const record: Record<string, any> = { applicationId: id };
+
+        headers.forEach((header, idx) => {
+          const value = values[idx] || '';
+          record[header] = parseValue(value);
+        });
+
+        rawRecords.push(record);
+      } catch (error: any) {
+        console.warn(`[API] Error parsing CSV row ${i + 1}:`, error.message);
+      }
+    }
+
+    if (rawRecords.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid data rows found in CSV',
+      });
+    }
+
+    // Insert raw data
+    await RawDataCollection.insertMany(rawRecords);
+
+    console.log('[API] Inserted', rawRecords.length, 'raw data records for app:', id);
+
+    res.json({
+      success: true,
+      message: `Successfully uploaded ${rawRecords.length} records. Now trigger batch processing to start evaluation.`,
+      recordsUploaded: rawRecords.length,
+    });
+  } catch (error: any) {
+    console.error('[API] Upload raw data error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to upload raw data',
+    });
+  }
+});
+
+// Helper function to parse CSV lines with quoted field support
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
+// Helper function to parse values to correct types
+function parseValue(value: string): any {
+  if (!isNaN(Number(value)) && value !== '') {
+    return Number(value);
+  }
+  if (value.toLowerCase() === 'true') return true;
+  if (value.toLowerCase() === 'false') return false;
+  if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
 export { applicationsRouter };
