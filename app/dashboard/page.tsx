@@ -5,6 +5,7 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { ApplicationsTable } from '@/src/components/dashboard/applications-table';
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
+import { RawDataTab } from '@/src/components/dashboard/raw-data-tab';
 import { AlertsDisplay, CollectiveAlertsSummary } from '@/src/components/dashboard/alerts-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ interface Application {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'metrics' | 'raw-data'>('metrics');
   const [applications, setApplications] = useState<Application[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [appsError, setAppsError] = useState<string | null>(null);
@@ -203,12 +205,54 @@ export default function DashboardPage() {
         )}
 
         {/* Metrics Display */}
-        <MetricsDisplay
-          metrics={metrics?.metrics || null}
-          applicationCount={metrics?.applicationCount}
-          isLoading={isLoading}
-          isEmpty={selectedAppIds.length === 0}
-        />
+        <div className="space-y-4">
+          <div className="flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('metrics')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'metrics'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Metrics
+            </button>
+            <button
+              onClick={() => setActiveTab('raw-data')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'raw-data'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Raw Data
+            </button>
+          </div>
+
+          {activeTab === 'metrics' && (
+            <MetricsDisplay
+              metrics={metrics?.metrics || null}
+              applicationCount={metrics?.applicationCount}
+              isLoading={isLoading}
+              isEmpty={selectedAppIds.length === 0}
+              frameworksUsed={metrics?.frameworksUsed}
+              slaCompliance={metrics?.slaCompliance}
+            />
+          )}
+
+          {activeTab === 'raw-data' && selectedAppIds.length > 0 && (
+            <RawDataTab applicationIds={selectedAppIds} />
+          )}
+
+          {activeTab === 'raw-data' && selectedAppIds.length === 0 && (
+            <Card className="p-8 bg-blue-50 border border-blue-200">
+              <div className="text-center">
+                <p className="text-blue-900 font-medium mb-1">No data to display</p>
+                <p className="text-sm text-blue-700">Select one or more applications to view raw evaluation data</p>
+              </div>
+            </Card>
+          )}
+        </div>
 
         {/* Collective Alerts Summary */}
         <CollectiveAlertsSummary

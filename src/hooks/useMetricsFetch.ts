@@ -17,12 +17,16 @@ export interface MetricsData {
   contextPrecision: number;
   contextRecall: number;
   timestamp: string;
+  frameworksUsed?: string[];
+  slaCompliance?: number;
 }
 
 export interface MetricsResponse {
   type: 'single' | 'aggregated' | 'empty';
   metrics?: MetricsData;
   applicationCount?: number;
+  frameworksUsed?: string[];
+  slaCompliance?: number;
 }
 
 export function useMetricsFetch() {
