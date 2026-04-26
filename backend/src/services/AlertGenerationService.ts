@@ -7,6 +7,38 @@ interface RawDataRecord {
   _id?: string;
   id?: string;
   userId?: string;
+  applicationId?: string;
+  
+  // Core Data
+  query?: string;
+  response?: string;
+  context?: string;
+  
+  // Timing Fields (ISO 8601 timestamps)
+  promptTimestamp?: string;
+  contextRetrievalStartTime?: string;
+  contextRetrievalEndTime?: string;
+  llmRequestStartTime?: string;
+  llmResponseEndTime?: string;
+  
+  // Calculated Latencies (milliseconds)
+  retrievalLatencyMs?: number;
+  llmLatencyMs?: number;
+  totalLatencyMs?: number;
+  
+  // Token & Content Metrics
+  contextChunkCount?: number;
+  contextTotalLengthWords?: number;
+  promptLengthWords?: number;
+  responseLengthWords?: number;
+  promptTokenCount?: number;
+  responseTokenCount?: number;
+  totalTokenCount?: number;
+  
+  // Status
+  status?: 'success' | 'error' | 'timeout' | 'partial';
+  
+  // Evaluation Metrics
   evaluation?: {
     metrics: Record<string, number>;
   };
@@ -115,6 +147,134 @@ export class AlertGenerationService {
     } catch (error: any) {
       logger.error(`[AlertService] Error generating alerts for app ${applicationId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Generate performance-based alerts for AI activity governance
+   * Triggers on latency degradation, token usage spikes, error rate increases
+   */
+  static async generatePerformanceAlerts(
+    applicationId: string,
+    governanceMetrics: any,
+    applicationSLA: ApplicationSLAConfig,
+    alertsCollection: AlertCollection
+  ): Promise<Alert[]> {
+    try {
+      const createdAlerts: Alert[] = [];
+      const currentTime = new Date();
+
+      // Define performance SLA thresholds (can be extended to config)
+      const performanceThresholds = {
+        p95LatencyMs: 5000, // 5 seconds
+        p99LatencyMs: 10000, // 10 seconds
+        errorRatePercent: 2, // 2% error rate
+        costPerQuery: 0.05, // $0.05 per query
+      };
+
+      // Alert: High P95 Latency (retrieval + LLM combined)
+      if (governanceMetrics.latency?.total?.p95 > performanceThresholds.p95LatencyMs) {
+        const latencyAlert: Alert = {
+          alertId: uuidv4(),
+          applicationId,
+          alertLevel: 'aggregated',
+          metricName: 'p95Latency',
+          actualValue: Math.round(governanceMetrics.latency.total.p95),
+          slaThreshold: performanceThresholds.p95LatencyMs,
+          deviation: ((governanceMetrics.latency.total.p95 - performanceThresholds.p95LatencyMs) / performanceThresholds.p95LatencyMs) * 100,
+          status: 'open',
+          createdAt: currentTime,
+          updatedAt: currentTime,
+        };
+        createdAlerts.push(latencyAlert);
+        logger.warn(`[AlertService] High P95 latency detected: ${governanceMetrics.latency.total.p95}ms`);
+      }
+
+      // Alert: High P99 Latency
+      if (governanceMetrics.latency?.total?.p99 > performanceThresholds.p99LatencyMs) {
+        const p99Alert: Alert = {
+          alertId: uuidv4(),
+          applicationId,
+          alertLevel: 'aggregated',
+          metricName: 'p99Latency',
+          actualValue: Math.round(governanceMetrics.latency.total.p99),
+          slaThreshold: performanceThresholds.p99LatencyMs,
+          deviation: ((governanceMetrics.latency.total.p99 - performanceThresholds.p99LatencyMs) / performanceThresholds.p99LatencyMs) * 100,
+          status: 'open',
+          createdAt: currentTime,
+          updatedAt: currentTime,
+        };
+        createdAlerts.push(p99Alert);
+      }
+
+      // Alert: High Error Rate
+      if (governanceMetrics.errors?.errorRate > performanceThresholds.errorRatePercent) {
+        const errorAlert: Alert = {
+          alertId: uuidv4(),
+          applicationId,
+          alertLevel: 'aggregated',
+          metricName: 'errorRate',
+          actualValue: Math.round(governanceMetrics.errors.errorRate * 100) / 100,
+          slaThreshold: performanceThresholds.errorRatePercent,
+          deviation: ((governanceMetrics.errors.errorRate - performanceThresholds.errorRatePercent) / performanceThresholds.errorRatePercent) * 100,
+          status: 'open',
+          createdAt: currentTime,
+          updatedAt: currentTime,
+        };
+        createdAlerts.push(errorAlert);
+        logger.warn(`[AlertService] High error rate detected: ${governanceMetrics.errors.errorRate}%`);
+      }
+
+      // Alert: Latency Degradation Trend
+      if (governanceMetrics.trends?.latencyTrend === 'degrading' && 
+          governanceMetrics.trends?.latencyChangePercent > 20) {
+        const trendAlert: Alert = {
+          alertId: uuidv4(),
+          applicationId,
+          alertLevel: 'aggregated',
+          metricName: 'latencyDegradation',
+          actualValue: Math.round(governanceMetrics.trends.latencyChangePercent * 100) / 100,
+          slaThreshold: 20, // Allow 20% increase before alerting
+          deviation: governanceMetrics.trends.latencyChangePercent - 20,
+          status: 'open',
+          createdAt: currentTime,
+          updatedAt: currentTime,
+        };
+        createdAlerts.push(trendAlert);
+        logger.warn(`[AlertService] Latency degradation detected: +${governanceMetrics.trends.latencyChangePercent}%`);
+      }
+
+      // Alert: Cost Spike
+      if (governanceMetrics.cost?.costPerQuery?.avg > performanceThresholds.costPerQuery) {
+        const costAlert: Alert = {
+          alertId: uuidv4(),
+          applicationId,
+          alertLevel: 'aggregated',
+          metricName: 'costPerQuery',
+          actualValue: Math.round(governanceMetrics.cost.costPerQuery.avg * 10000) / 10000,
+          slaThreshold: performanceThresholds.costPerQuery,
+          deviation: ((governanceMetrics.cost.costPerQuery.avg - performanceThresholds.costPerQuery) / performanceThresholds.costPerQuery) * 100,
+          status: 'open',
+          createdAt: currentTime,
+          updatedAt: currentTime,
+        };
+        createdAlerts.push(costAlert);
+        logger.warn(`[AlertService] High cost per query detected: $${governanceMetrics.cost.costPerQuery.avg}`);
+      }
+
+      // Upsert alerts to collection
+      for (const alert of createdAlerts) {
+        await alertsCollection.updateOne(
+          { applicationId, metricName: alert.metricName, alertLevel: 'aggregated' },
+          { $set: alert },
+          { upsert: true }
+        );
+      }
+
+      return createdAlerts;
+    } catch (error: any) {
+      logger.error(`[AlertService] Error generating performance alerts:`, error);
+      return [];
     }
   }
 

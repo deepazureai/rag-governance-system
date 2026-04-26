@@ -66,10 +66,43 @@ export interface RawDataRecord {
   connectionId: string;
   mappingId: string;
   sourceId: number | string; // Original ID from source database
+  userId?: string;
+  sessionId?: string;
+  
+  // Core Data
   prompt: string;
   context?: string;
   response: string;
-  userId?: string;
+  userPrompt?: string;
+  llmResponse?: string;
+
+  // Timing Fields - for AI Activity Governance (ISO 8601 timestamps)
+  promptTimestamp?: Date; // When the request was received
+  contextRetrievalStartTime?: Date; // When context retrieval began
+  contextRetrievalEndTime?: Date; // When context retrieval completed
+  llmRequestStartTime?: Date; // When LLM request was sent
+  llmResponseEndTime?: Date; // When LLM response was received
+
+  // Calculated Latencies (in milliseconds)
+  retrievalLatencyMs?: number; // contextRetrievalEndTime - contextRetrievalStartTime
+  llmLatencyMs?: number; // llmResponseEndTime - llmRequestStartTime
+  totalLatencyMs?: number; // llmResponseEndTime - promptTimestamp
+
+  // Token & Content Metrics
+  contextChunkCount?: number; // Number of retrieved context chunks
+  contextTotalLengthWords?: number; // Total words in context
+  promptLengthWords?: number; // Words in user prompt
+  responseLengthWords?: number; // Words in response
+  
+  // Estimated Token Counts (for cost & governance tracking)
+  promptTokenCount?: number; // Estimated request tokens (~ promptLengthWords / 0.75)
+  responseTokenCount?: number; // Estimated response tokens (~ responseLengthWords / 0.75)
+  totalTokenCount?: number; // Total tokens used
+
+  // Status & Metadata
+  status?: 'success' | 'error' | 'timeout' | 'partial';
+  errorMessage?: string;
+  
   timestamp?: Date;
   fetchedAt: Date;
   updatedAt: Date;

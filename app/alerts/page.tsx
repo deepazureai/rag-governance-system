@@ -42,6 +42,18 @@ const getSeverityIcon = (severity: string) => {
   }
 };
 
+// Categorize alert by metric name
+const getAlertType = (metricName?: string): 'evaluation' | 'performance' => {
+  if (!metricName) return 'evaluation';
+  
+  const performanceMetrics = [
+    'p95Latency', 'p99Latency', 'errorRate', 'latencyDegradation', 
+    'costPerQuery', 'timeoutRate', 'retrievalLatency', 'llmLatency'
+  ];
+  
+  return performanceMetrics.includes(metricName) ? 'performance' : 'evaluation';
+};
+
 export default function AlertsPage() {
   const [mounted, setMounted] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -51,6 +63,7 @@ export default function AlertsPage() {
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('critical');
+  const [alertType, setAlertType] = useState<'all' | 'evaluation' | 'performance'>('all');
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [bulkAction, setBulkAction] = useState<'close' | 'acknowledge' | null>(null);
@@ -70,7 +83,7 @@ export default function AlertsPage() {
     if (selectedAppIds.length > 0 && mounted) {
       fetchAlerts();
     }
-  }, [selectedAppIds, activeFilter, page, mounted]);
+  }, [selectedAppIds, activeFilter, alertType, page, mounted]);
 
   const fetchApplications = async () => {
     try {
@@ -301,6 +314,32 @@ export default function AlertsPage() {
                 ))}
               </div>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Alert Type</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'all', label: 'All Alerts' },
+                  { value: 'evaluation', label: 'Evaluation Metrics' },
+                  { value: 'performance', label: 'Performance' }
+                ].map((type) => (
+                  <Button
+                    key={type.value}
+                    onClick={() => {
+                      setAlertType(type.value as 'all' | 'evaluation' | 'performance');
+                      setPage(1);
+                    }}
+                    className={
+                      alertType === type.value
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 text-gray-800'
+                    }
+                  >
+                    {type.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -317,8 +356,21 @@ export default function AlertsPage() {
             </div>
           ) : (
             <>
-              {/* Bulk Actions */}
-              {selectedAlerts.size > 0 && (
+              {/* Filter alerts by type */}
+              {(() => {
+                const filteredAlerts = alertType === 'all' 
+                  ? alerts 
+                  : alerts.filter(alert => getAlertType(alert.metricName) === alertType);
+                
+                return filteredAlerts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No {alertType} alerts found</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Bulk Actions */}
+                    {selectedAlerts.size > 0 && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded flex items-center justify-between">
                   <span className="text-sm font-medium text-blue-900">
                     {selectedAlerts.size} alert{selectedAlerts.size !== 1 ? 's' : ''} selected
@@ -413,6 +465,9 @@ export default function AlertsPage() {
                   </Button>
                 </div>
               </div>
+                  </>
+                );
+              })()}
             </>
           )}
         </Card>
