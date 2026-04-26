@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Alert, AlertThresholdConfig, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
+import { Alert, AlertThresholdConfig, MetricThreshold, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
 
 // Construct API_BASE_URL ensuring it has /api path
 let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -74,7 +74,8 @@ export function useAlerts(): UseAlertsReturn {
         
         for (const metricKey of metricKeys) {
           const metricValue = metrics[metricKey];
-          const threshold = thresholds.metrics[metricKey];
+          // Get threshold config for this metric key
+          const threshold = (thresholds as any)[metricKey] as MetricThreshold | undefined;
           
           if (!threshold) continue;
           
@@ -83,14 +84,13 @@ export function useAlerts(): UseAlertsReturn {
             newAlerts.push({
               id: uuidv4(),
               appId,
-              metric: metricKey,
-              value: metricValue,
-              threshold: threshold.critical,
+              metricName: metricKey,
               severity: 'critical',
               message: `${metricKey} is critically low: ${metricValue.toFixed(2)} (threshold: ${threshold.critical})`,
               resolved: false,
-              createdAt: new Date().toISOString(),
-              resolvedAt: undefined,
+              timestamp: new Date().toISOString(),
+              metricValue,
+              threshold: threshold.critical,
             });
           }
           // Check if metric is below warning threshold
@@ -98,14 +98,13 @@ export function useAlerts(): UseAlertsReturn {
             newAlerts.push({
               id: uuidv4(),
               appId,
-              metric: metricKey,
-              value: metricValue,
-              threshold: threshold.warning,
+              metricName: metricKey,
               severity: 'warning',
               message: `${metricKey} is below target: ${metricValue.toFixed(2)} (threshold: ${threshold.warning})`,
               resolved: false,
-              createdAt: new Date().toISOString(),
-              resolvedAt: undefined,
+              timestamp: new Date().toISOString(),
+              metricValue,
+              threshold: threshold.warning,
             });
           }
         }
