@@ -237,7 +237,7 @@ export class BatchProcessingService {
         const qualityAlerts = await AlertGenerationService.generateAlertsForBatch(
           applicationId,
           evaluations,
-          AlertsCollection
+          AlertsCollection as any
         );
         logger.info(`[BatchProcessingService] Generated ${qualityAlerts.length} evaluation quality alerts`);
       }
@@ -249,8 +249,11 @@ export class BatchProcessingService {
         const performanceAlerts = await AlertGenerationService.generatePerformanceAlerts(
           applicationId,
           governanceMetrics,
-          {}, // SLA config - could be made configurable
-          AlertsCollection
+          {
+            metrics: {},
+            overallScoreThresholds: { good: 70, excellent: 85 }
+          },
+          AlertsCollection as any
         );
         logger.info(`[BatchProcessingService] Generated ${performanceAlerts.length} performance alerts`);
       } catch (perfError: any) {
