@@ -72,6 +72,8 @@ metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
         data: {
           type: 'single',
           metrics: metricsArray[0],
+          frameworksUsed: metricsArray[0].frameworksUsed,
+          slaCompliance: metricsArray[0].slaCompliance,
         },
       });
     }
@@ -84,6 +86,8 @@ metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
       data: {
         type: 'aggregated',
         metrics: aggregatedMetrics,
+        frameworksUsed: aggregatedMetrics.frameworksUsed,
+        slaCompliance: aggregatedMetrics.slaCompliance,
         individualMetrics: metricsArray,
       },
     });
@@ -133,6 +137,8 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
         data: {
           type: 'single',
           metrics: metricsArray[0],
+          frameworksUsed: metricsArray[0].frameworksUsed,
+          slaCompliance: metricsArray[0].slaCompliance,
         },
       });
     }
@@ -144,6 +150,8 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
       data: {
         type: 'aggregated',
         metrics: aggregatedMetrics,
+        frameworksUsed: aggregatedMetrics.frameworksUsed,
+        slaCompliance: aggregatedMetrics.slaCompliance,
         applicationCount: metricsArray.length,
       },
     });

@@ -12,6 +12,8 @@ export interface ApplicationMetrics {
   contextPrecision: number;
   contextRecall: number;
   timestamp: string;
+  frameworksUsed?: string[];
+  slaCompliance?: number;
 }
 
 export interface AggregatedMetrics {
@@ -24,6 +26,8 @@ export interface AggregatedMetrics {
   contextRecall: number;
   applicationCount: number;
   timestamp: string;
+  frameworksUsed?: string[];
+  slaCompliance?: number;
 }
 
 export class ApplicationMetricsService {
@@ -45,6 +49,12 @@ export class ApplicationMetricsService {
       // Calculate average metrics from all evaluations
       const avgMetrics = this.calculateAverageMetrics(evaluations);
 
+      // Extract frameworks used from evaluations
+      const frameworksUsed = this.extractFrameworksUsed(evaluations);
+
+      // Calculate SLA compliance
+      const slaCompliance = this.calculateSLACompliance(avgMetrics);
+
       // Get application name
       const ApplicationCollection = mongoose.connection.collection('applicationmasters');
       const appRecord = await ApplicationCollection.findOne({ id: applicationId });
@@ -54,6 +64,8 @@ export class ApplicationMetricsService {
         applicationId,
         applicationName: appName,
         ...avgMetrics,
+        frameworksUsed,
+        slaCompliance,
         timestamp: new Date().toISOString(),
       };
 
@@ -144,6 +156,54 @@ export class ApplicationMetricsService {
   }
 
   /**
+   * Extract frameworks used from evaluation records
+   */
+  private extractFrameworksUsed(evaluations: any[]): string[] {
+    const frameworksSet = new Set<string>();
+    
+    for (const evaluation of evaluations) {
+      if (Array.isArray(evaluation.frameworksUsed)) {
+        evaluation.frameworksUsed.forEach((f: string) => frameworksSet.add(f));
+      }
+    }
+    
+    return Array.from(frameworksSet).sort();
+  }
+
+  /**
+   * Calculate SLA compliance percentage based on metric thresholds
+   * SLA Compliance: percentage of metrics that meet or exceed their SLA thresholds
+   */
+  private calculateSLACompliance(metrics: any): number {
+    // Define SLA thresholds for each metric (0-100 scale)
+    const slaThresholds = {
+      groundedness: 70,
+      coherence: 70,
+      relevance: 70,
+      faithfulness: 75,
+      answerRelevancy: 75,
+      contextPrecision: 80,
+      contextRecall: 70,
+    };
+
+    let meetsThreshold = 0;
+    let totalMetrics = 0;
+
+    for (const [metricName, threshold] of Object.entries(slaThresholds)) {
+      const metricValue = metrics[metricName];
+      if (metricValue !== undefined && metricValue !== null) {
+        totalMetrics++;
+        if (metricValue >= threshold) {
+          meetsThreshold++;
+        }
+      }
+    }
+
+    if (totalMetrics === 0) return 0;
+    return (meetsThreshold / totalMetrics) * 100;
+  }
+
+  /**
    * Aggregate metrics across multiple applications by averaging
    */
   aggregateMetrics(metricsArray: ApplicationMetrics[]): AggregatedMetrics {
@@ -170,6 +230,21 @@ export class ApplicationMetricsService {
     for (const key of metricKeys) {
       const sum = metricsArray.reduce((acc, m) => acc + (m[key] || 0), 0);
       aggregated[key] = sum / metricsArray.length;
+    }
+
+    // Aggregate frameworks used (collect all unique frameworks)
+    const allFrameworks = new Set<string>();
+    metricsArray.forEach(m => {
+      m.frameworksUsed?.forEach(f => allFrameworks.add(f));
+    });
+    aggregated.frameworksUsed = Array.from(allFrameworks);
+
+    // Aggregate SLA compliance (average SLA across apps)
+    const slaComplianceValues = metricsArray
+      .filter(m => m.slaCompliance !== undefined)
+      .map(m => m.slaCompliance!);
+    if (slaComplianceValues.length > 0) {
+      aggregated.slaCompliance = slaComplianceValues.reduce((a, b) => a + b, 0) / slaComplianceValues.length;
     }
 
     logger.info(`[v0] Aggregated metrics for ${metricsArray.length} applications`);
