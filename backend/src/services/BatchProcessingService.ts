@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger.js';
 import { LocalFolderConnector, FileAccessError, ParsedRecord } from '../connectors/LocalFolderConnector.js';
 import { createEvaluationService } from './evaluation.js';
+import MultiFrameworkEvaluator, { FrameworkResult, EvaluationMetrics } from './MultiFrameworkEvaluator.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {
@@ -53,12 +54,10 @@ export class BatchProcessingService {
       const insertedRaw = await RawDataCollection.insertMany(rawRecords);
       logger.info(`[BatchProcessingService] Inserted ${insertedRaw.insertedCount} raw records`);
 
-      // Phase 3: Evaluate with RAGAS
-      logger.info(`[BatchProcessingService] Phase 3: Evaluating records with RAGAS`);
+      // Phase 3: Evaluate with Multi-Framework Approach
+      logger.info(`[BatchProcessingService] Phase 3: Evaluating records with multi-framework approach (RAGAS, BLEU/ROUGE, LlamaIndex)`);
       const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
       
-      // Create evaluation service instance (requires database interface)
-      // For now, we'll do simplified evaluation without full service
       let evaluatedCount = 0;
       
       for (const record of records) {
@@ -72,17 +71,15 @@ export class BatchProcessingService {
               [{ content: record.data.retrieved_documents, source: 'unknown' }]
             ) : [];
           
-          // Mock evaluation with placeholder scores (simplified for now)
-          const evaluation = {
-            faithfulness: Math.random() * 100,
-            answer_relevancy: Math.random() * 100,
-            context_relevancy: Math.random() * 100,
-            context_precision: Math.random() * 100,
-            context_recall: Math.random() * 100,
-            correctness: Math.random() * 100,
-            overall_score: Math.random() * 100,
-          };
+          // Evaluate with multi-framework approach
+          logger.info(`[BatchProcessingService] Evaluating record ${evaluatedCount + 1}/${records.length}`);
+          const { frameworkResults, mappedMetrics } = await MultiFrameworkEvaluator.evaluateMultiFramework(
+            query,
+            response,
+            retrievedDocuments
+          );
           
+          // Create evaluation record with framework results and mapped metrics
           const evaluationRecord = {
             applicationId,
             connectionId,
@@ -91,27 +88,42 @@ export class BatchProcessingService {
             query,
             response,
             retrievedDocuments,
+            
+            // Store raw framework results for transparency
+            frameworksUsed: frameworkResults.map(r => r.framework),
+            rawFrameworkResults: frameworkResults,
+            
+            // Store final mapped metrics
             evaluation: {
-              faithfulness: evaluation.faithfulness,
-              answer_relevancy: evaluation.answer_relevancy,
-              context_relevancy: evaluation.context_relevancy,
-              context_precision: evaluation.context_precision,
-              context_recall: evaluation.context_recall,
-              correctness: evaluation.correctness,
-              overall_score: evaluation.overall_score,
+              // Dashboard metrics (what's shown in dashboard)
+              groundedness: mappedMetrics.groundedness,
+              coherence: mappedMetrics.coherence,
+              relevance: mappedMetrics.relevance,
+              faithfulness: mappedMetrics.faithfulness,
+              answerRelevancy: mappedMetrics.answerRelevancy,
+              contextPrecision: mappedMetrics.contextPrecision,
+              contextRecall: mappedMetrics.contextRecall,
+              overallScore: mappedMetrics.overallScore,
+              
+              // Raw metrics from each framework for governance page
+              rawMetrics: mappedMetrics,
             },
+            
             evaluatedAt: new Date(),
             status: 'completed',
           };
           
           await EvaluationCollection.insertOne(evaluationRecord);
           evaluatedCount++;
+          
+          logger.info(`[BatchProcessingService] Record ${evaluatedCount} evaluated successfully`);
         } catch (evalError: any) {
           logger.error(`[BatchProcessingService] Evaluation failed for record:`, evalError.message);
+          // Continue with next record even if one fails
         }
       }
 
-      logger.info(`[BatchProcessingService] Evaluated ${evaluatedCount} records successfully`);
+      logger.info(`[BatchProcessingService] Evaluated ${evaluatedCount}/${records.length} records successfully`);
 
       logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
 

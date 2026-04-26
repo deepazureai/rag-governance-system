@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
+import GovernanceMetricsService from '../services/GovernanceMetricsService.js';
 
 export const governanceMetricsRouter = Router();
 
@@ -470,3 +471,289 @@ function calculatePercentile(values: number[], percentile: number): number {
   const index = Math.ceil((percentile / 100) * sorted.length) - 1;
   return sorted[Math.max(0, index)];
 }
+
+/**
+ * NEW ROUTES: Raw Data Visualization with Multi-Framework Support
+ */
+
+/**
+ * GET /api/governance-metrics/sla-compliance/:appId
+ * Get SLA compliance summary for an application (multi-framework aware)
+ */
+governanceMetricsRouter.get('/sla-compliance/:appId', async (req: Request, res: Response) => {
+  try {
+    const appId = getStringParam(req.params.appId);
+    if (!appId) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId is required',
+      });
+    }
+
+    logger.info('[Governance] GET SLA compliance summary:', { appId });
+
+    const summary = await GovernanceMetricsService.getSLAComplianceSummary(appId);
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting SLA compliance summary:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/governance-metrics/raw-data/:appId
+ * Get raw data grouped by metric, status, framework, or date
+ * Query params:
+ *   - groupBy: 'metric', 'status', 'framework', or 'date'
+ *   - limit: Results per page (default 100)
+ *   - offset: Pagination offset (default 0)
+ */
+governanceMetricsRouter.get('/raw-data/:appId', async (req: Request, res: Response) => {
+  try {
+    const appId = getStringParam(req.params.appId);
+    if (!appId) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId is required',
+      });
+    }
+
+    const { groupBy, limit, offset } = req.query;
+
+    logger.info('[Governance] GET raw data:', { appId, groupBy });
+
+    const { metrics } = await GovernanceMetricsService.getApplicationGovernanceMetrics(appId, {
+      limit: parseInt(limit as string) || 100,
+      offset: parseInt(offset as string) || 0,
+    });
+
+    // Group data if requested
+    let groupedData: any = metrics;
+    
+    if (groupBy === 'metric') {
+      groupedData = {};
+      for (const metric of metrics) {
+        for (const sla of metric.slaCompliance) {
+          if (!groupedData[sla.metricName]) {
+            groupedData[sla.metricName] = [];
+          }
+          groupedData[sla.metricName].push({
+            value: sla.value,
+            status: sla.status,
+            query: metric.rawData.query.substring(0, 100),
+            response: metric.rawData.response.substring(0, 100),
+          });
+        }
+      }
+    } else if (groupBy === 'status') {
+      groupedData = { critical: [], warning: [], healthy: [] };
+      for (const metric of metrics) {
+        for (const sla of metric.slaCompliance) {
+          groupedData[sla.status].push({
+            metric: sla.metricName,
+            value: sla.value,
+            query: metric.rawData.query.substring(0, 100),
+            response: metric.rawData.response.substring(0, 100),
+          });
+        }
+      }
+    } else if (groupBy === 'framework') {
+      groupedData = {};
+      for (const metric of metrics) {
+        for (const framework of metric.frameworksUsed) {
+          if (!groupedData[framework]) {
+            groupedData[framework] = [];
+          }
+          groupedData[framework].push({
+            query: metric.rawData.query.substring(0, 100),
+            response: metric.rawData.response.substring(0, 100),
+            slaCompliance: metric.slaCompliance,
+          });
+        }
+      }
+    } else if (groupBy === 'date') {
+      groupedData = {};
+      for (const metric of metrics) {
+        const date = new Date(metric.timestamp).toISOString().split('T')[0];
+        if (!groupedData[date]) {
+          groupedData[date] = [];
+        }
+        groupedData[date].push({
+          query: metric.rawData.query.substring(0, 100),
+          response: metric.rawData.response.substring(0, 100),
+          slaCompliance: metric.slaCompliance,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      appId,
+      groupBy: groupBy || 'none',
+      data: groupedData,
+      count: metrics.length,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting raw data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/governance-metrics/raw-data/by-metric/:appId/:metricName
+ * Get raw data for a specific metric with SLA status
+ * Query params:
+ *   - limit: Results per page (default 50)
+ *   - offset: Pagination offset (default 0)
+ */
+governanceMetricsRouter.get('/raw-data/by-metric/:appId/:metricName', async (req: Request, res: Response) => {
+  try {
+    const appId = getStringParam(req.params.appId);
+    const metricName = getStringParam(req.params.metricName);
+    
+    if (!appId || !metricName) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId and metricName are required',
+      });
+    }
+
+    const { limit, offset } = req.query;
+
+    logger.info('[Governance] GET raw data by metric:', { appId, metricName });
+
+    const data = await GovernanceMetricsService.getRawDataGroupedByMetric(appId, metricName, {
+      limit: parseInt(limit as string) || 50,
+      offset: parseInt(offset as string) || 0,
+    });
+
+    res.json({
+      success: true,
+      metric: metricName,
+      data,
+      count: data.length,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting raw data by metric:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/governance-metrics/raw-data/by-status/:appId/:status
+ * Get raw data grouped by SLA status
+ * Params:
+ *   - status: 'critical', 'warning', or 'healthy'
+ * Query params:
+ *   - limit: Results per page (default 50)
+ *   - offset: Pagination offset (default 0)
+ */
+governanceMetricsRouter.get('/raw-data/by-status/:appId/:status', async (req: Request, res: Response) => {
+  try {
+    const appId = getStringParam(req.params.appId);
+    const status = getStringParam(req.params.status);
+
+    if (!appId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId and status are required',
+      });
+    }
+
+    // Validate status
+    if (!['critical', 'warning', 'healthy'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be critical, warning, or healthy.',
+      });
+    }
+
+    const { limit, offset } = req.query;
+
+    logger.info('[Governance] GET raw data by status:', { appId, status });
+
+    const data = await GovernanceMetricsService.getRawDataGroupedByStatus(
+      appId,
+      status as 'critical' | 'warning' | 'healthy',
+      {
+        limit: parseInt(limit as string) || 50,
+        offset: parseInt(offset as string) || 0,
+      }
+    );
+
+    res.json({
+      success: true,
+      status,
+      data,
+      count: data.length,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting raw data by status:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/governance-metrics/detailed/:appId
+ * Get detailed governance metrics for an application (multi-framework aware)
+ * Query params:
+ *   - batchId: Filter by specific batch
+ *   - framework: Filter by framework name
+ *   - metricFilter: Filter by metric name
+ *   - slaStatus: Filter by SLA status (critical, warning, healthy)
+ *   - limit: Results per page (default 100)
+ *   - offset: Pagination offset (default 0)
+ */
+governanceMetricsRouter.get('/detailed/:appId', async (req: Request, res: Response) => {
+  try {
+    const appId = getStringParam(req.params.appId);
+    if (!appId) {
+      return res.status(400).json({
+        success: false,
+        message: 'appId is required',
+      });
+    }
+
+    const { batchId, framework, metricFilter, slaStatus, limit, offset } = req.query;
+
+    logger.info('[Governance] GET detailed governance metrics:', { appId, framework });
+
+    const { metrics, total } = await GovernanceMetricsService.getApplicationGovernanceMetrics(appId, {
+      batchId: batchId as string | undefined,
+      framework: framework as string | undefined,
+      metricFilter: metricFilter as string | undefined,
+      slaStatusFilter: (slaStatus as 'critical' | 'warning' | 'healthy' | undefined),
+      limit: parseInt(limit as string) || 100,
+      offset: parseInt(offset as string) || 0,
+    });
+
+    res.json({
+      success: true,
+      data: metrics,
+      total,
+      count: metrics.length,
+    });
+  } catch (error: any) {
+    logger.error('[Governance] Error getting detailed governance metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
