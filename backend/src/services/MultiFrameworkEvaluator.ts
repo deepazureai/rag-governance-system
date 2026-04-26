@@ -264,9 +264,9 @@ export class MultiFrameworkEvaluator {
       llamaRelevancy: allMetrics.llamaRelevancy ?? 0,
       llamaFaithfulness: allMetrics.llamaFaithfulness ?? 0,
       
-      // Mapped dashboard metrics
+      // Mapped dashboard metrics with proper fallbacks
       groundedness: allMetrics.faithfulness ?? allMetrics.correctness ?? allMetrics.llamaFaithfulness ?? 0,
-      coherence: allMetrics.correctness ?? allMetrics.llamaCorrectness ?? (allMetrics.rougeL ?? 0) * 100 ?? 0,
+      coherence: allMetrics.correctness ?? allMetrics.llamaCorrectness ?? (allMetrics.rougeL ?? 0) ?? 0,
       relevance: allMetrics.contextRelevancy ?? allMetrics.answerRelevancy ?? allMetrics.llamaRelevancy ?? 0,
       
       // Overall score - average of available primary metrics
@@ -319,11 +319,21 @@ export class MultiFrameworkEvaluator {
   private static calculateAnswerRelevancy(query: string, response: string): number {
     if (!query || !response) return 0;
     
-    const queryWords = new Set(query.toLowerCase().split(/\s+/));
+    const queryWords = query.toLowerCase().split(/\s+/);
     const responseWords = response.toLowerCase().split(/\s+/);
     
-    const relevantWords = responseWords.filter(w => queryWords.has(w) || w.length > 4).length;
-    return Math.min(100, (relevantWords / responseWords.length) * 100);
+    // Count exact word matches
+    const querySet = new Set(queryWords);
+    const exactMatches = responseWords.filter(w => querySet.has(w)).length;
+    
+    // Also count words with more than 4 characters (likely meaningful)
+    const meaningfulWords = responseWords.filter(w => w.length > 4 && querySet.has(w)).length;
+    
+    // Calculate semantic relevance: combine exact matches and meaningful words
+    const exactScore = (exactMatches / responseWords.length);
+    const meaningfulScore = (meaningfulWords / Math.min(queryWords.filter(w => w.length > 4).length, responseWords.filter(w => w.length > 4).length || 1));
+    
+    return Math.min(100, ((exactScore * 0.6 + meaningfulScore * 0.4) * 100));
   }
   
   private static calculateContextRelevancy(
@@ -362,11 +372,19 @@ export class MultiFrameworkEvaluator {
     return Math.min(100, (precisionCount / docs.length) * 100);
   }
   
-  private static calculateContextRecall(docs: Array<{ content: string; source: string; relevance?: number }>): number {
+  private static calculateContextRecall(
+    docs: Array<{ content: string; source: string; relevance?: number }>
+  ): number {
     if (docs.length === 0) return 0;
     
-    // Recall is based on how many documents were retrieved
-    return Math.min(100, docs.length * 20); // Assume ~5 docs is 100%
+    // Recall score based on document count and their relevance scores
+    // Assume 5 documents with high relevance = 100%
+    const relevanceSum = docs.reduce((sum, doc) => sum + (doc.relevance ?? 50), 0);
+    const avgRelevance = relevanceSum / docs.length;
+    const docCountScore = Math.min(100, (docs.length / 5) * 100); // 5 docs = 100%
+    
+    // Combine document count and average relevance
+    return (docCountScore * 0.6 + avgRelevance * 0.4);
   }
   
   private static calculateCorrectness(
@@ -382,29 +400,78 @@ export class MultiFrameworkEvaluator {
   private static calculateBLEU(response: string, reference: string): number {
     if (!response || !reference) return 0;
     
+    // Simplified BLEU: Use 1-gram and 2-gram precision
     const responseTokens = response.toLowerCase().split(/\s+/);
     const referenceTokens = reference.toLowerCase().split(/\s+/);
     
-    let matches = 0;
+    // 1-gram matches
+    let unigramMatches = 0;
     for (const token of responseTokens) {
       if (referenceTokens.includes(token)) {
-        matches++;
+        unigramMatches++;
       }
     }
     
-    return Math.min(100, (matches / responseTokens.length) * 100);
+    // 2-gram matches
+    let bigramMatches = 0;
+    for (let i = 0; i < responseTokens.length - 1; i++) {
+      const bigram = responseTokens[i] + ' ' + responseTokens[i + 1];
+      const referenceBigrams = [];
+      for (let j = 0; j < referenceTokens.length - 1; j++) {
+        referenceBigrams.push(referenceTokens[j] + ' ' + referenceTokens[j + 1]);
+      }
+      if (referenceBigrams.includes(bigram)) {
+        bigramMatches++;
+      }
+    }
+    
+    // BLEU score combines unigram and bigram precision (weighted: 0.5 each)
+    const unigramPrecision = responseTokens.length > 0 ? (unigramMatches / responseTokens.length) : 0;
+    const bigramPrecision = responseTokens.length > 1 ? (bigramMatches / (responseTokens.length - 1)) : 0;
+    
+    return Math.min(100, ((unigramPrecision * 0.5 + bigramPrecision * 0.5) * 100));
   }
   
   private static calculateROUGE(response: string, reference: string): number {
     if (!response || !reference) return 0;
     
-    const responseTokens = new Set(response.toLowerCase().split(/\s+/));
-    const referenceTokens = new Set(reference.toLowerCase().split(/\s+/));
+    // ROUGE-L: Longest Common Subsequence based metric
+    const responseTokens = response.toLowerCase().split(/\s+/);
+    const referenceTokens = reference.toLowerCase().split(/\s+/);
     
-    const intersection = Array.from(responseTokens).filter(t => referenceTokens.has(t)).length;
-    const union = new Set([...responseTokens, ...referenceTokens]).size;
+    // Calculate longest common subsequence length
+    const lcsLength = this.longestCommonSubsequence(responseTokens, referenceTokens);
     
-    return (intersection / union) * 100;
+    // ROUGE-L Recall: LCS length / reference length
+    // ROUGE-L Precision: LCS length / response length
+    const recall = lcsLength / referenceTokens.length;
+    const precision = lcsLength / responseTokens.length;
+    
+    // F-score: harmonic mean of recall and precision
+    if (recall + precision === 0) return 0;
+    const fScore = (2 * recall * precision) / (recall + precision);
+    
+    return Math.min(100, fScore * 100);
+  }
+  
+  private static longestCommonSubsequence(arr1: string[], arr2: string[]): number {
+    const m = arr1.length;
+    const n = arr2.length;
+    
+    // Create DP table
+    const dp: number[][] = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+    
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (arr1[i - 1] === arr2[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+    
+    return dp[m][n];
   }
   
   private static calculateLlamaCorrectness(
