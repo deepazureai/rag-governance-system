@@ -164,6 +164,57 @@ export class BatchProcessingService {
     fileName: string;
     error?: FileAccessError;
   }> {
+    // If sourceType is 'mongodb' or 'rawdatarecords', read from MongoDB collection
+    if (sourceType === 'mongodb' || sourceType === 'rawdatarecords' || !sourceType) {
+      logger.info(`[BatchProcessingService] Reading from rawdatarecords collection for app ${applicationId}`);
+      
+      const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+      const rawDataRecords = await RawDataCollection.find({ applicationId }).toArray();
+      
+      if (!rawDataRecords || rawDataRecords.length === 0) {
+        logger.warn(`[BatchProcessingService] No raw data records found for applicationId: ${applicationId}`);
+        return {
+          records: [],
+          fileSize: 0,
+          fileName: 'mongodb_rawdatarecords',
+          error: { code: 'NO_DATA', message: 'No raw data records found in MongoDB' } as any,
+        };
+      }
+
+      // Convert MongoDB documents to ParsedRecord format
+      const records: ParsedRecord[] = rawDataRecords.map((record: any, index: number) => ({
+        lineNumber: index + 1,
+        data: {
+          userId: record.userId,
+          sessionId: record.sessionId,
+          userPrompt: record.userPrompt,
+          context: record.context,
+          llmResponse: record.llmResponse,
+          query: record.userPrompt, // For RAGAS evaluation
+          response: record.llmResponse, // For RAGAS evaluation
+          retrieved_documents: record.context ? [{ content: record.context, source: 'mongodb' }] : [],
+          promptTimestamp: record.promptTimestamp,
+          contextRetrievalStartTime: record.contextRetrievalStartTime,
+          contextRetrievalEndTime: record.contextRetrievalEndTime,
+          llmRequestStartTime: record.llmRequestStartTime,
+          llmResponseEndTime: record.llmResponseEndTime,
+          contextChunkCount: record.contextChunkCount,
+          contextTotalLengthWords: record.contextTotalLengthWords,
+          promptLengthWords: record.promptLengthWords,
+          responseLengthWords: record.responseLengthWords,
+          status: record.status,
+        },
+      }));
+
+      logger.info(`[BatchProcessingService] Read ${records.length} records from MongoDB rawdatarecords collection`);
+
+      return {
+        records,
+        fileSize: records.length * 100, // Approximate size
+        fileName: 'mongodb_rawdatarecords',
+      };
+    }
+
     if (sourceType === 'local_folder') {
       const { folderPath, fileName } = sourceConfig;
       const connector = new LocalFolderConnector({ folderPath });
