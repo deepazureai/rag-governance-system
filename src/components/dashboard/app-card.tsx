@@ -30,15 +30,17 @@ export function AppCard({ app }: AppCardProps) {
       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
         <div>
           <p className="text-gray-600 text-xs">Framework</p>
-          <p className="text-gray-900 font-medium">{app.ragFramework}</p>
+          <p className="text-gray-900 font-medium">{app.ragFramework || 'N/A'}</p>
         </div>
         <div>
           <p className="text-gray-600 text-xs">Owner</p>
-          <p className="text-gray-900 font-medium">{app.owner}</p>
+          <p className="text-gray-900 font-medium">{app.owner || 'N/A'}</p>
         </div>
         <div>
           <p className="text-gray-600 text-xs">Data Source</p>
-          <p className="text-gray-900 font-medium truncate">{app.dataSource}</p>
+          <p className="text-gray-900 font-medium truncate">
+            {typeof app.dataSource === 'string' ? app.dataSource : (app.dataSource?.type ? app.dataSource.type.replace('_', ' ').toUpperCase() : 'N/A')}
+          </p>
         </div>
         <div>
           <p className="text-gray-600 text-xs">Deployed</p>
