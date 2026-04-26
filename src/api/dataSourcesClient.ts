@@ -1,6 +1,13 @@
 import { DataSourceConfig, DataSourceTestResult, DataSourceResponse } from '@/src/types/dataSource';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+// Ensure /api is appended if not already present
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+
+const API_BASE = apiUrl;
 
 export const dataSourcesClient = {
   // Get all configurations for an app

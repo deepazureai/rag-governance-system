@@ -1,8 +1,15 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+// Ensure /api is appended if not already present
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+
+const API_BASE_URL = apiUrl;
 
 export const dataIngestionClient = {
   async ingestFromLocalFolder(applicationId: string, applicationName: string, folderPath: string, fileName: string) {
-    const response = await fetch(`${API_BASE_URL}/api/data/ingest/local-folder`, {
+    const response = await fetch(`${API_BASE_URL}/data/ingest/local-folder`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ applicationId, applicationName, folderPath, fileName }),
@@ -23,7 +30,7 @@ export const dataIngestionClient = {
     blobName: string,
     connectionString: string
   ) {
-    const response = await fetch(`${API_BASE_URL}/api/data/ingest/azure-blob`, {
+    const response = await fetch(`${API_BASE_URL}/data/ingest/azure-blob`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -44,7 +51,7 @@ export const dataIngestionClient = {
   },
 
   async ingestFromDatabase(applicationId: string, applicationName: string, dbConfig: any) {
-    const response = await fetch(`${API_BASE_URL}/api/data/ingest/database`, {
+    const response = await fetch(`${API_BASE_URL}/data/ingest/database`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ applicationId, applicationName, dbConfig }),
@@ -58,7 +65,7 @@ export const dataIngestionClient = {
   },
 
   async getIngestionStatus(jobId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/data/ingest/${jobId}/status`);
+    const response = await fetch(`${API_BASE_URL}/data/ingest/${jobId}/status`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch ingestion status: ${response.statusText}`);

@@ -1,7 +1,14 @@
 // Frontend API client for metrics
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+// Ensure /api is appended if not already present
+if (!apiUrl.endsWith('/api')) {
+  apiUrl = apiUrl + '/api';
+}
+
+const API_BASE_URL = apiUrl;
 
 export const metricsClient = {
   // Get aggregated metrics for a single application
