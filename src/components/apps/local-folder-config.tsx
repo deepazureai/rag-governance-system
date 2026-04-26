@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { FileUp, AlertCircle, CheckCircle, Folder, File } from 'lucide-react';
 
 interface LocalFolderConfigProps {
-  onConfigure: (config: { folderPath: string; fileName: string }) => void;
+  onConfigure: (config: { folderPath: string; fileName: string; fileContent?: string }) => void;
   isLoading?: boolean;
   onValidationChange?: (isValid: boolean) => void;
 }
@@ -19,6 +19,7 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
+  const [fileContent, setFileContent] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detect OS
@@ -45,6 +46,19 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
     setFolderPath(folderPath);
     setIsValidated(false);
     setError('');
+    setFileContent(null);
+    
+    // Read file content immediately
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setFileContent(content);
+      console.log('[v0] File content loaded:', { fileName, lines: content.split('\n').length });
+    };
+    reader.onerror = () => {
+      setError('Failed to read file');
+    };
+    reader.readAsText(file);
     
     console.log('[v0] File selected:', { fileName, folderPath, fullPath });
   };
@@ -66,31 +80,36 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
       return;
     }
 
+    if (!fileContent) {
+      setError('File content could not be read');
+      onValidationChange?.(false);
+      return;
+    }
+
     setIsValidating(true);
     try {
-      console.log('[v0] Validating file:', { folderPath, fileName });
+      console.log('[v0] Validating file:', { folderPath, fileName, contentLength: fileContent.length });
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/batch/validate-file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPath, fileName }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `File validation failed: ${response.statusText}`);
+      // Basic validation: check if file has content and valid format
+      const lines = fileContent.split('\n').filter(l => l.trim());
+      if (lines.length < 2) {
+        throw new Error('File must have at least headers and one data row');
       }
 
-      const result = await response.json();
-      console.log('[v0] File validation successful:', result);
+      // Check if it looks like CSV
+      if (!lines[0].includes(',')) {
+        throw new Error('File does not appear to be valid CSV format (missing commas)');
+      }
+
+      console.log('[v0] File validation successful:', { lines: lines.length });
       
       setIsValidated(true);
       onValidationChange?.(true);
-      onConfigure({ folderPath, fileName });
+      onConfigure({ folderPath, fileName, fileContent });
       
     } catch (err: any) {
       console.error('[v0] Error validating file:', err);
-      setError(err.message || 'File validation failed. Please check the file and try again.');
+      setError(err.message || 'File validation failed. Please check the file format.');
       onValidationChange?.(false);
     } finally {
       setIsValidating(false);

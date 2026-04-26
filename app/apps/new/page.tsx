@@ -176,6 +176,47 @@ export default function NewApplicationPage() {
       
       console.log('[v0] Step 6: Application created successfully');
       console.log('[v0] Created app:', result.data);
+      
+      const applicationId = result.data?.id;
+      
+      // If file content is available (local_folder with uploaded file), upload it now
+      if (selectedDataSource === 'local_folder' && dataSourceConfig?.fileContent && applicationId) {
+        console.log('[v0] Step 7: Uploading CSV file content to MongoDB...');
+        try {
+          const uploadApiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/upload-raw-data`;
+          console.log('[v0] Upload URL:', uploadApiUrl);
+          
+          const uploadResponse = await fetch(uploadApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ csvData: dataSourceConfig.fileContent }),
+          });
+          
+          const uploadResult = await uploadResponse.json();
+          console.log('[v0] Upload response:', uploadResult);
+          
+          if (!uploadResponse.ok) {
+            console.warn('[v0] File upload failed, but application was created. You can upload data later.');
+          } else {
+            console.log('[v0] File uploaded successfully, triggering batch process...');
+            
+            // Trigger batch processing immediately
+            const batchApiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/batch-process`;
+            const batchResponse = await fetch(batchApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dataSource: { type: 'local_folder', config: {} } }),
+            });
+            
+            const batchResult = await batchResponse.json();
+            console.log('[v0] Batch process triggered:', batchResult);
+          }
+        } catch (uploadError) {
+          console.error('[v0] Error uploading file:', uploadError);
+          // Don't fail - application was created successfully
+        }
+      }
+      
       alert('Application created successfully! Data ingestion has been initiated.');
       window.location.href = '/apps';
     } catch (error: any) {
