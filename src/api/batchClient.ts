@@ -2,21 +2,25 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
+console.log('[v0] batchClient API_BASE_URL:', API_BASE_URL);
+
 export const batchClient = {
   /**
    * Execute batch processing manually
    */
   async executeBatch(applicationId: string, connectionId: string, sourceType: string, sourceConfig: any) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/batch/execute`, {
+      const url = `${API_BASE_URL}/batch/execute`;
+      console.log('[v0] Calling batch execute with URL:', url);
+      const response = await axios.post(url, {
         applicationId,
         connectionId,
         sourceType,
         sourceConfig,
       });
       return response.data;
-    } catch (error) {
-      console.log('[v0] Batch execute endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Batch execute endpoint error:', error.message);
       return { success: false, batches: [] };
     }
   },
@@ -26,10 +30,12 @@ export const batchClient = {
    */
   async getBatchStatus(batchId: string) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/batch/${batchId}/status`);
+      const url = `${API_BASE_URL}/batch/${batchId}/status`;
+      console.log('[v0] Calling batch status with URL:', url);
+      const response = await axios.get(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Batch status endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Batch status endpoint error:', error.message);
       return { success: false };
     }
   },
@@ -39,18 +45,17 @@ export const batchClient = {
    */
   async getBatchHistory(applicationId: string, limit: number = 10) {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/batch/application/${applicationId}/history?limit=${limit}`,
-        { validateStatus: () => true } // Don't throw on any status code
-      );
+      const url = `${API_BASE_URL}/batch/application/${applicationId}/history?limit=${limit}`;
+      console.log('[v0] Calling batch history with URL:', url);
+      const response = await axios.get(url, { validateStatus: () => true });
       
-      // If 404 or other error, return empty result
       if (!response.data || response.status >= 400) {
         return { success: true, batches: [], count: 0 };
       }
       
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      console.log('[v0] Batch history error:', error.message);
       return { success: true, batches: [], count: 0 };
     }
   },
@@ -65,15 +70,17 @@ export const batchClient = {
     sourceConfig: any
   ) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/batch/schedule`, {
+      const url = `${API_BASE_URL}/batch/schedule`;
+      console.log('[v0] Creating scheduled job with URL:', url);
+      const response = await axios.post(url, {
         applicationId,
         connectionId,
         schedule,
         sourceConfig,
       });
       return response.data;
-    } catch (error) {
-      console.log('[v0] Create scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Create scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -83,10 +90,12 @@ export const batchClient = {
    */
   async getScheduledJob(jobId: string) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/batch/schedule/${jobId}`);
+      const url = `${API_BASE_URL}/batch/schedule/${jobId}`;
+      console.log('[v0] Getting scheduled job with URL:', url);
+      const response = await axios.get(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Get scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Get scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -96,18 +105,17 @@ export const batchClient = {
    */
   async getApplicationScheduledJobs(applicationId: string) {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/batch/schedule/application/${applicationId}`,
-        { validateStatus: () => true } // Don't throw on any status code
-      );
+      const url = `${API_BASE_URL}/batch/schedule/application/${applicationId}`;
+      console.log('[v0] Getting scheduled jobs with URL:', url);
+      const response = await axios.get(url, { validateStatus: () => true });
       
-      // If 404 or other error, return empty result
       if (!response.data || response.status >= 400) {
         return { success: true, jobs: [], count: 0 };
       }
       
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      console.log('[v0] Get scheduled jobs error:', error.message);
       return { success: true, jobs: [], count: 0 };
     }
   },
@@ -117,10 +125,12 @@ export const batchClient = {
    */
   async updateScheduledJob(jobId: string, updates: any) {
     try {
-      const response = await axios.put(`${API_BASE_URL}/batch/schedule/${jobId}`, updates);
+      const url = `${API_BASE_URL}/batch/schedule/${jobId}`;
+      console.log('[v0] Updating scheduled job with URL:', url);
+      const response = await axios.put(url, updates);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Update scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Update scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -130,12 +140,14 @@ export const batchClient = {
    */
   async toggleScheduledJob(jobId: string, isEnabled: boolean) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/batch/schedule/${jobId}/toggle`, {
+      const url = `${API_BASE_URL}/batch/schedule/${jobId}/toggle`;
+      console.log('[v0] Toggling scheduled job with URL:', url);
+      const response = await axios.patch(url, {
         isEnabled,
       });
       return response.data;
-    } catch (error) {
-      console.log('[v0] Toggle scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Toggle scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -145,10 +157,12 @@ export const batchClient = {
    */
   async deleteScheduledJob(jobId: string) {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/batch/schedule/${jobId}`);
+      const url = `${API_BASE_URL}/batch/schedule/${jobId}`;
+      console.log('[v0] Deleting scheduled job with URL:', url);
+      const response = await axios.delete(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Delete scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Delete scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -158,10 +172,12 @@ export const batchClient = {
    */
   async triggerScheduledJob(jobId: string) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/batch/schedule/${jobId}/trigger`);
+      const url = `${API_BASE_URL}/batch/schedule/${jobId}/trigger`;
+      console.log('[v0] Triggering scheduled job with URL:', url);
+      const response = await axios.post(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Trigger scheduled job endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Trigger scheduled job error:', error.message);
       return { success: false };
     }
   },
@@ -171,10 +187,12 @@ export const batchClient = {
    */
   async getArchiveData(archiveId: string) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/batch/archive/${archiveId}`);
+      const url = `${API_BASE_URL}/batch/archive/${archiveId}`;
+      console.log('[v0] Getting archive with URL:', url);
+      const response = await axios.get(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Get archive data endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Get archive error:', error.message);
       return { success: false };
     }
   },
@@ -184,12 +202,12 @@ export const batchClient = {
    */
   async getApplicationArchives(applicationId: string, limit: number = 30) {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/batch/archive/application/${applicationId}?limit=${limit}`
-      );
+      const url = `${API_BASE_URL}/batch/archive/application/${applicationId}?limit=${limit}`;
+      console.log('[v0] Getting archives with URL:', url);
+      const response = await axios.get(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Get archives endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Get archives error:', error.message);
       return { success: true, archives: [], count: 0 };
     }
   },
@@ -199,10 +217,12 @@ export const batchClient = {
    */
   async cleanupExpiredArchives() {
     try {
-      const response = await axios.post(`${API_BASE_URL}/batch/cleanup`);
+      const url = `${API_BASE_URL}/batch/cleanup`;
+      console.log('[v0] Cleaning up archives with URL:', url);
+      const response = await axios.post(url);
       return response.data;
-    } catch (error) {
-      console.log('[v0] Cleanup archives endpoint not available');
+    } catch (error: any) {
+      console.log('[v0] Cleanup archives error:', error.message);
       return { success: false };
     }
   },
