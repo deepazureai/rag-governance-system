@@ -1,28 +1,144 @@
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
+  /**
+   * Extract frameworks used from evaluations
+   */
+  private extractFrameworksUsed(evaluations: Array<Record<string, unknown>>): string[] {
+    const frameworks = new Set<string>();
+    
+    for (const evaluation of evaluations) {
+      const fw = evaluation.frameworksUsed as string[] | undefined;
+      if (Array.isArray(fw)) {
+        fw.forEach(f => frameworks.add(f));
+      }
+    }
+    
+    return Array.from(frameworks);
+  }
 
-export interface ApplicationMetrics {
-  applicationId: string;
-  applicationName: string;
-  // RAGAS metrics
-  groundedness: number;
-  coherence: number;
-  relevance: number;
-  faithfulness: number;
-  answerRelevancy: number;
-  contextPrecision: number;
-  contextRecall: number;
-  // BLEU/ROUGE metrics
-  bleuScore?: number;
-  rougeL?: number;
-  // LLamaIndex metrics
-  llamaCorrectness?: number;
-  llamaRelevancy?: number;
-  llamaFaithfulness?: number;
-  overallScore?: number;
-  timestamp: string;
-  frameworksUsed?: string[];
-  slaCompliance?: number;
+  /**
+   * Calculate SLA compliance score
+   */
+  private calculateSLACompliance(metrics: Omit<ApplicationMetrics, 'applicationId' | 'applicationName' | 'timestamp'>): number {
+    // SLA compliance is based on metric thresholds
+    const thresholds = {
+      groundedness: 70,
+      coherence: 70,
+      relevance: 70,
+      faithfulness: 70,
+    };
+
+    let compliantCount = 0;
+    let totalMetrics = 0;
+
+    for (const [metric, threshold] of Object.entries(thresholds)) {
+      const value = metrics[metric as keyof typeof metrics];
+      if (typeof value === 'number') {
+        totalMetrics++;
+        if (value >= threshold) {
+          compliantCount++;
+        }
+      }
+    }
+
+    return totalMetrics > 0 ? (compliantCount / totalMetrics) * 100 : 0;
+  }
+
+  /**
+   * Aggregate metrics across multiple applications by averaging
+   */
+  aggregateMetrics(metricsArray: ApplicationMetrics[]): AggregatedMetrics {
+    if (metricsArray.length === 0) {
+      throw new Error('Cannot aggregate empty metrics array');
+    }
+
+    const metricKeys = [
+      'groundedness',
+      'coherence',
+      'relevance',
+      'faithfulness',
+      'answerRelevancy',
+      'contextPrecision',
+      'contextRecall',
+      'bleuScore',
+      'rougeL',
+      'llamaCorrectness',
+      'llamaRelevancy',
+      'llamaFaithfulness',
+      'overallScore',
+    ] as const;
+
+    const aggregated: Partial<AggregatedMetrics> = {
+      applicationCount: metricsArray.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Average each metric across all applications
+    for (const key of metricKeys) {
+      const validValues = metricsArray
+        .map(m => {
+          const value = m[key as keyof ApplicationMetrics];
+          return typeof value === 'number' ? value : undefined;
+        })
+        .filter((v): v is number => v !== undefined && !isNaN(v));
+      
+      const avgValue = validValues.length > 0 
+        ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length 
+        : undefined;
+      
+      // Only set if value exists or is a required field
+      if (avgValue !== undefined || ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall'].includes(key)) {
+        aggregated[key as keyof AggregatedMetrics] = avgValue ?? 0;
+      }
+    }
+
+    // Aggregate frameworks used (collect all unique frameworks)
+    const allFrameworks = new Set<string>();
+    metricsArray.forEach(m => {
+      m.frameworksUsed?.forEach(f => allFrameworks.add(f));
+    });
+    aggregated.frameworksUsed = Array.from(allFrameworks);
+
+    // Aggregate SLA compliance (average SLA across apps)
+    const slaComplianceValues = metricsArray
+      .filter(m => m.slaCompliance !== undefined)
+      .map(m => m.slaCompliance!);
+    if (slaComplianceValues.length > 0) {
+      aggregated.slaCompliance = slaComplianceValues.reduce((a, b) => a + b, 0) / slaComplianceValues.length;
+    }
+
+    logger.info(`[v0] Aggregated metrics for ${metricsArray.length} applications`, {
+      groundedness: (aggregated.groundedness as number)?.toFixed(2),
+      coherence: (aggregated.coherence as number)?.toFixed(2),
+      relevance: (aggregated.relevance as number)?.toFixed(2),
+      bleuScore: (aggregated.bleuScore as number)?.toFixed(2),
+      rougeL: (aggregated.rougeL as number)?.toFixed(2),
+      llamaCorrectness: (aggregated.llamaCorrectness as number)?.toFixed(2),
+    });
+    return aggregated as AggregatedMetrics;
+  }
+
+  /**
+   * Map metric names from camelCase to snake_case (and vice versa if needed)
+   */
+  private mapMetricKey(key: string): string {
+    const keyMap: { [k: string]: string } = {
+      groundedness: 'groundedness',
+      coherence: 'coherence',
+      relevance: 'relevance',
+      faithfulness: 'faithfulness',
+      answerRelevancy: 'answer_relevancy',
+      contextPrecision: 'context_precision',
+      contextRecall: 'context_recall',
+      bleuScore: 'bleu_score',
+      rougeL: 'rouge_l',
+      llamaCorrectness: 'llama_correctness',
+      llamaRelevancy: 'llama_relevancy',
+      llamaFaithfulness: 'llama_faithfulness',
+      overallScore: 'overall_score',
+    };
+    return keyMap[key] || key;
+  }
 }
 
 export interface AggregatedMetrics {
