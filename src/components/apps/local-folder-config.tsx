@@ -96,12 +96,6 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
       return;
     }
 
-    if (!isFileLoaded) {
-      setError('File is still loading. Please wait a moment and try again.');
-      onValidationChange?.(false);
-      return;
-    }
-
     if (!fileContent) {
       setError('File content could not be read');
       onValidationChange?.(false);
@@ -110,45 +104,53 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
 
     setIsValidating(true);
     try {
-      console.log('[v0] Validating file:', { folderPath, fileName, contentType: typeof fileContent, contentLength: fileContent?.length });
+      console.log('[v0] Validating file:', { folderPath, fileName, contentLength: fileContent.length });
       
-      // Ensure fileContent is a string
-      if (typeof fileContent !== 'string') {
-        throw new Error('Invalid file content type. Expected text file.');
-      }
-      
-      if (!fileContent || fileContent.trim().length === 0) {
+      // Basic validation: check if file has content (just need something readable)
+      if (fileContent.trim().length === 0) {
         throw new Error('File is empty');
       }
+
+      // Split preserving all lines, including potentially empty ones at the end
+      const allLines = fileContent.split('\n');
+      const nonEmptyLines = allLines.filter(l => l.trim());
       
-      // Basic validation: check if file has content and valid format
-      const lines = fileContent.split('\n').filter(l => l.trim());
-      console.log('[v0] File lines parsed:', { count: lines.length, firstLine: lines[0]?.substring(0, 100) });
+      console.log('[v0] File lines parsed:', { 
+        total: allLines.length, 
+        nonEmpty: nonEmptyLines.length,
+        firstLine: nonEmptyLines[0]?.substring(0, 100) 
+      });
       
-      if (lines.length < 2) {
-        throw new Error('File must have at least headers and one data row. Found ' + lines.length + ' line(s)');
+      // Just need at least 1 line with content (can be headers only, data validation happens during batch processing)
+      if (nonEmptyLines.length < 1) {
+        throw new Error('File appears to be empty or unreadable');
       }
 
-      // Check if it looks like CSV (should have comma-separated values)
-      // More flexible check - don't require commas if it's semicolon delimited
-      const firstLine = lines[0];
+      // Check if it looks like CSV format (has delimiter)
+      const firstLine = nonEmptyLines[0];
       const hasCommas = firstLine.includes(',');
       const hasSemicolons = firstLine.includes(';');
-      const hasEqualsAndQuotes = firstLine.includes('=') && (firstLine.includes('"') || firstLine.includes("'"));
+      const hasTabs = firstLine.includes('\t');
+      const hasPipes = firstLine.includes('|');
       
-      if (!hasCommas && !hasSemicolons && !hasEqualsAndQuotes) {
-        throw new Error('File does not appear to be valid CSV format. Expected comma-separated, semicolon-delimited, or key=value pairs.');
+      if (!hasCommas && !hasSemicolons && !hasTabs && !hasPipes) {
+        throw new Error('File does not appear to be valid delimited format. Expected commas, semicolons, tabs, or pipes.');
       }
 
-      console.log('[v0] File validation successful:', { lines: lines.length, hasCommas, hasSemicolons });
+      console.log('[v0] File validation successful:', { 
+        nonEmptyLines: nonEmptyLines.length, 
+        hasCommas, 
+        hasSemicolons,
+        hasTabs,
+        hasPipes
+      });
       
       setIsValidated(true);
       onValidationChange?.(true);
       onConfigure({ folderPath, fileName, fileContent });
       
     } catch (err: any) {
-      console.error('[v0] Error validating file:', err);
-      console.error('[v0] Error details:', { fileContent: typeof fileContent, length: fileContent?.length });
+      console.error('[v0] Error validating file:', err.message);
       setError(err.message || 'File validation failed. Please check the file format.');
       onValidationChange?.(false);
     } finally {
