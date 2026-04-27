@@ -137,7 +137,11 @@ export class ApplicationMetricsService {
       'overallScore',
     ] as const;
 
+    // Initialize all metrics with 0
     const aggregated: Record<string, number> = {};
+    for (const key of metricKeys) {
+      aggregated[key] = 0;
+    }
 
     // Average each metric across all evaluations
     for (const key of metricKeys) {
@@ -162,7 +166,23 @@ export class ApplicationMetricsService {
     }
 
     logger.debug(`[v0] Calculated average metrics:`, aggregated);
-    return aggregated as Omit<ApplicationMetrics, 'applicationId' | 'applicationName' | 'timestamp'>;
+    
+    // Build the properly typed return object
+    return {
+      groundedness: aggregated.groundedness ?? 0,
+      coherence: aggregated.coherence ?? 0,
+      relevance: aggregated.relevance ?? 0,
+      faithfulness: aggregated.faithfulness ?? 0,
+      answerRelevancy: aggregated.answerRelevancy ?? 0,
+      contextPrecision: aggregated.contextPrecision ?? 0,
+      contextRecall: aggregated.contextRecall ?? 0,
+      bleuScore: aggregated.bleuScore,
+      rougeL: aggregated.rougeL,
+      llamaCorrectness: aggregated.llamaCorrectness,
+      llamaRelevancy: aggregated.llamaRelevancy,
+      llamaFaithfulness: aggregated.llamaFaithfulness,
+      overallScore: aggregated.overallScore,
+    };
   }
 
   /**
@@ -273,9 +293,14 @@ export class ApplicationMetricsService {
         })
         .filter((v): v is number => v !== undefined && !isNaN(v));
       
-      aggregated[key as keyof AggregatedMetrics] = validValues.length > 0 
+      const avgValue = validValues.length > 0 
         ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length 
-        : 0;
+        : undefined;
+      
+      // Only set if value exists or is a required field
+      if (avgValue !== undefined || ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall'].includes(key)) {
+        aggregated[key as keyof AggregatedMetrics] = avgValue ?? 0;
+      }
     }
 
     // Aggregate frameworks used (collect all unique frameworks)

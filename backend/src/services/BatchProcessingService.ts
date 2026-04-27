@@ -236,8 +236,9 @@ export class BatchProcessingService {
           evaluatedCount++;
           
           logger.info(`[BatchProcessingService] Record ${evaluatedCount} evaluated successfully`);
-        } catch (evalError: any) {
-          logger.error(`[BatchProcessingService] Evaluation failed for record:`, evalError.message);
+        } catch (evalError: unknown) {
+          const errorMessage = evalError instanceof Error ? evalError.message : String(evalError);
+          logger.error(`[BatchProcessingService] Evaluation failed for record:`, errorMessage);
           // Continue with next record even if one fails
         }
       }
@@ -269,8 +270,9 @@ export class BatchProcessingService {
         avgTokens: governanceMetrics.tokens.totalTokens.avg,
         errorRate: governanceMetrics.errors.errorRate,
       });
-    } catch (govError: any) {
-      logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, govError.message);
+    } catch (govError: unknown) {
+      const errorMessage = govError instanceof Error ? govError.message : String(govError);
+      logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, errorMessage);
       // Don't fail the batch if governance calculation fails
     }
 
@@ -286,10 +288,18 @@ export class BatchProcessingService {
       // Generate evaluation quality alerts (groundedness, coherence, relevance, etc.)
       if (evaluations.length > 0) {
         logger.info(`[BatchProcessingService] Generating evaluation quality alerts for ${evaluations.length} records`);
+        
+        // Create a wrapper that adapts MongoDB Collection to AlertCollection interface
+        const alertsWrapper = {
+          updateOne: async (filter: Record<string, any>, update: Record<string, any>, options: Record<string, any>) => {
+            await AlertsCollection.updateOne(filter, update, options);
+          },
+        };
+        
         const qualityAlerts = await AlertGenerationService.generateAlertsForBatch(
           applicationId,
           evaluations,
-          AlertsCollection as unknown as typeof AlertsCollection
+          alertsWrapper as any
         );
         logger.info(`[BatchProcessingService] Generated ${qualityAlerts.length} evaluation quality alerts`);
       }
@@ -298,6 +308,14 @@ export class BatchProcessingService {
       try {
         const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
         logger.info(`[BatchProcessingService] Generating performance alerts based on governance metrics`);
+        
+        // Create a wrapper that adapts MongoDB Collection to AlertCollection interface
+        const alertsWrapper = {
+          updateOne: async (filter: Record<string, any>, update: Record<string, any>, options: Record<string, any>) => {
+            await AlertsCollection.updateOne(filter, update, options);
+          },
+        };
+        
         const performanceAlerts = await AlertGenerationService.generatePerformanceAlerts(
           applicationId,
           governanceMetrics,
@@ -305,7 +323,7 @@ export class BatchProcessingService {
             metrics: {},
             overallScoreThresholds: { good: 70, excellent: 85 }
           },
-          AlertsCollection as unknown as typeof AlertsCollection
+          alertsWrapper as any
         );
         logger.info(`[BatchProcessingService] Generated ${performanceAlerts.length} performance alerts`);
       } catch (perfError: unknown) {
@@ -314,8 +332,9 @@ export class BatchProcessingService {
       }
 
       logger.info(`[BatchProcessingService] Alert generation completed`);
-    } catch (alertError: any) {
-      logger.error(`[BatchProcessingService] Error generating alerts:`, alertError.message);
+    } catch (alertError: unknown) {
+      const errorMessage = alertError instanceof Error ? alertError.message : String(alertError);
+      logger.error(`[BatchProcessingService] Error generating alerts:`, errorMessage);
       // Don't fail the batch if alert generation fails
     }
 
@@ -357,8 +376,28 @@ export class BatchProcessingService {
       ).catch((err: any) => logger.error('Failed to update app status:', err));
 
       throw error;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`[BatchProcessingService] Batch process failed:`, errorMessage);
+
+      // Update application status to failed
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { 
+          $set: { 
+            initialDataProcessingStatus: 'failed',
+            error: errorMessage,
+            updatedAt: new Date(),
+          } 
+        }
+      ).catch((err: unknown) => {
+        const catchErrorMsg = err instanceof Error ? err.message : String(err);
+        logger.error('Failed to update app status:', catchErrorMsg);
+      });
+
+      throw error;
     }
-  }
 
   private async readDataFromSource(
     sourceType: string,
@@ -402,7 +441,12 @@ export class BatchProcessingService {
         records: [],
         fileSize: 0,
         fileName: 'mongodb_rawdatarecords',
-        error: { code: 'NO_DATA' as const, message: 'No raw data records found in MongoDB' },
+        error: {
+          code: 'NO_DATA',
+          message: 'No raw data records found in MongoDB',
+          phase: 'data_read',
+          timestamp: new Date(),
+        },
       };
     }
 
