@@ -74,7 +74,7 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
     const { appId } = req.params;
     const thresholdConfig = req.body;
 
-    console.log('[API] POST /api/alert-thresholds/app/:appId - appId:', appId);
+    console.log('[v0] POST /api/alert-thresholds/app/:appId - appId:', appId);
 
     // Validate threshold configuration
     if (!thresholdConfig || typeof thresholdConfig !== 'object') {
@@ -84,27 +84,44 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
       });
     }
 
-    // TODO: Save to MongoDB when connected
-    // const db = getDatabase();
-    // const result = await db.collection('AlertThresholds')
-    //   .updateOne(
-    //     { appId },
-    //     { $set: { ...thresholdConfig, updatedAt: new Date().toISOString() } },
-    //     { upsert: true }
-    //   );
+    // Save to MongoDB
+    try {
+      const db = mongoose.connection;
+      const alertThresholdsCollection = db.collection('alertthresholds');
+      
+      const result = await alertThresholdsCollection.updateOne(
+        { appId },
+        {
+          $set: {
+            appId,
+            ...thresholdConfig,
+            isCustom: true,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        { upsert: true }
+      );
 
-    res.json({
-      success: true,
-      data: {
-        appId,
-        ...thresholdConfig,
-        isCustom: true,
-        updatedAt: new Date().toISOString(),
-      },
-      message: 'Threshold configuration saved',
-    });
+      console.log('[v0] Thresholds saved for app:', appId, 'Result:', result);
+
+      res.json({
+        success: true,
+        data: {
+          appId,
+          ...thresholdConfig,
+          isCustom: true,
+          updatedAt: new Date().toISOString(),
+        },
+        message: 'Threshold configuration saved successfully',
+        upserted: result.upsertedId ? true : false,
+      });
+    } catch (dbErr: unknown) {
+      const dbErrorMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.error('[v0] MongoDB save error:', dbErrorMsg);
+      throw dbErr;
+    }
   } catch (error: any) {
-    console.error('[API] Save thresholds error:', error);
+    console.error('[v0] Save thresholds error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to save threshold configuration',
@@ -112,25 +129,60 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
     });
   }
 });
+      error: 'Failed to save threshold configuration',
+      details: error.message,
+    });
+  }
+});
 
 /**
- * DELETE /api/alert-thresholds/app/:appId
- * Reset application thresholds to industry defaults
+ * Get threshold configuration for a specific application
+ * Returns custom config if exists, otherwise returns defaults
  */
-alertThresholdsRouter.delete('/app/:appId', async (req: Request, res: Response) => {
+alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => {
   try {
     const { appId } = req.params;
-    console.log('[API] DELETE /api/alert-thresholds/app/:appId - appId:', appId);
+    console.log('[v0] GET /api/alert-thresholds/app/:appId - appId:', appId);
 
-    // TODO: Delete from MongoDB when connected
-    // const db = getDatabase();
-    // await db.collection('AlertThresholds').deleteOne({ appId });
+    // Query MongoDB for custom thresholds
+    try {
+      const db = mongoose.connection;
+      const alertThresholdsCollection = db.collection('alertthresholds');
+      const customThresholds = await alertThresholdsCollection.findOne({ appId });
 
+      if (customThresholds) {
+        console.log('[v0] Found custom thresholds for app:', appId);
+        return res.json({
+          success: true,
+          data: customThresholds,
+          isCustom: true,
+          source: 'custom',
+        });
+      }
+    } catch (dbErr: unknown) {
+      const dbErrorMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.log('[v0] Error querying MongoDB for thresholds:', dbErrorMsg);
+      // Fall through to defaults
+    }
+
+    // Return defaults if no custom config found
+    console.log('[v0] Using industry standard thresholds for app:', appId);
     res.json({
       success: true,
       data: { ...INDUSTRY_STANDARD_THRESHOLDS, appId, isCustom: false },
-      message: 'Threshold configuration reset to industry defaults',
+      isCustom: false,
+      source: 'industry_standard',
+      message: 'Using industry standard thresholds',
     });
+  } catch (error: any) {
+    console.error('[v0] Get app thresholds error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve thresholds for application',
+      details: error.message,
+    });
+  }
+});
   } catch (error: any) {
     console.error('[API] Reset thresholds error:', error);
     res.status(500).json({
