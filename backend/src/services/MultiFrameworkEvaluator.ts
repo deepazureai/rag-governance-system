@@ -128,8 +128,10 @@ export class MultiFrameworkEvaluator {
         executionTime,
         faithfulness: metrics.faithfulness?.toFixed(2),
         answerRelevancy: metrics.answerRelevancy?.toFixed(2),
+        contextRelevancy: metrics.contextRelevancy?.toFixed(2),
         contextPrecision: metrics.contextPrecision?.toFixed(2),
         contextRecall: metrics.contextRecall?.toFixed(2),
+        correctness: metrics.correctness?.toFixed(2),
       });
       
       return {
@@ -421,18 +423,21 @@ export class MultiFrameworkEvaluator {
   ): number {
     if (!query || docs.length === 0) return 0;
     
-    const queryWords = new Set(query.toLowerCase().split(/\s+/));
-    let relevantDocCount = 0;
+    const queryWords = new Set(query.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    if (queryWords.size === 0) return 50; // Default if query is too short
+    
+    let totalRelevance = 0;
     
     for (const doc of docs) {
-      const docWords = new Set(doc.content.toLowerCase().split(/\s+/));
-      const overlap = Array.from(queryWords).filter(w => docWords.has(w)).length;
-      if (overlap > queryWords.size / 2) {
-        relevantDocCount++;
-      }
+      const docWords = doc.content.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      // Count how many query words appear in the document
+      const matchedWords = Array.from(queryWords).filter(w => docWords.some(dw => dw.includes(w) || w.includes(dw))).length;
+      // Calculate relevance for this document
+      const docRelevance = (matchedWords / queryWords.size) * 100;
+      totalRelevance += docRelevance;
     }
     
-    return Math.min(100, (relevantDocCount / docs.length) * 100);
+    return Math.min(100, totalRelevance / docs.length);
   }
   
   private static calculateContextPrecision(
