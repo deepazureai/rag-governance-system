@@ -121,28 +121,40 @@ export default function AlertsPage() {
         apiUrl = apiUrl + '/api';
       }
 
+      console.log('[v0] Fetching alerts from:', apiUrl);
+      console.log('[v0] Selected apps:', selectedAppIds);
+      console.log('[v0] Active filter:', activeFilter);
+      console.log('[v0] Alert type:', alertType);
+
       // Build query params for alert type filtering
       const typeFilter = alertType === 'all' ? '' : `&type=${alertType}`;
 
       // Fetch alerts for each selected app
       const alertPromises = selectedAppIds.map((appId) =>
         fetch(
-          `${apiUrl}/alerts/applications/${appId}?severity=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
+          `${apiUrl}/alerts/applications/${appId}?alertLevel=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
           { method: 'GET', headers: { 'Content-Type': 'application/json' } }
-        ).then((res) => res.json())
+        ).then((res) => {
+          console.log('[v0] Alert response status:', res.status);
+          return res.json();
+        })
       );
 
       const results = await Promise.all(alertPromises);
+      console.log('[v0] Alert results:', results);
+      
       const allAlerts: AlertType[] = [];
       let totalRecords = 0;
 
       results.forEach((result) => {
         if (result.success && Array.isArray(result.data.alerts)) {
+          console.log('[v0] Found alerts:', result.data.alerts.length);
           allAlerts.push(...result.data.alerts);
           totalRecords = result.data.pagination?.total || 0;
         }
       });
 
+      console.log('[v0] Total alerts loaded:', allAlerts.length);
       setAlerts(allAlerts);
       setTotalCount(totalRecords);
 
