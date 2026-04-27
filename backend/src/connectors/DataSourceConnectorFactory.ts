@@ -8,36 +8,33 @@ export type DataSourceType = 'local_folder' | 'database' | 'azure_blob' | 'splun
 
 export interface DataSourceConfig {
   type: DataSourceType;
-  config: Record<string, unknown>;
+  config: Record<string, any>;
 }
 
 export class DataSourceConnectorFactory {
   /**
    * Factory method that creates the appropriate connector based on data source type
-   * All connectors implement IDataSourceConnector and return standardized RawDataRecord[]
    */
   static createConnector(dataSourceConfig: DataSourceConfig): IDataSourceConnector {
     logger.info(`[v0] Creating connector for data source type: ${dataSourceConfig.type}`);
 
     switch (dataSourceConfig.type) {
       case 'local_folder':
-        return new LocalFolderConnector(dataSourceConfig.config);
+        return new LocalFolderConnector(dataSourceConfig.config as any);
 
       case 'database':
-        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
+      case 'splunk': 
+      case 'datadog': 
+        if (dataSourceConfig.type !== 'database') {
+          logger.warn(`[v0] ${dataSourceConfig.type} connector not yet implemented, using database fallback`);
+        }
+        return new DatabaseConnector(dataSourceConfig.config as any);
 
       case 'azure_blob':
-        return new AzureBlobConnector(dataSourceConfig.config as Record<string, unknown>);
-
-      case 'splunk':
-        logger.warn(`[v0] Splunk connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
-
-      case 'datadog':
-        logger.warn(`[v0] Datadog connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
+        return new AzureBlobConnector(dataSourceConfig.config as any);
 
       default:
+        const exhaustiveCheck: never = dataSourceConfig.type as never;
         throw new Error(`Unsupported data source type: ${dataSourceConfig.type}`);
     }
   }
@@ -54,35 +51,36 @@ export class DataSourceConnectorFactory {
    */
   static validateConfig(dataSourceConfig: DataSourceConfig): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
+    const { type, config } = dataSourceConfig;
 
-    if (!dataSourceConfig.type) {
+    if (!type) {
       errors.push('Data source type is required');
     }
 
-    if (!this.getSupportedTypes().includes(dataSourceConfig.type)) {
-      errors.push(`Data source type "${dataSourceConfig.type}" is not supported`);
+    if (!this.getSupportedTypes().includes(type)) {
+      errors.push(`Data source type "${type}" is not supported`);
     }
 
-    if (!dataSourceConfig.config) {
+    if (!config) {
       errors.push('Data source configuration is required');
+      return { valid: false, errors };
     }
 
-    // Type-specific validation
-    switch (dataSourceConfig.type) {
+    switch (type) {
       case 'local_folder':
-        if (!dataSourceConfig.config.folderPath) {
+        if (!config.folderPath) {
           errors.push('Local folder path is required');
         }
         break;
 
       case 'database':
-        if (!dataSourceConfig.config.host || !dataSourceConfig.config.database || !dataSourceConfig.config.table) {
+        if (!config.host || !config.database || !config.table) {
           errors.push('Database configuration (host, database, table) is required');
         }
         break;
 
       case 'azure_blob':
-        if (!dataSourceConfig.config.storageAccount || !dataSourceConfig.config.containerName) {
+        if (!config.storageAccount || !config.containerName) {
           errors.push('Azure Blob configuration (storageAccount, containerName) is required');
         }
         break;

@@ -38,22 +38,17 @@ export class BatchProcessingService {
 
       logger.info(`[BatchProcessingService] Read ${records.length} records from ${fileName}`);
 
-      // Phase 2: Save raw data records with timing fields
+      // Phase 2: Save raw data records
       logger.info(`[BatchProcessingService] Phase 2: Saving raw data records with timing and token metrics`);
       const RawDataCollection = mongoose.connection.collection('rawdatarecords');
       
-      logger.info(`[BatchProcessingService] Processing ${records.length} records for batch ${batchId}`);
-      logger.info(`[BatchProcessingService] First record data keys:`, Object.keys(records[0]?.data || {}));
-      
-      const rawRecords = records.map((record: ParsedRecord, index: number) => {
-        // Extract timing fields from record data
+      const rawRecords = records.map((record: ParsedRecord) => {
         const promptTimestamp = record.data.promptTimestamp ? new Date(record.data.promptTimestamp) : new Date();
         const contextRetrievalStartTime = record.data.contextRetrievalStartTime ? new Date(record.data.contextRetrievalStartTime) : null;
         const contextRetrievalEndTime = record.data.contextRetrievalEndTime ? new Date(record.data.contextRetrievalEndTime) : null;
         const llmRequestStartTime = record.data.llmRequestStartTime ? new Date(record.data.llmRequestStartTime) : null;
         const llmResponseEndTime = record.data.llmResponseEndTime ? new Date(record.data.llmResponseEndTime) : null;
 
-        // Calculate latencies in milliseconds
         let retrievalLatencyMs = 0;
         if (contextRetrievalStartTime && contextRetrievalEndTime) {
           retrievalLatencyMs = contextRetrievalEndTime.getTime() - contextRetrievalStartTime.getTime();
@@ -69,12 +64,10 @@ export class BatchProcessingService {
           totalLatencyMs = llmResponseEndTime.getTime() - promptTimestamp.getTime();
         }
 
-        // Extract token counts (from CSV or estimate from word count)
         let promptTokenCount = record.data.promptTokenCount;
         let responseTokenCount = record.data.responseTokenCount;
         let totalTokenCount = record.data.totalTokenCount;
 
-        // If token counts not provided, estimate from word count (average 1.3 tokens per word)
         if (!promptTokenCount && record.data.promptLengthWords) {
           promptTokenCount = Math.ceil(record.data.promptLengthWords / 0.75);
         }
@@ -82,7 +75,7 @@ export class BatchProcessingService {
           responseTokenCount = Math.ceil(record.data.responseLengthWords / 0.75);
         }
         if (!totalTokenCount && promptTokenCount && responseTokenCount) {
-          totalTokenCount = promptTokenCount + responseTokenCount;
+          totalTokenCount = (promptTokenCount as number) + (responseTokenCount as number);
         }
 
         return {
@@ -93,93 +86,50 @@ export class BatchProcessingService {
           recordData: record.data,
           lineNumber: record.lineNumber,
           fileName,
-          
-          // Core data
-          query: record.data.query,
-          response: record.data.response,
-          context: record.data.context,
-          
-          // Timing fields
+          query: record.data.query || record.data.userPrompt || '',
+          response: record.data.response || record.data.llmResponse || '',
+          context: record.data.context || '',
           promptTimestamp,
           contextRetrievalStartTime,
           contextRetrievalEndTime,
           llmRequestStartTime,
           llmResponseEndTime,
-          
-          // Calculated latencies (milliseconds)
           retrievalLatencyMs,
           llmLatencyMs,
           totalLatencyMs,
-          
-          // Token metrics
           promptTokenCount,
           responseTokenCount,
           totalTokenCount,
-          
-          // Status
           status: 'processed',
           processedAt: new Date(),
         };
       });
 
-      const insertedRaw = await RawDataCollection.insertMany(rawRecords);
-      logger.info(`[BatchProcessingService] Inserted ${insertedRaw.insertedCount} raw records with timing and token data`);
+      await RawDataCollection.insertMany(rawRecords);
 
-      // Phase 3: Evaluate with Multi-Framework Approach
-      logger.info(`[BatchProcessingService] Phase 3: Evaluating records with multi-framework approach (RAGAS, BLEU/ROUGE, LlamaIndex)`);
+      // Phase 3: Evaluate
       const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
-      
       let evaluatedCount = 0;
       
       for (const record of records) {
         try {
-          // Extract query, response, and retrieved documents from record data
-          const query = record.data.userPrompt || record.data.query || '';
-          const response = record.data.llmResponse || record.data.response || '';
+          const query = (record.data.userPrompt || record.data.query || '') as string;
+          const response = (record.data.llmResponse || record.data.response || '') as string;
           
-          // Build retrieved documents from context field or retrieved_documents field
           let retrievedDocuments: Array<{ content: string; source: string; relevance?: number }> = [];
           
           if (record.data.retrieved_documents && Array.isArray(record.data.retrieved_documents)) {
-            // Use retrieved_documents if available
             retrievedDocuments = record.data.retrieved_documents;
           } else if (record.data.context) {
-            // Otherwise use context field as the primary retrieved document
-            retrievedDocuments = [
-              {
-                content: record.data.context,
-                source: 'query_context',
-                relevance: 85, // Default relevance for context field
-              }
-            ];
+            retrievedDocuments = [{ content: record.data.context, source: 'query_context', relevance: 85 }];
           }
           
-          console.log('[v0] Batch evaluation data:', {
-            query: query.substring(0, 100),
-            response: response.substring(0, 100),
-            retrievedDocsCount: retrievedDocuments.length,
-            hasContext: !!record.data.context,
-            contextPreview: record.data.context?.substring(0, 100),
-          });
-          
-          // Log the actual structure for debugging
-          if (retrievedDocuments.length > 0) {
-            console.log('[v0] Retrieved documents structure:', {
-              firstDocContent: retrievedDocuments[0].content.substring(0, 100),
-              firstDocSource: retrievedDocuments[0].source,
-              firstDocRelevance: retrievedDocuments[0].relevance,
-            });
-          }
-          
-          // Evaluate with multi-framework approach
-          logger.info(`[BatchProcessingService] Evaluating record ${evaluatedCount + 1}/${records.length}`);
           const { frameworkResults, mappedMetrics } = await MultiFrameworkEvaluator.evaluateMultiFramework(
             query,
             response,
             retrievedDocuments
           );
           
-          // Create evaluation record with framework results and mapped metrics
           const evaluationRecord = {
             applicationId,
             connectionId,
@@ -188,323 +138,135 @@ export class BatchProcessingService {
             query,
             response,
             retrievedDocuments,
-            
-            // Store raw framework results for transparency
             frameworksUsed: frameworkResults.map(r => r.framework),
             rawFrameworkResults: frameworkResults,
-            
-            // Store final mapped metrics - directly accessible for averaging
-            groundedness: mappedMetrics.groundedness,
-            coherence: mappedMetrics.coherence,
-            relevance: mappedMetrics.relevance,
-            faithfulness: mappedMetrics.faithfulness,
-            answerRelevancy: mappedMetrics.answerRelevancy,
-            contextPrecision: mappedMetrics.contextPrecision,
-            contextRecall: mappedMetrics.contextRecall,
-            overallScore: mappedMetrics.overallScore,
-            
-            // Framework-specific metrics
-            bleuScore: mappedMetrics.bleuScore,
-            rougeL: mappedMetrics.rougeL,
-            llamaCorrectness: mappedMetrics.llamaCorrectness,
-            llamaRelevancy: mappedMetrics.llamaRelevancy,
-            llamaFaithfulness: mappedMetrics.llamaFaithfulness,
-            
-            // Also store under evaluation object for backward compatibility
-            evaluation: {
-              groundedness: mappedMetrics.groundedness,
-              coherence: mappedMetrics.coherence,
-              relevance: mappedMetrics.relevance,
-              faithfulness: mappedMetrics.faithfulness,
-              answerRelevancy: mappedMetrics.answerRelevancy,
-              contextPrecision: mappedMetrics.contextPrecision,
-              contextRecall: mappedMetrics.contextRecall,
-              overallScore: mappedMetrics.overallScore,
-              bleuScore: mappedMetrics.bleuScore,
-              rougeL: mappedMetrics.rougeL,
-              llamaCorrectness: mappedMetrics.llamaCorrectness,
-              llamaRelevancy: mappedMetrics.llamaRelevancy,
-              llamaFaithfulness: mappedMetrics.llamaFaithfulness,
-              rawMetrics: mappedMetrics,
-            },
-            
+            ...mappedMetrics,
+            evaluation: { ...mappedMetrics, rawMetrics: mappedMetrics },
             evaluatedAt: new Date(),
             status: 'completed',
           };
           
           await EvaluationCollection.insertOne(evaluationRecord);
           evaluatedCount++;
-          
-          logger.info(`[BatchProcessingService] Record ${evaluatedCount} evaluated successfully`);
         } catch (evalError: unknown) {
-          const errorMessage = evalError instanceof Error ? evalError.message : String(evalError);
-          logger.error(`[BatchProcessingService] Evaluation failed for record:`, errorMessage);
-          // Continue with next record even if one fails
+          logger.error(`[BatchProcessingService] Evaluation failed:`, evalError instanceof Error ? evalError.message : String(evalError));
         }
       }
 
-      logger.info(`[BatchProcessingService] Evaluated ${evaluatedCount}/${records.length} records successfully`);
-
-      // Phase 4: Calculate AI Activity Governance Metrics
-      logger.info(`[BatchProcessingService] Phase 4: Calculating AI Activity Governance metrics (latency, tokens, cost, errors)`);
+      // Phase 4: Governance
       try {
         const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
-        
-        // Store governance metrics in governancemetrics collection
         const GovernanceCollection = mongoose.connection.collection('governancemetrics');
         await GovernanceCollection.updateOne(
           { applicationId, batchId },
-          {
-            $set: {
-              ...governanceMetrics,
-              applicationId,
-              batchId,
-              calculatedAt: new Date(),
-            }
-          },
+          { $set: { ...governanceMetrics, applicationId, batchId, calculatedAt: new Date() } },
           { upsert: true }
         );
-
-        logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
-          p95Latency: governanceMetrics.latency.total.p95,
-          avgTokens: governanceMetrics.tokens.totalTokens.avg,
-          errorRate: governanceMetrics.errors.errorRate,
-        });
       } catch (govError: unknown) {
-        const errorMessage = govError instanceof Error ? govError.message : String(govError);
-        logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, errorMessage);
-        // Don't fail the batch if governance calculation fails
+        logger.warn(`[BatchProcessingService] Governance metrics failed:`, govError instanceof Error ? govError.message : String(govError));
       }
 
-    // Phase 5: Generate Alerts (Both Evaluation Quality and Performance Alerts)
-    logger.info(`[BatchProcessingService] Phase 5: Generating alerts from evaluation and governance metrics`);
-    try {
-      const AlertsCollection = mongoose.connection.collection('alerts');
-      
-      // Get all evaluations for this batch to generate quality alerts
-      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
-      const evaluations = await EvaluationCollection.find({ batchId }).toArray();
-
-      // Generate evaluation quality alerts (groundedness, coherence, relevance, etc.)
-      if (evaluations.length > 0) {
-        logger.info(`[BatchProcessingService] Generating evaluation quality alerts for ${evaluations.length} records`);
-        
-        // Create a wrapper that adapts MongoDB Collection to AlertCollection interface
-        const alertsWrapper = {
-          updateOne: async (filter: Record<string, any>, update: Record<string, any>, options: Record<string, any>) => {
-            await AlertsCollection.updateOne(filter, update, options);
-          },
-        };
-        
-        const qualityAlerts = await AlertGenerationService.generateAlertsForBatch(
-          applicationId,
-          evaluations,
-          alertsWrapper as any
-        );
-        logger.info(`[BatchProcessingService] Generated ${qualityAlerts.length} evaluation quality alerts`);
-      }
-
-      // Generate performance alerts (latency, cost, errors, trends)
+      // Phase 5: Alerts
       try {
-        const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
-        logger.info(`[BatchProcessingService] Generating performance alerts based on governance metrics`);
-        
-        // Create a wrapper that adapts MongoDB Collection to AlertCollection interface
+        const AlertsCollection = mongoose.connection.collection('alerts');
+        const evaluations = await EvaluationCollection.find({ batchId }).toArray();
         const alertsWrapper = {
-          updateOne: async (filter: Record<string, any>, update: Record<string, any>, options: Record<string, any>) => {
-            await AlertsCollection.updateOne(filter, update, options);
-          },
+          updateOne: async (filter: any, update: any, options: any) => { await AlertsCollection.updateOne(filter, update, options); },
         };
         
-        const performanceAlerts = await AlertGenerationService.generatePerformanceAlerts(
-          applicationId,
-          governanceMetrics,
-          {
-            metrics: {},
-            overallScoreThresholds: { good: 70, excellent: 85 }
-          },
-          alertsWrapper as any
-        );
-        logger.info(`[BatchProcessingService] Generated ${performanceAlerts.length} performance alerts`);
-      } catch (perfError: unknown) {
-        const errorMessage = perfError instanceof Error ? perfError.message : String(perfError);
-        logger.warn(`[BatchProcessingService] Performance alerts generation failed (non-critical):`, errorMessage);
+        if (evaluations.length > 0) {
+          await AlertGenerationService.generateAlertsForBatch(applicationId, evaluations, alertsWrapper as any);
+        }
+        
+        const govMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
+        await AlertGenerationService.generatePerformanceAlerts(applicationId, govMetrics, { metrics: {}, overallScoreThresholds: { good: 70, excellent: 85 } }, alertsWrapper as any);
+      } catch (alertError: unknown) {
+        logger.error(`[BatchProcessingService] Alerts failed:`, alertError instanceof Error ? alertError.message : String(alertError));
       }
 
-      logger.info(`[BatchProcessingService] Alert generation completed`);
-    } catch (alertError: unknown) {
-      const errorMessage = alertError instanceof Error ? alertError.message : String(alertError);
-      logger.error(`[BatchProcessingService] Error generating alerts:`, errorMessage);
-      // Don't fail the batch if alert generation fails
+      // Update Application Master Status
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { $set: { initialDataProcessingStatus: 'completed', metricsCount: records.length, updatedAt: new Date() } }
+      );
+
+      return { batchId, status: 'completed', recordsProcessed: records.length, completedAt: new Date() };
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`[BatchProcessingService] Batch process failed:`, errorMessage);
+
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { $set: { initialDataProcessingStatus: 'failed', error: errorMessage, updatedAt: new Date() } }
+      ).catch(() => {});
+
+      throw error;
     }
-
-    logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
-
-    // Update application status
-    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
-    await ApplicationMasterCollection.updateOne(
-      { id: applicationId },
-      { 
-        $set: { 
-          initialDataProcessingStatus: 'completed',
-          metricsCount: records.length,
-          updatedAt: new Date(),
-        } 
-      }
-    );
-
-    return {
-      batchId,
-      status: 'completed',
-      recordsProcessed: records.length,
-      completedAt: new Date(),
-    };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(`[BatchProcessingService] Batch process failed:`, errorMessage);
-
-    // Update application status to failed
-    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
-    await ApplicationMasterCollection.updateOne(
-      { id: applicationId },
-      { 
-        $set: { 
-          initialDataProcessingStatus: 'failed',
-          error: errorMessage,
-          updatedAt: new Date(),
-        } 
-      }
-    ).catch((err: unknown) => {
-      const catchErrorMsg = err instanceof Error ? err.message : String(err);
-      logger.error('Failed to update app status:', catchErrorMsg);
-    });
-
-    throw error;
   }
 
   private async readDataFromSource(
     sourceType: string,
-    sourceConfig: Record<string, unknown>,
+    sourceConfig: Record<string, any>,
     applicationId: string
-  ): Promise<{
-    records: ParsedRecord[];
-    fileSize: number;
-    fileName: string;
-    error?: FileAccessError;
-  }> {
-    // Try local folder first if sourceConfig is provided
+  ): Promise<{ records: ParsedRecord[]; fileSize: number; fileName: string; error?: FileAccessError; }> {
+    
     const folderPath = sourceConfig?.folderPath as string | undefined;
     const fileName = sourceConfig?.fileName as string | undefined;
     
     if ((sourceType === 'local_folder' || sourceType === 'local-folder') && folderPath) {
-      logger.info(`[BatchProcessingService] Reading from local folder: ${folderPath}`);
       const connector = new LocalFolderConnector({ folderPath });
-      
       const result = await connector.readDataFile(folderPath, fileName || '', applicationId);
 
-      if (result.error) {
-        logger.warn(`[BatchProcessingService] Local folder read failed, falling back to MongoDB`);
-        // Fall through to MongoDB if local file doesn't exist
-      } else {
-        const fileSize = connector.getFileSize(folderPath, fileName || '') || 0;
+      if (!result.error) {
         return {
           records: result.records,
-          fileSize,
+          fileSize: connector.getFileSize(folderPath, fileName || '') || 0,
           fileName: fileName || 'local_file',
         };
       }
+      logger.warn(`[BatchProcessingService] Local folder read failed, falling back to MongoDB`);
     }
 
-    // Default: Read from MongoDB rawdatarecords collection
-    logger.info(`[BatchProcessingService] Reading from MongoDB rawdatarecords collection for app ${applicationId}`);
-    
+    // Default Fallback: MongoDB Read
     const RawDataCollection = mongoose.connection.collection('rawdatarecords');
     const rawDataRecords = await RawDataCollection.find({ applicationId }).toArray();
     
     if (!rawDataRecords || rawDataRecords.length === 0) {
-      logger.warn(`[BatchProcessingService] No raw data records found for applicationId: ${applicationId}`);
       return {
-        records: [],
-        fileSize: 0,
-        fileName: 'mongodb_rawdatarecords',
-        error: {
-          code: 'NO_DATA',
-          message: 'No raw data records found in MongoDB',
-          phase: 'data_read',
-          timestamp: new Date(),
-        },
+        records: [], fileSize: 0, fileName: 'mongodb_rawdatarecords',
+        error: { code: 'NO_DATA', message: 'No records found', phase: 'data_read', timestamp: new Date() }
       };
     }
 
-    // Convert MongoDB documents to ParsedRecord format
-    const records: ParsedRecord[] = rawDataRecords.map((record: Record<string, unknown>, index: number) => {
-      // Extract core data fields - support multiple naming conventions
-      const userPrompt = (record.userPrompt || record.user_prompt || record.prompt || record.query || '') as string;
-      const llmResponse = (record.llmResponse || record.llm_response || record.response || '') as string;
-      const context = (record.context || record.retrieved_context || record.retrieved_documents || '') as string;
+    const records: ParsedRecord[] = rawDataRecords.map((record, index) => {
+      const userPrompt = (record.userPrompt || record.query || '') as string;
+      const llmResponse = (record.llmResponse || record.response || '') as string;
+      const context = (record.context || '') as string;
       
       return {
         lineNumber: index + 1,
         validationErrors: [],
         data: {
-          // User/Session data
-          userId: record.userId || record.user_id || record.user || '',
-          sessionId: record.sessionId || record.session_id || record.session || '',
-          
-          // Core content fields
-          userPrompt,
-          context,
-          llmResponse,
-          
-          // Aliases for evaluation frameworks
-          query: userPrompt,
-          response: llmResponse,
-          retrieved_documents: context ? 
-            (Array.isArray(context) ? context : [{ content: context, source: 'mongodb' }]) 
-            : [],
-          
-          // Timing fields
-          promptTimestamp: record.promptTimestamp || new Date(),
-          contextRetrievalStartTime: record.contextRetrievalStartTime,
-          contextRetrievalEndTime: record.contextRetrievalEndTime,
-          llmRequestStartTime: record.llmRequestStartTime,
-          llmResponseEndTime: record.llmResponseEndTime,
-          
-          // Token/Length metrics
-          contextChunkCount: record.contextChunkCount || 1,
-          contextTotalLengthWords: record.contextTotalLengthWords || 0,
-          promptLengthWords: record.promptLengthWords || 0,
-          responseLengthWords: record.responseLengthWords || 0,
-          promptTokenCount: record.promptTokenCount,
-          responseTokenCount: record.responseTokenCount,
-          totalTokenCount: record.totalTokenCount,
-          
-          // Status
-          status: record.status || 'processed',
-          
-          // Include all original fields for flexibility
           ...record,
+          userPrompt, context, llmResponse, query: userPrompt, response: llmResponse,
+          retrieved_documents: context ? [{ content: context, source: 'mongodb' }] : [],
+          promptTimestamp: record.promptTimestamp || new Date(),
         },
       };
     });
 
-    logger.info(`[BatchProcessingService] Read ${records.length} records from MongoDB rawdatarecords collection`);
-
-    return {
-      records,
-      fileSize: records.length * 100, // Approximate size
-      fileName: 'mongodb_rawdatarecords',
-    };
+    return { records, fileSize: records.length * 100, fileName: 'mongodb_rawdatarecords' };
   }
 
-  async getBatchStatus(batchId: string): Promise<Record<string, unknown> | null> {
-    const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
-    return BatchCollection.findOne({ batchId });
+  async getBatchStatus(batchId: string): Promise<any | null> {
+    return mongoose.connection.collection('scheduledbatchjobs').findOne({ batchId });
   }
 
-  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<Record<string, unknown>[]> {
-    const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
-    return BatchCollection.find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
+  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<any[]> {
+    return mongoose.connection.collection('scheduledbatchjobs').find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
   }
 }
 

@@ -29,6 +29,7 @@ import { createDatabase } from './services/database.js';
 import { createEvaluationService } from './services/evaluation.js';
 import { createWebSocketService } from './services/websocket.js';
 import { scheduledBatchJobService } from './services/ScheduledBatchJobService.js';
+import { FrameworkType } from './frameworks/registry.js';
 
 // Load environment variables from .env.backend first, then .env as fallback
 const envBackendPath = path.resolve(process.cwd(), '.env.backend');
@@ -114,7 +115,7 @@ async function createServer(): Promise<Express> {
   await database.initialize();
 
   const evaluationService = createEvaluationService(database, {
-    defaultFramework: 'ragas' as const,
+    defaultFramework: 'ragas' as FrameworkType,
   });
 
   // Initialize framework registry
