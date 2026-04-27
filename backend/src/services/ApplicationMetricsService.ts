@@ -139,30 +139,21 @@ export class ApplicationMetricsService {
 
     // Average each metric across all evaluations
     for (const key of metricKeys) {
-      const sum = evaluations.reduce((acc: number, evaluation: any) => {
-        // First try to get the exact metric from evaluation.evaluation
-        let value = evaluation.evaluation?.[key];
-        
-        // If not found, try to map from database field names
-        if (value === undefined || value === null) {
-          const dbKey = this.mapMetricKey(key);
-          value = evaluation.evaluation?.[dbKey];
-        }
-        
-        // If still not found, try without underscore conversion
-        if (value === undefined || value === null) {
-          value = evaluation.evaluation?.[key];
-        }
-        
-        // Skip undefined/null values
-        if (value === undefined || value === null) {
-          return acc;
-        }
-        
-        return acc + value;
-      }, 0);
+      const validValues = evaluations
+        .map((evaluation: any) => {
+          // Try top-level metric first (new structure)
+          let value = evaluation[key];
+          
+          // If not found, try under evaluation object (backward compatibility)
+          if (value === undefined || value === null) {
+            value = evaluation.evaluation?.[key];
+          }
+          
+          return value;
+        })
+        .filter(v => v !== undefined && v !== null && !isNaN(v));
       
-      aggregated[key] = evaluations.length > 0 ? sum / evaluations.length : 0;
+      aggregated[key] = validValues.length > 0 ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length : 0;
     }
 
     logger.debug(`[v0] Calculated average metrics:`, aggregated);

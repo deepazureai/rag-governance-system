@@ -193,9 +193,25 @@ export class BatchProcessingService {
             frameworksUsed: frameworkResults.map(r => r.framework),
             rawFrameworkResults: frameworkResults,
             
-            // Store final mapped metrics
+            // Store final mapped metrics - directly accessible for averaging
+            groundedness: mappedMetrics.groundedness,
+            coherence: mappedMetrics.coherence,
+            relevance: mappedMetrics.relevance,
+            faithfulness: mappedMetrics.faithfulness,
+            answerRelevancy: mappedMetrics.answerRelevancy,
+            contextPrecision: mappedMetrics.contextPrecision,
+            contextRecall: mappedMetrics.contextRecall,
+            overallScore: mappedMetrics.overallScore,
+            
+            // Framework-specific metrics
+            bleuScore: mappedMetrics.bleuScore,
+            rougeL: mappedMetrics.rougeL,
+            llamaCorrectness: mappedMetrics.llamaCorrectness,
+            llamaRelevancy: mappedMetrics.llamaRelevancy,
+            llamaFaithfulness: mappedMetrics.llamaFaithfulness,
+            
+            // Also store under evaluation object for backward compatibility
             evaluation: {
-              // Dashboard metrics (what's shown in dashboard)
               groundedness: mappedMetrics.groundedness,
               coherence: mappedMetrics.coherence,
               relevance: mappedMetrics.relevance,
@@ -204,8 +220,11 @@ export class BatchProcessingService {
               contextPrecision: mappedMetrics.contextPrecision,
               contextRecall: mappedMetrics.contextRecall,
               overallScore: mappedMetrics.overallScore,
-              
-              // Raw metrics from each framework for governance page
+              bleuScore: mappedMetrics.bleuScore,
+              rougeL: mappedMetrics.rougeL,
+              llamaCorrectness: mappedMetrics.llamaCorrectness,
+              llamaRelevancy: mappedMetrics.llamaRelevancy,
+              llamaFaithfulness: mappedMetrics.llamaFaithfulness,
               rawMetrics: mappedMetrics,
             },
             
