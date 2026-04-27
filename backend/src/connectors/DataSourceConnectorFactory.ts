@@ -8,7 +8,7 @@ export type DataSourceType = 'local_folder' | 'database' | 'azure_blob' | 'splun
 
 export interface DataSourceConfig {
   type: DataSourceType;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export class DataSourceConnectorFactory {
@@ -24,18 +24,18 @@ export class DataSourceConnectorFactory {
         return new LocalFolderConnector(dataSourceConfig.config);
 
       case 'database':
-        return new DatabaseConnector(dataSourceConfig.config as any);
+        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
 
       case 'azure_blob':
-        return new AzureBlobConnector(dataSourceConfig.config as any);
+        return new AzureBlobConnector(dataSourceConfig.config as Record<string, unknown>);
 
       case 'splunk':
         logger.warn(`[v0] Splunk connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config as any);
+        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
 
       case 'datadog':
         logger.warn(`[v0] Datadog connector not yet implemented, using database fallback`);
-        return new DatabaseConnector(dataSourceConfig.config as any);
+        return new DatabaseConnector(dataSourceConfig.config as Record<string, unknown>);
 
       default:
         throw new Error(`Unsupported data source type: ${dataSourceConfig.type}`);

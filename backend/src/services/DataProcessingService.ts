@@ -105,7 +105,7 @@ export class DataProcessingService {
           dataQuality,
           metadata: {
             ingestionDate: new Date(),
-            sourceType: sourceType as any,
+            sourceType: sourceType,
             checksum,
             isDuplicate: false,
             evaluationFramework: framework,

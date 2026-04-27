@@ -393,11 +393,15 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
       let value = match[2];
 
       // Try to parse as JSON if it looks like a number or boolean
-      if (value === 'true') value = true as any;
-      else if (value === 'false') value = false as any;
-      else if (!isNaN(Number(value)) && value !== '') value = Number(value) as any;
-
-      record[key] = value;
+      if (value === 'true') {
+        record[key] = true;
+      } else if (value === 'false') {
+        record[key] = false;
+      } else if (!isNaN(Number(value)) && value !== '') {
+        record[key] = Number(value);
+      } else {
+        record[key] = value;
+      }
     }
 
     if (Object.keys(record).length === 0) {

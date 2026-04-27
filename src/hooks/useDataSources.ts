@@ -46,7 +46,7 @@ export const useDataSources = () => {
       try {
         const isNewConfig = !('id' in config);
         const result = isNewConfig
-          ? await dataSourcesClient.createConfiguration(config.appId, config as any)
+          ? await dataSourcesClient.createConfiguration(config.appId, config as Omit<DataSourceConfig, 'id'>)
           : await dataSourcesClient.updateConfiguration(config as DataSourceConfig);
 
         if (result.success && result.data) {

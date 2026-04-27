@@ -107,7 +107,7 @@ export class AlertGenerationService {
 
         // Check each quality metric
         for (const [metricName, threshold] of Object.entries(qualityThresholds)) {
-          const metricValue = (metrics as any)[metricName];
+          const metricValue = metrics[metricName as keyof typeof metrics];
 
           // Only create alert if metric exists and is below threshold
           if (typeof metricValue === 'number' && metricValue < (threshold as number)) {

@@ -148,7 +148,7 @@ notificationsRouter.post('/channels/:id/test', async (req: Request, res: Respons
       },
     };
 
-    const result = await notificationService.testChannel(channel as any);
+    const result = await notificationService.testChannel(channel as typeof channel);
 
     logger.info('[API] Channel test completed:', { channelId: id, success: result.success });
 

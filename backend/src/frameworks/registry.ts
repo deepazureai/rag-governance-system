@@ -82,7 +82,8 @@ export class FrameworkRegistry {
     const newFramework = this.frameworks.get(type)!;
 
     // Initialize if not already initialized
-    if (!(newFramework as any).initialized) {
+    const frameworkWithInit = newFramework as { initialized?: boolean };
+    if (!frameworkWithInit.initialized) {
       await newFramework.initialize();
     }
 
@@ -142,7 +143,7 @@ export class FrameworkRegistry {
   async healthCheckAll(): Promise<
     Record<FrameworkType, { name: string; healthy: boolean }>
   > {
-    const results: Record<FrameworkType, { name: string; healthy: boolean }> = {} as any;
+    const results: Record<FrameworkType, { name: string; healthy: boolean }> = Object.create(null);
 
     for (const [type, framework] of this.frameworks.entries()) {
       try {

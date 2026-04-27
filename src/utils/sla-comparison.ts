@@ -120,10 +120,14 @@ export function groupRecordsByHealthStatus(
   good: any[];
   poor: any[];
 } {
-  const grouped = {
-    excellent: [] as any[],
-    good: [] as any[],
-    poor: [] as any[],
+  const grouped: {
+    excellent: Record<string, unknown>[];
+    good: Record<string, unknown>[];
+    poor: Record<string, unknown>[];
+  } = {
+    excellent: [],
+    good: [],
+    poor: [],
   };
 
   records.forEach((record) => {

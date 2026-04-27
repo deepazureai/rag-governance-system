@@ -119,7 +119,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               onClick={() => setSelectedStatus(selectedStatus === status ? null : status)}
               className="text-sm"
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)} ({(rawData[status] as any[]).length})
+              {status.charAt(0).toUpperCase() + status.slice(1)} ({(rawData[status] as RawDataItem[]).length})
             </Button>
           ))}
         </div>
@@ -153,7 +153,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
           <Card key={framework} className="p-4 bg-slate-50 border-2 border-slate-200">
             <h4 className="font-semibold text-sm text-slate-700 mb-3">{framework}</h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {(rawData[framework] as any[]).slice(0, 5).map((item: any, idx: number) => (
+              {(rawData[framework] as RawDataItem[]).slice(0, 5).map((item: RawDataItem, idx: number) => (
                 <Card key={idx} className="p-2 bg-white text-sm border border-slate-200">
                   <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
@@ -177,7 +177,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
           <Card key={date} className="p-4 bg-slate-50 border-2 border-slate-200">
             <h4 className="font-semibold text-sm text-slate-700 mb-3">{date}</h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {(rawData[date] as any[]).slice(0, 5).map((item: any, idx: number) => (
+              {(rawData[date] as RawDataItem[]).slice(0, 5).map((item: RawDataItem, idx: number) => (
                 <Card key={idx} className="p-2 bg-white text-sm border border-slate-200">
                   <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>

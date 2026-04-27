@@ -114,7 +114,7 @@ async function createServer(): Promise<Express> {
   await database.initialize();
 
   const evaluationService = createEvaluationService(database, {
-    defaultFramework: 'ragas' as any,
+    defaultFramework: 'ragas' as const,
   });
 
   // Initialize framework registry

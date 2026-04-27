@@ -71,7 +71,7 @@ export class GovernanceMetricsService {
     
     for (const metricName of metricsToCheck) {
       const value = evaluation[metricName] || 0;
-      const metricThreshold = (thresholdConfig as any)[metricName];
+      const metricThreshold = thresholdConfig[metricName as keyof typeof thresholdConfig];
       
       if (!metricThreshold) continue;
       
