@@ -118,7 +118,9 @@ export class ApplicationMetricsService {
   /**
    * Calculate average metrics from evaluation records
    */
-  private calculateAverageMetrics(evaluations: any[]): Omit<ApplicationMetrics, 'applicationId' | 'applicationName' | 'timestamp'> {
+  private calculateAverageMetrics(
+    evaluations: Array<Record<string, unknown>>
+  ): Omit<ApplicationMetrics, 'applicationId' | 'applicationName' | 'timestamp'> {
     const metricKeys = [
       'groundedness',
       'coherence',
@@ -135,29 +137,32 @@ export class ApplicationMetricsService {
       'overallScore',
     ] as const;
 
-    const aggregated: any = {};
+    const aggregated: Record<string, number> = {};
 
     // Average each metric across all evaluations
     for (const key of metricKeys) {
       const validValues = evaluations
-        .map((evaluation: any) => {
+        .map((evaluation: Record<string, unknown>) => {
           // Try top-level metric first (new structure)
           let value = evaluation[key];
           
           // If not found, try under evaluation object (backward compatibility)
           if (value === undefined || value === null) {
-            value = evaluation.evaluation?.[key];
+            const evalObj = evaluation.evaluation as Record<string, unknown> | undefined;
+            value = evalObj?.[key];
           }
           
-          return value;
+          return typeof value === 'number' ? value : undefined;
         })
-        .filter(v => v !== undefined && v !== null && !isNaN(v));
+        .filter((v): v is number => v !== undefined && !isNaN(v));
       
-      aggregated[key] = validValues.length > 0 ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length : 0;
+      aggregated[key] = validValues.length > 0 
+        ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length 
+        : 0;
     }
 
     logger.debug(`[v0] Calculated average metrics:`, aggregated);
-    return aggregated;
+    return aggregated as Omit<ApplicationMetrics, 'applicationId' | 'applicationName' | 'timestamp'>;
   }
 
   /**
@@ -262,12 +267,15 @@ export class ApplicationMetricsService {
     // Average each metric across all applications
     for (const key of metricKeys) {
       const validValues = metricsArray
-        .map(m => m[key as keyof ApplicationMetrics] as number)
-        .filter(v => v !== undefined && v !== null && !isNaN(v));
+        .map(m => {
+          const value = m[key as keyof ApplicationMetrics];
+          return typeof value === 'number' ? value : undefined;
+        })
+        .filter((v): v is number => v !== undefined && !isNaN(v));
       
       aggregated[key as keyof AggregatedMetrics] = validValues.length > 0 
-        ? validValues.reduce((a, b) => a + b, 0) / validValues.length 
-        : 0 as any;
+        ? validValues.reduce((a: number, b: number) => a + b, 0) / validValues.length 
+        : 0;
     }
 
     // Aggregate frameworks used (collect all unique frameworks)

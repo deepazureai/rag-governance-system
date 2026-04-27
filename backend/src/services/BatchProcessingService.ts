@@ -289,7 +289,7 @@ export class BatchProcessingService {
         const qualityAlerts = await AlertGenerationService.generateAlertsForBatch(
           applicationId,
           evaluations,
-          AlertsCollection as any
+          AlertsCollection as unknown as typeof AlertsCollection
         );
         logger.info(`[BatchProcessingService] Generated ${qualityAlerts.length} evaluation quality alerts`);
       }
@@ -305,11 +305,12 @@ export class BatchProcessingService {
             metrics: {},
             overallScoreThresholds: { good: 70, excellent: 85 }
           },
-          AlertsCollection as any
+          AlertsCollection as unknown as typeof AlertsCollection
         );
         logger.info(`[BatchProcessingService] Generated ${performanceAlerts.length} performance alerts`);
-      } catch (perfError: any) {
-        logger.warn(`[BatchProcessingService] Performance alerts generation failed (non-critical):`, perfError.message);
+      } catch (perfError: unknown) {
+        const errorMessage = perfError instanceof Error ? perfError.message : String(perfError);
+        logger.warn(`[BatchProcessingService] Performance alerts generation failed (non-critical):`, errorMessage);
       }
 
       logger.info(`[BatchProcessingService] Alert generation completed`);
@@ -401,16 +402,16 @@ export class BatchProcessingService {
         records: [],
         fileSize: 0,
         fileName: 'mongodb_rawdatarecords',
-        error: { code: 'NO_DATA', message: 'No raw data records found in MongoDB' } as any,
+        error: { code: 'NO_DATA' as const, message: 'No raw data records found in MongoDB' },
       };
     }
 
     // Convert MongoDB documents to ParsedRecord format
-    const records: ParsedRecord[] = rawDataRecords.map((record: any, index: number) => {
+    const records: ParsedRecord[] = rawDataRecords.map((record: Record<string, unknown>, index: number) => {
       // Extract core data fields - support multiple naming conventions
-      const userPrompt = record.userPrompt || record.user_prompt || record.prompt || record.query || '';
-      const llmResponse = record.llmResponse || record.llm_response || record.response || '';
-      const context = record.context || record.retrieved_context || record.retrieved_documents || '';
+      const userPrompt = (record.userPrompt || record.user_prompt || record.prompt || record.query || '') as string;
+      const llmResponse = (record.llmResponse || record.llm_response || record.response || '') as string;
+      const context = (record.context || record.retrieved_context || record.retrieved_documents || '') as string;
       
       return {
         lineNumber: index + 1,
