@@ -253,7 +253,6 @@ export class MultiFrameworkEvaluator {
       };
     }
   }
-  }
   
   /**
    * Merge framework results and map to dashboard metrics
