@@ -265,16 +265,16 @@ export class BatchProcessingService {
           { upsert: true }
         );
 
-      logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
-        p95Latency: governanceMetrics.latency.total.p95,
-        avgTokens: governanceMetrics.tokens.totalTokens.avg,
-        errorRate: governanceMetrics.errors.errorRate,
-      });
-    } catch (govError: unknown) {
-      const errorMessage = govError instanceof Error ? govError.message : String(govError);
-      logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, errorMessage);
-      // Don't fail the batch if governance calculation fails
-    }
+        logger.info(`[BatchProcessingService] Governance metrics calculated and stored`, {
+          p95Latency: governanceMetrics.latency.total.p95,
+          avgTokens: governanceMetrics.tokens.totalTokens.avg,
+          errorRate: governanceMetrics.errors.errorRate,
+        });
+      } catch (govError: unknown) {
+        const errorMessage = govError instanceof Error ? govError.message : String(govError);
+        logger.warn(`[BatchProcessingService] Governance metrics calculation failed (non-critical):`, errorMessage);
+        // Don't fail the batch if governance calculation fails
+      }
 
     // Phase 5: Generate Alerts (Both Evaluation Quality and Performance Alerts)
     logger.info(`[BatchProcessingService] Phase 5: Generating alerts from evaluation and governance metrics`);
