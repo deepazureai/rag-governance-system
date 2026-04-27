@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "clean": "rm -rf .next node_modules/.cache .turbo",
+    "clean:dev": "npm run clean && npm run dev",
     "export:zip": "node create-source-zip.js"
   },
   "dependencies": {
