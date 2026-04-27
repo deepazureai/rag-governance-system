@@ -340,64 +340,47 @@ export class BatchProcessingService {
 
     logger.info(`[BatchProcessingService] Batch ${batchId} completed successfully`);
 
-      // Update application status
-      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
-      await ApplicationMasterCollection.updateOne(
-        { id: applicationId },
-        { 
-          $set: { 
-            initialDataProcessingStatus: 'completed',
-            metricsCount: records.length,
-            updatedAt: new Date(),
-          } 
-        }
-      );
+    // Update application status
+    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+    await ApplicationMasterCollection.updateOne(
+      { id: applicationId },
+      { 
+        $set: { 
+          initialDataProcessingStatus: 'completed',
+          metricsCount: records.length,
+          updatedAt: new Date(),
+        } 
+      }
+    );
 
-      return {
-        batchId,
-        status: 'completed',
-        recordsProcessed: records.length,
-        completedAt: new Date(),
-      };
-    } catch (error: any) {
-      logger.error(`[BatchProcessingService] Batch process failed:`, error);
+    return {
+      batchId,
+      status: 'completed',
+      recordsProcessed: records.length,
+      completedAt: new Date(),
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`[BatchProcessingService] Batch process failed:`, errorMessage);
 
-      // Update application status to failed
-      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
-      await ApplicationMasterCollection.updateOne(
-        { id: applicationId },
-        { 
-          $set: { 
-            initialDataProcessingStatus: 'failed',
-            error: error.message,
-            updatedAt: new Date(),
-          } 
-        }
-      ).catch((err: any) => logger.error('Failed to update app status:', err));
+    // Update application status to failed
+    const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+    await ApplicationMasterCollection.updateOne(
+      { id: applicationId },
+      { 
+        $set: { 
+          initialDataProcessingStatus: 'failed',
+          error: errorMessage,
+          updatedAt: new Date(),
+        } 
+      }
+    ).catch((err: unknown) => {
+      const catchErrorMsg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to update app status:', catchErrorMsg);
+    });
 
-      throw error;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`[BatchProcessingService] Batch process failed:`, errorMessage);
-
-      // Update application status to failed
-      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
-      await ApplicationMasterCollection.updateOne(
-        { id: applicationId },
-        { 
-          $set: { 
-            initialDataProcessingStatus: 'failed',
-            error: errorMessage,
-            updatedAt: new Date(),
-          } 
-        }
-      ).catch((err: unknown) => {
-        const catchErrorMsg = err instanceof Error ? err.message : String(err);
-        logger.error('Failed to update app status:', catchErrorMsg);
-      });
-
-      throw error;
-    }
+    throw error;
+  }
 
   private async readDataFromSource(
     sourceType: string,
