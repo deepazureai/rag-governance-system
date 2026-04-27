@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { DataIngestionService } from '../services/DataIngestionService.js';
 import { DataProcessingService } from '../services/DataProcessingService.js';
+import { AlertIntegrationLayerService } from '../services/AlertIntegrationLayerService.js';
 import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -36,6 +37,16 @@ dataIngestionRouter.post('/ingest/local-folder', async (req: Request, res: Respo
       ingestionResult.sourceType,
       'raga' // Use RAGA framework by default
     );
+
+    // Generate real-time alerts for ingested records with per-app thresholds
+    try {
+      await AlertIntegrationLayerService.generateIngestionTimeAlerts(applicationId, ingestionResult.rawData, 'ingestion');
+      logger.info(`[v0] Alerts generated for ingestion from local folder, app: ${applicationId}`);
+    } catch (alertErr: unknown) {
+      const alertErrorMsg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      logger.warn(`[v0] Alert generation failed (non-critical): ${alertErrorMsg}`);
+      // Don't fail ingestion if alerts fail
+    }
 
     res.json({
       success: true,
@@ -77,6 +88,16 @@ dataIngestionRouter.post('/ingest/azure-blob', async (req: Request, res: Respons
       ingestionResult.sourceType,
       'raga'
     );
+
+    // Generate real-time alerts for ingested records with per-app thresholds
+    try {
+      await AlertIntegrationLayerService.generateIngestionTimeAlerts(applicationId, ingestionResult.rawData, 'ingestion');
+      logger.info(`[v0] Alerts generated for Azure Blob ingestion, app: ${applicationId}`);
+    } catch (alertErr: unknown) {
+      const alertErrorMsg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      logger.warn(`[v0] Alert generation failed (non-critical): ${alertErrorMsg}`);
+      // Don't fail ingestion if alerts fail
+    }
 
     res.json({
       success: true,
@@ -122,6 +143,16 @@ dataIngestionRouter.post('/ingest/database', async (req: Request, res: Response)
       ingestionResult.sourceType,
       'raga'
     );
+
+    // Generate real-time alerts for ingested records with per-app thresholds
+    try {
+      await AlertIntegrationLayerService.generateIngestionTimeAlerts(applicationId, ingestionResult.rawData, 'ingestion');
+      logger.info(`[v0] Alerts generated for database ingestion, app: ${applicationId}`);
+    } catch (alertErr: unknown) {
+      const alertErrorMsg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      logger.warn(`[v0] Alert generation failed (non-critical): ${alertErrorMsg}`);
+      // Don't fail ingestion if alerts fail
+    }
 
     res.json({
       success: true,

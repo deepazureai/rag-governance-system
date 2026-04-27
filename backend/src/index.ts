@@ -23,6 +23,7 @@ import { alertThresholdsRouter } from './api/alertThresholdsRoutes.js';
 import { notificationsRouter } from './api/notificationsRoutes.js';
 import { databaseSchemaRouter } from './api/databaseSchemaRoutes.js';
 import { alertsRouter } from './api/alertsRoutes.js';
+import { alertIntegrationRouter } from './api/alertIntegrationRoutes.js';
 import { governanceMetricsRouter } from './api/governanceMetricsRoutes.js';
 import { getFrameworkRegistry } from './frameworks/registry.js';
 import { createDatabase } from './services/database.js';
@@ -141,6 +142,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/connections', connectionsManagementRouter);
   app.use('/api/schema-mappings', schemaMappingRouter);
   app.use('/api/alerts', alertsRouter);
+  app.use('/api/alert-integration', alertIntegrationRouter);
   app.use('/api/governance-metrics', governanceMetricsRouter);
 
   // 404 handler
