@@ -20,6 +20,7 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
   const [isValidating, setIsValidating] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
+  const [isFileLoaded, setIsFileLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detect OS
@@ -47,20 +48,35 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
     setIsValidated(false);
     setError('');
     setFileContent(null);
+    setIsFileLoaded(false);
+    
+    console.log('[v0] File selected, starting to read:', { fileName, fileSize: file.size });
     
     // Read file content immediately
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
+      const content = event.target?.result;
+      
+      // Ensure content is a string
+      if (typeof content !== 'string') {
+        console.error('[v0] FileReader result is not a string:', { type: typeof content });
+        setError('Failed to read file as text. Please ensure the file is a valid text-based file.');
+        setIsFileLoaded(false);
+        return;
+      }
+      
+      console.log('[v0] File content loaded successfully:', { fileName, contentLength: content.length, lines: content.split('\n').length });
       setFileContent(content);
-      console.log('[v0] File content loaded:', { fileName, lines: content.split('\n').length });
+      setIsFileLoaded(true);
     };
-    reader.onerror = () => {
-      setError('Failed to read file');
+    reader.onerror = (error) => {
+      console.error('[v0] FileReader error:', error);
+      setError('Failed to read file. Error: ' + error);
+      setIsFileLoaded(false);
     };
     reader.readAsText(file);
     
-    console.log('[v0] File selected:', { fileName, folderPath, fullPath });
+    console.log('[v0] File selection handler completed, waiting for FileReader...');
   };
 
   // Validate file
@@ -80,6 +96,12 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
       return;
     }
 
+    if (!isFileLoaded) {
+      setError('File is still loading. Please wait a moment and try again.');
+      onValidationChange?.(false);
+      return;
+    }
+
     if (!fileContent) {
       setError('File content could not be read');
       onValidationChange?.(false);
@@ -88,20 +110,37 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
 
     setIsValidating(true);
     try {
-      console.log('[v0] Validating file:', { folderPath, fileName, contentLength: fileContent.length });
+      console.log('[v0] Validating file:', { folderPath, fileName, contentType: typeof fileContent, contentLength: fileContent?.length });
+      
+      // Ensure fileContent is a string
+      if (typeof fileContent !== 'string') {
+        throw new Error('Invalid file content type. Expected text file.');
+      }
+      
+      if (!fileContent || fileContent.trim().length === 0) {
+        throw new Error('File is empty');
+      }
       
       // Basic validation: check if file has content and valid format
       const lines = fileContent.split('\n').filter(l => l.trim());
+      console.log('[v0] File lines parsed:', { count: lines.length, firstLine: lines[0]?.substring(0, 100) });
+      
       if (lines.length < 2) {
-        throw new Error('File must have at least headers and one data row');
+        throw new Error('File must have at least headers and one data row. Found ' + lines.length + ' line(s)');
       }
 
-      // Check if it looks like CSV
-      if (!lines[0].includes(',')) {
-        throw new Error('File does not appear to be valid CSV format (missing commas)');
+      // Check if it looks like CSV (should have comma-separated values)
+      // More flexible check - don't require commas if it's semicolon delimited
+      const firstLine = lines[0];
+      const hasCommas = firstLine.includes(',');
+      const hasSemicolons = firstLine.includes(';');
+      const hasEqualsAndQuotes = firstLine.includes('=') && (firstLine.includes('"') || firstLine.includes("'"));
+      
+      if (!hasCommas && !hasSemicolons && !hasEqualsAndQuotes) {
+        throw new Error('File does not appear to be valid CSV format. Expected comma-separated, semicolon-delimited, or key=value pairs.');
       }
 
-      console.log('[v0] File validation successful:', { lines: lines.length });
+      console.log('[v0] File validation successful:', { lines: lines.length, hasCommas, hasSemicolons });
       
       setIsValidated(true);
       onValidationChange?.(true);
@@ -109,6 +148,7 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
       
     } catch (err: any) {
       console.error('[v0] Error validating file:', err);
+      console.error('[v0] Error details:', { fileContent: typeof fileContent, length: fileContent?.length });
       setError(err.message || 'File validation failed. Please check the file format.');
       onValidationChange?.(false);
     } finally {
@@ -190,13 +230,18 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
 
       <Button
         onClick={handleValidateFile}
-        disabled={isValidating || isLoading || !fileName || isValidated}
+        disabled={isValidating || isLoading || !fileName || isValidated || !isFileLoaded}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-75"
       >
         {isValidating ? (
           <>
             <Spinner className="w-4 h-4 mr-2" />
             Validating File...
+          </>
+        ) : !isFileLoaded ? (
+          <>
+            <Spinner className="w-4 h-4 mr-2" />
+            Loading File...
           </>
         ) : isValidated ? (
           <>

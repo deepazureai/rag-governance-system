@@ -185,6 +185,7 @@ export default function NewApplicationPage() {
         try {
           const uploadApiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/upload-raw-data`;
           console.log('[v0] Upload URL:', uploadApiUrl);
+          console.log('[v0] CSV content length:', dataSourceConfig.fileContent.length);
           
           const uploadResponse = await fetch(uploadApiUrl, {
             method: 'POST',
@@ -196,12 +197,23 @@ export default function NewApplicationPage() {
           console.log('[v0] Upload response:', uploadResult);
           
           if (!uploadResponse.ok) {
+            console.error('[v0] File upload failed:', uploadResult.message || uploadResult.error);
+            // Still create the app but warn user
             console.warn('[v0] File upload failed, but application was created. You can upload data later.');
+            alert('⚠️ Application created but file upload failed. You can retry uploading the file later.');
           } else {
-            console.log('[v0] File uploaded successfully, triggering batch process...');
+            console.log('[v0] File uploaded successfully');
+            console.log('[v0] Records uploaded:', uploadResult.recordsUploaded);
             
+            // Add a small delay to ensure records are persisted
+            console.log('[v0] Waiting 1 second before triggering batch process...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            console.log('[v0] Triggering batch process...');
             // Trigger batch processing immediately
             const batchApiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/applications/${applicationId}/batch-process`;
+            console.log('[v0] Batch API URL:', batchApiUrl);
+            
             const batchResponse = await fetch(batchApiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -210,10 +222,17 @@ export default function NewApplicationPage() {
             
             const batchResult = await batchResponse.json();
             console.log('[v0] Batch process triggered:', batchResult);
+            
+            if (!batchResponse.ok) {
+              console.error('[v0] Batch process trigger failed:', batchResult.error || batchResult.message);
+              alert('⚠️ File uploaded but batch processing failed to start. It will start automatically shortly.');
+            }
           }
         } catch (uploadError) {
           console.error('[v0] Error uploading file:', uploadError);
+          console.error('[v0] Error details:', uploadError instanceof Error ? uploadError.message : String(uploadError));
           // Don't fail - application was created successfully
+          alert('⚠️ Application created but file upload encountered an error. Check console for details.');
         }
       }
       

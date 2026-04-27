@@ -41,6 +41,10 @@ export class BatchProcessingService {
       // Phase 2: Save raw data records with timing fields
       logger.info(`[BatchProcessingService] Phase 2: Saving raw data records with timing and token metrics`);
       const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+      
+      logger.info(`[BatchProcessingService] Processing ${records.length} records for batch ${batchId}`);
+      logger.info(`[BatchProcessingService] First record data keys:`, Object.keys(records[0]?.data || {}));
+      
       const rawRecords = records.map((record: ParsedRecord, index: number) => {
         // Extract timing fields from record data
         const promptTimestamp = record.data.promptTimestamp ? new Date(record.data.promptTimestamp) : new Date();
@@ -354,30 +358,56 @@ export class BatchProcessingService {
     }
 
     // Convert MongoDB documents to ParsedRecord format
-    const records: ParsedRecord[] = rawDataRecords.map((record: any, index: number) => ({
-      lineNumber: index + 1,
-      validationErrors: [],
-      data: {
-        userId: record.userId,
-        sessionId: record.sessionId,
-        userPrompt: record.userPrompt,
-        context: record.context,
-        llmResponse: record.llmResponse,
-        query: record.userPrompt, // For RAGAS evaluation
-        response: record.llmResponse, // For RAGAS evaluation
-        retrieved_documents: record.context ? [{ content: record.context, source: 'mongodb' }] : [],
-        promptTimestamp: record.promptTimestamp,
-        contextRetrievalStartTime: record.contextRetrievalStartTime,
-        contextRetrievalEndTime: record.contextRetrievalEndTime,
-        llmRequestStartTime: record.llmRequestStartTime,
-        llmResponseEndTime: record.llmResponseEndTime,
-        contextChunkCount: record.contextChunkCount,
-        contextTotalLengthWords: record.contextTotalLengthWords,
-        promptLengthWords: record.promptLengthWords,
-        responseLengthWords: record.responseLengthWords,
-        status: record.status,
-      },
-    }));
+    const records: ParsedRecord[] = rawDataRecords.map((record: any, index: number) => {
+      // Extract core data fields - support multiple naming conventions
+      const userPrompt = record.userPrompt || record.user_prompt || record.prompt || record.query || '';
+      const llmResponse = record.llmResponse || record.llm_response || record.response || '';
+      const context = record.context || record.retrieved_context || record.retrieved_documents || '';
+      
+      return {
+        lineNumber: index + 1,
+        validationErrors: [],
+        data: {
+          // User/Session data
+          userId: record.userId || record.user_id || record.user || '',
+          sessionId: record.sessionId || record.session_id || record.session || '',
+          
+          // Core content fields
+          userPrompt,
+          context,
+          llmResponse,
+          
+          // Aliases for evaluation frameworks
+          query: userPrompt,
+          response: llmResponse,
+          retrieved_documents: context ? 
+            (Array.isArray(context) ? context : [{ content: context, source: 'mongodb' }]) 
+            : [],
+          
+          // Timing fields
+          promptTimestamp: record.promptTimestamp || new Date(),
+          contextRetrievalStartTime: record.contextRetrievalStartTime,
+          contextRetrievalEndTime: record.contextRetrievalEndTime,
+          llmRequestStartTime: record.llmRequestStartTime,
+          llmResponseEndTime: record.llmResponseEndTime,
+          
+          // Token/Length metrics
+          contextChunkCount: record.contextChunkCount || 1,
+          contextTotalLengthWords: record.contextTotalLengthWords || 0,
+          promptLengthWords: record.promptLengthWords || 0,
+          responseLengthWords: record.responseLengthWords || 0,
+          promptTokenCount: record.promptTokenCount,
+          responseTokenCount: record.responseTokenCount,
+          totalTokenCount: record.totalTokenCount,
+          
+          // Status
+          status: record.status || 'processed',
+          
+          // Include all original fields for flexibility
+          ...record,
+        },
+      };
+    });
 
     logger.info(`[BatchProcessingService] Read ${records.length} records from MongoDB rawdatarecords collection`);
 

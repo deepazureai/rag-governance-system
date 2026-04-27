@@ -104,6 +104,11 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
 });
 
 
+/**
+ * POST /api/metrics/fetch-multiple
+ * Fetch metrics for multiple applications
+ */
+metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
   try {
     const { applicationIds } = req.body;
 

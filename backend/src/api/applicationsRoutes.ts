@@ -543,15 +543,53 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = parseCSVLine(lines[i]);
-        const record: Record<string, any> = { applicationId: id };
+        const csvRecord: Record<string, any> = {};
 
         headers.forEach((header, idx) => {
           const value = values[idx] || '';
-          record[header] = parseValue(value);
+          csvRecord[header] = parseValue(value);
         });
 
-        rawRecords.push(record);
-        console.log('[API] Added record', i, ':', Object.keys(record).length, 'fields');
+        // Normalize field names to match batch processing expectations
+        // Support multiple possible field names for the same data
+        const normalizedRecord = {
+          applicationId: id,
+          
+          // User/Session data
+          userId: csvRecord.userId || csvRecord.user_id || csvRecord.user || '',
+          sessionId: csvRecord.sessionId || csvRecord.session_id || csvRecord.session || '',
+          
+          // Main content fields - try multiple variations
+          userPrompt: csvRecord.userPrompt || csvRecord.user_prompt || csvRecord.prompt || csvRecord.query || '',
+          llmResponse: csvRecord.llmResponse || csvRecord.llm_response || csvRecord.response || '',
+          context: csvRecord.context || csvRecord.retrieved_context || csvRecord.retrieved_documents || '',
+          
+          // Timing fields
+          promptTimestamp: csvRecord.promptTimestamp || csvRecord.prompt_timestamp || new Date(),
+          contextRetrievalStartTime: csvRecord.contextRetrievalStartTime || csvRecord.context_retrieval_start_time,
+          contextRetrievalEndTime: csvRecord.contextRetrievalEndTime || csvRecord.context_retrieval_end_time,
+          llmRequestStartTime: csvRecord.llmRequestStartTime || csvRecord.llm_request_start_time,
+          llmResponseEndTime: csvRecord.llmResponseEndTime || csvRecord.llm_response_end_time,
+          
+          // Token/Length metrics
+          contextChunkCount: csvRecord.contextChunkCount || csvRecord.context_chunk_count || 1,
+          contextTotalLengthWords: csvRecord.contextTotalLengthWords || csvRecord.context_total_length_words || 0,
+          promptLengthWords: csvRecord.promptLengthWords || csvRecord.prompt_length_words || 0,
+          responseLengthWords: csvRecord.responseLengthWords || csvRecord.response_length_words || 0,
+          promptTokenCount: csvRecord.promptTokenCount || csvRecord.prompt_token_count,
+          responseTokenCount: csvRecord.responseTokenCount || csvRecord.response_token_count,
+          totalTokenCount: csvRecord.totalTokenCount || csvRecord.total_token_count,
+          
+          // Status and metadata
+          status: csvRecord.status || 'processed',
+          createdAt: new Date(),
+          
+          // Store original CSV record for reference
+          originalRecord: csvRecord,
+        };
+
+        rawRecords.push(normalizedRecord);
+        console.log('[API] Added record', i, '- userId:', normalizedRecord.userId, ', query length:', normalizedRecord.userPrompt?.length || 0);
       } catch (error: any) {
         console.warn(`[API] Error parsing CSV row ${i + 1}:`, error.message);
       }
@@ -570,12 +608,16 @@ applicationsRouter.post('/:id/upload-raw-data', async (req: Request, res: Respon
     // Insert raw data
     console.log('[API] Attempting to insert', rawRecords.length, 'records into rawdatarecords collection');
     console.log('[API] Mongoose connection state:', mongoose.connection.readyState);
-    console.log('[API] First record sample:', JSON.stringify(rawRecords[0]));
+    console.log('[API] First record sample:', JSON.stringify(rawRecords[0], null, 2).substring(0, 500));
     
     try {
       const insertResult = await RawDataCollection.insertMany(rawRecords);
       console.log('[API] Insert successful - insertedCount:', insertResult.insertedCount);
-      console.log('[API] Inserted IDs:', insertResult.insertedIds);
+      console.log('[API] Inserted IDs count:', Object.keys(insertResult.insertedIds).length);
+      
+      // Verify records were inserted
+      const countAfter = await RawDataCollection.countDocuments({ applicationId: id });
+      console.log('[API] Verified - Total records in rawdatarecords for app:', countAfter);
     } catch (insertError: any) {
       console.error('[API] Insert error:', insertError);
       throw insertError;

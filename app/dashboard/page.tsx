@@ -104,7 +104,18 @@ export default function DashboardPage() {
     if (metrics && selectedAppIds.length > 0) {
       selectedAppIds.forEach((appId) => {
         if (metrics.metrics) {
-          calculateAlertsForApp(appId, metrics.metrics);
+          // Convert MetricsData to Record<string, number>
+          const metricsRecord: Record<string, number> = {
+            groundedness: metrics.metrics.groundedness || 0,
+            coherence: metrics.metrics.coherence || 0,
+            relevance: metrics.metrics.relevance || 0,
+            faithfulness: metrics.metrics.faithfulness || 0,
+            answerRelevancy: metrics.metrics.answerRelevancy || 0,
+            contextPrecision: metrics.metrics.contextPrecision || 0,
+            contextRecall: metrics.metrics.contextRecall || 0,
+            slaCompliance: metrics.metrics.slaCompliance || 0,
+          };
+          calculateAlertsForApp(appId, metricsRecord);
         }
       });
     }
@@ -211,7 +222,14 @@ export default function DashboardPage() {
             </Card>
           ) : (
             <ApplicationsTable
-              applications={applications}
+              applications={applications.map(app => ({
+                id: app.id,
+                name: app.name,
+                description: app.description || 'No description',
+                owner: app.owner || 'Unknown',
+                status: (app.status === 'active' || app.status === 'inactive' ? app.status : 'active') as 'active' | 'inactive',
+                createdAt: app.createdAt,
+              }))}
               onRefresh={handleRefresh}
               isRefreshing={isLoading}
             />
@@ -224,21 +242,23 @@ export default function DashboardPage() {
             <Button
               onClick={handleRefresh}
               disabled={isLoading}
+              title="Fetch the latest metrics data for selected applications"
               className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? 'Refreshing...' : 'Refresh Metrics'}
             </Button>
             
-            {/* Show trigger batch process button if app status is waiting_for_file */}
+            {/* Trigger batch process button - show for waiting_for_file status */}
             {applications.some((app) => selectedAppIds.includes(app.id) && app.initialDataProcessingStatus === 'waiting_for_file') && (
               <Button
                 onClick={handleTriggerBatchProcess}
                 disabled={isLoading}
+                title="Start batch processing for raw data that's waiting to be evaluated"
                 className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                {isLoading ? 'Processing...' : 'Trigger Batch Process'}
+                {isLoading ? 'Processing...' : 'Process Raw Data'}
               </Button>
             )}
             
@@ -297,7 +317,7 @@ export default function DashboardPage() {
           )}
 
           {activeTab === 'raw-data' && selectedAppIds.length > 0 && (
-            <RawDataTab applicationIds={selectedAppIds} />
+            <RawDataTab applicationId={selectedAppIds[0]} />
           )}
 
           {activeTab === 'raw-data' && selectedAppIds.length === 0 && (
