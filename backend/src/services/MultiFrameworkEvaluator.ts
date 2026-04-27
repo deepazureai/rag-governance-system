@@ -104,7 +104,12 @@ export class MultiFrameworkEvaluator {
     const startTime = Date.now();
     
     try {
-      logger.info('[RAGAS] Starting evaluation');
+      logger.info('[RAGAS] Starting evaluation', {
+        queryLength: query.length,
+        responseLength: response.length,
+        docsCount: retrievedDocuments.length,
+        firstDocLength: retrievedDocuments[0]?.content.length || 0,
+      });
       
       // Simulate RAGAS evaluation (in production, call actual RAGAS API)
       // For now, use deterministic calculation based on content
@@ -123,6 +128,8 @@ export class MultiFrameworkEvaluator {
         executionTime,
         faithfulness: metrics.faithfulness?.toFixed(2),
         answerRelevancy: metrics.answerRelevancy?.toFixed(2),
+        contextPrecision: metrics.contextPrecision?.toFixed(2),
+        contextRecall: metrics.contextRecall?.toFixed(2),
       });
       
       return {
@@ -155,7 +162,11 @@ export class MultiFrameworkEvaluator {
     const startTime = Date.now();
     
     try {
-      logger.info('[BLEU_ROUGE] Starting evaluation');
+      logger.info('[BLEU_ROUGE] Starting evaluation', {
+        responseLength: response.length,
+        docsCount: retrievedDocuments.length,
+        referenceLength: retrievedDocuments.map(d => d.content.length).reduce((a, b) => a + b, 0),
+      });
       
       // Simulate BLEU/ROUGE calculation
       const referenceText = retrievedDocuments.map(d => d.content).join(' ');
@@ -170,6 +181,7 @@ export class MultiFrameworkEvaluator {
         executionTime,
         bleuScore: metrics.bleuScore?.toFixed(2),
         rougeL: metrics.rougeL?.toFixed(2),
+        referenceLength: referenceText.length,
       });
       
       return {
@@ -202,9 +214,12 @@ export class MultiFrameworkEvaluator {
     const startTime = Date.now();
     
     try {
-      logger.info('[LLAMAINDEX] Starting evaluation');
+      logger.info('[LLAMAINDEX] Starting evaluation', {
+        queryLength: query.length,
+        responseLength: response.length,
+        docsCount: retrievedDocuments.length,
+      });
       
-      // Simulate LlamaIndex evaluation
       const metrics = {
         llamaCorrectness: this.calculateLlamaCorrectness(response, retrievedDocuments),
         llamaRelevancy: this.calculateLlamaRelevancy(query, response),
@@ -217,6 +232,7 @@ export class MultiFrameworkEvaluator {
         executionTime,
         llamaCorrectness: metrics.llamaCorrectness?.toFixed(2),
         llamaRelevancy: metrics.llamaRelevancy?.toFixed(2),
+        llamaFaithfulness: metrics.llamaFaithfulness?.toFixed(2),
       });
       
       return {
@@ -236,6 +252,7 @@ export class MultiFrameworkEvaluator {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
   }
   
   /**
@@ -319,21 +336,22 @@ export class MultiFrameworkEvaluator {
   private static calculateAnswerRelevancy(query: string, response: string): number {
     if (!query || !response) return 0;
     
-    const queryWords = query.toLowerCase().split(/\s+/);
-    const responseWords = response.toLowerCase().split(/\s+/);
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const responseWords = response.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     
-    // Count exact word matches
+    if (queryWords.length === 0 || responseWords.length === 0) return 50; // Default middle value
+    
+    // Count matches of significant words (length > 2)
     const querySet = new Set(queryWords);
     const exactMatches = responseWords.filter(w => querySet.has(w)).length;
     
-    // Also count words with more than 4 characters (likely meaningful)
-    const meaningfulWords = responseWords.filter(w => w.length > 4 && querySet.has(w)).length;
+    // Calculate relevance score based on what % of query concepts are in response
+    const relevanceScore = (exactMatches / queryWords.length) * 100;
     
-    // Calculate semantic relevance: combine exact matches and meaningful words
-    const exactScore = (exactMatches / responseWords.length);
-    const meaningfulScore = (meaningfulWords / Math.min(queryWords.filter(w => w.length > 4).length, responseWords.filter(w => w.length > 4).length || 1));
+    // Ensure response is reasonably long (at least 10% of query)
+    const lengthPenalty = responseWords.length >= (queryWords.length / 10) ? 1 : 0.7;
     
-    return Math.min(100, ((exactScore * 0.6 + meaningfulScore * 0.4) * 100));
+    return Math.min(100, relevanceScore * lengthPenalty);
   }
   
   private static calculateContextRelevancy(
@@ -362,14 +380,27 @@ export class MultiFrameworkEvaluator {
   ): number {
     if (!response || docs.length === 0) return 0;
     
-    let precisionCount = 0;
+    // Context Precision: How much of the retrieved context is actually used in the response
+    // Instead of checking for exact 50-char substring, check semantic overlap
+    const responseWords = new Set(response.toLowerCase().split(/\s+/));
+    let precisionScore = 0;
+    
     for (const doc of docs) {
-      if (response.toLowerCase().includes(doc.content.toLowerCase().substring(0, 50))) {
-        precisionCount++;
+      const docWords = doc.content.toLowerCase().split(/\s+/);
+      // Check if at least 30% of significant words (length > 3) from doc appear in response
+      const significantDocWords = docWords.filter(w => w.length > 3);
+      if (significantDocWords.length === 0) continue;
+      
+      const matchedWords = significantDocWords.filter(w => responseWords.has(w)).length;
+      const overlapRatio = matchedWords / significantDocWords.length;
+      
+      if (overlapRatio > 0.3) { // If more than 30% of content is used
+        precisionScore += overlapRatio * 100;
       }
     }
     
-    return Math.min(100, (precisionCount / docs.length) * 100);
+    // Return average precision across all documents
+    return Math.min(100, (precisionScore / docs.length));
   }
   
   private static calculateContextRecall(
@@ -400,52 +431,62 @@ export class MultiFrameworkEvaluator {
   private static calculateBLEU(response: string, reference: string): number {
     if (!response || !reference) return 0;
     
-    // Simplified BLEU: Use 1-gram and 2-gram precision
-    const responseTokens = response.toLowerCase().split(/\s+/);
-    const referenceTokens = reference.toLowerCase().split(/\s+/);
+    const responseTokens = response.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    const referenceTokens = reference.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    
+    if (responseTokens.length === 0 || referenceTokens.length === 0) return 0;
     
     // 1-gram matches
     let unigramMatches = 0;
+    const referenceSet = new Set(referenceTokens);
     for (const token of responseTokens) {
-      if (referenceTokens.includes(token)) {
+      if (referenceSet.has(token)) {
         unigramMatches++;
       }
     }
     
-    // 2-gram matches
+    // 2-gram matches (if possible)
     let bigramMatches = 0;
-    for (let i = 0; i < responseTokens.length - 1; i++) {
-      const bigram = responseTokens[i] + ' ' + responseTokens[i + 1];
-      const referenceBigrams = [];
+    let bigramCount = 0;
+    if (responseTokens.length > 1 && referenceTokens.length > 1) {
+      const referenceBigrams = new Set<string>();
       for (let j = 0; j < referenceTokens.length - 1; j++) {
-        referenceBigrams.push(referenceTokens[j] + ' ' + referenceTokens[j + 1]);
+        referenceBigrams.add(referenceTokens[j] + ' ' + referenceTokens[j + 1]);
       }
-      if (referenceBigrams.includes(bigram)) {
-        bigramMatches++;
+      
+      for (let i = 0; i < responseTokens.length - 1; i++) {
+        const bigram = responseTokens[i] + ' ' + responseTokens[i + 1];
+        if (referenceBigrams.has(bigram)) {
+          bigramMatches++;
+        }
+        bigramCount++;
       }
     }
     
-    // BLEU score combines unigram and bigram precision (weighted: 0.5 each)
-    const unigramPrecision = responseTokens.length > 0 ? (unigramMatches / responseTokens.length) : 0;
-    const bigramPrecision = responseTokens.length > 1 ? (bigramMatches / (responseTokens.length - 1)) : 0;
+    // BLEU score: weighted unigram and bigram precision
+    const unigramPrecision = unigramMatches / responseTokens.length;
+    const bigramPrecision = bigramCount > 0 ? (bigramMatches / bigramCount) : unigramPrecision;
     
-    return Math.min(100, ((unigramPrecision * 0.5 + bigramPrecision * 0.5) * 100));
+    // Weight towards unigram for short references
+    const weight = referenceTokens.length < 20 ? 0.7 : 0.5;
+    return Math.min(100, ((unigramPrecision * weight + bigramPrecision * (1 - weight)) * 100));
   }
   
   private static calculateROUGE(response: string, reference: string): number {
     if (!response || !reference) return 0;
     
-    // ROUGE-L: Longest Common Subsequence based metric
-    const responseTokens = response.toLowerCase().split(/\s+/);
-    const referenceTokens = reference.toLowerCase().split(/\s+/);
+    const responseTokens = response.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    const referenceTokens = reference.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    
+    if (responseTokens.length === 0 || referenceTokens.length === 0) return 0;
     
     // Calculate longest common subsequence length
     const lcsLength = this.longestCommonSubsequence(responseTokens, referenceTokens);
     
     // ROUGE-L Recall: LCS length / reference length
     // ROUGE-L Precision: LCS length / response length
-    const recall = lcsLength / referenceTokens.length;
-    const precision = lcsLength / responseTokens.length;
+    const recall = referenceTokens.length > 0 ? lcsLength / referenceTokens.length : 0;
+    const precision = responseTokens.length > 0 ? lcsLength / responseTokens.length : 0;
     
     // F-score: harmonic mean of recall and precision
     if (recall + precision === 0) return 0;
