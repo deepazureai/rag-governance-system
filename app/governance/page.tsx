@@ -63,16 +63,29 @@ export default function GovernancePage() {
   const fetchApplications = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      console.log('[v0] Fetching applications from:', `${apiUrl}/api/applications`);
+      
       const response = await fetch(`${apiUrl}/api/applications`);
+      console.log('[v0] Applications response status:', response.status);
+      
       const data = await response.json();
-      if (data.applications) {
-        setApplications(data.applications);
-        if (data.applications.length > 0) {
-          setSelectedAppIds([data.applications[0].id]);
-        }
+      console.log('[v0] Applications data received:', data);
+      
+      // Handle both response formats: data.applications and data.data
+      const appsList = data.applications || data.data || [];
+      console.log('[v0] Applications list:', appsList);
+      
+      if (appsList.length > 0) {
+        setApplications(appsList);
+        setSelectedAppIds([appsList[0].id]);
+        console.log('[v0] Set initial app to:', appsList[0].id);
+      } else {
+        console.warn('[v0] No applications found in response');
+        setError('No applications available');
       }
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      console.error('[v0] Error fetching applications:', err);
+      setError(`Failed to load applications: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -85,18 +98,55 @@ export default function GovernancePage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const appId = selectedAppIds[0];
+      console.log('[v0] Fetching governance metrics for app:', appId);
       
       const response = await fetch(
         `${apiUrl}/api/governance-metrics/ai-activity/${appId}/latest`
       );
+      console.log('[v0] Governance metrics response status:', response.status);
       
       if (!response.ok) throw new Error('Failed to fetch governance metrics');
       
       const data = await response.json();
+      console.log('[v0] Governance metrics data:', data);
+      
       setGovernanceMetrics(data.data);
-    } catch (err: any) {
-      setError(err.message);
-      console.error('Error fetching governance metrics:', err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      console.error('[v0] Error fetching governance metrics:', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (selectedAppIds.length === 0) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const appId = selectedAppIds[0];
+      console.log('[v0] Triggering recalculation for app:', appId);
+      
+      const response = await fetch(
+        `${apiUrl}/api/governance-metrics/ai-activity/${appId}/calculate`,
+        { method: 'POST' }
+      );
+      console.log('[v0] Recalculation response status:', response.status);
+      
+      if (!response.ok) throw new Error('Failed to recalculate governance metrics');
+      
+      const data = await response.json();
+      console.log('[v0] Recalculated governance metrics:', data);
+      
+      setGovernanceMetrics(data.data);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      console.error('[v0] Error recalculating governance metrics:', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +170,7 @@ export default function GovernancePage() {
             <p className="text-gray-600 mt-1">Monitor system performance, latency, costs, and reliability</p>
           </div>
           <Button
-            onClick={fetchGovernanceMetrics}
+            onClick={handleRefresh}
             disabled={isLoading || selectedAppIds.length === 0}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
           >
@@ -132,21 +182,27 @@ export default function GovernancePage() {
         {/* Application Selector */}
         <Card className="p-4">
           <label className="block text-sm font-medium text-gray-700 mb-3">Select Application</label>
-          <div className="flex gap-2 flex-wrap">
-            {applications.map((app) => (
-              <button
-                key={app.id}
-                onClick={() => setSelectedAppIds([app.id])}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedAppIds.includes(app.id)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                }`}
-              >
-                {app.name}
-              </button>
-            ))}
-          </div>
+          {applications.length === 0 ? (
+            <div className="text-gray-500 text-center py-8">
+              <p>No applications found. Please create an application first.</p>
+            </div>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              {applications.map((app) => (
+                <button
+                  key={app.id}
+                  onClick={() => setSelectedAppIds([app.id])}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedAppIds.includes(app.id)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  }`}
+                >
+                  {app.name}
+                </button>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Error State */}
