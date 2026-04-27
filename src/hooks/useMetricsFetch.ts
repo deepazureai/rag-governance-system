@@ -9,6 +9,7 @@ const logger = {
 };
 
 export interface MetricsData {
+  // RAGAS metrics
   groundedness: number;
   coherence: number;
   relevance: number;
@@ -16,6 +17,20 @@ export interface MetricsData {
   answerRelevancy: number;
   contextPrecision: number;
   contextRecall: number;
+  
+  // BLEU/ROUGE metrics
+  bleuScore?: number;
+  rougeL?: number;
+  precision?: number;
+  recall?: number;
+  
+  // LLamaIndex metrics
+  llamaCorrectness?: number;
+  llamaRelevancy?: number;
+  llamaFaithfulness?: number;
+  overallScore?: number;
+  
+  // Metadata
   timestamp: string;
   frameworksUsed?: string[];
   slaCompliance?: number;

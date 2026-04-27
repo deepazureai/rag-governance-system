@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { MetricsData } from '@/src/hooks/useMetricsFetch';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface MetricsDisplayProps {
   metrics: MetricsData | null;
@@ -13,7 +15,11 @@ interface MetricsDisplayProps {
   slaCompliance?: number;
 }
 
+type FrameworkType = 'ragas' | 'bleu_rouge' | 'llamaindex';
+
 export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, frameworksUsed = [], slaCompliance }: MetricsDisplayProps) {
+  const [selectedFramework, setSelectedFramework] = useState<FrameworkType>('ragas');
+
   if (isLoading) {
     return (
       <Card className="p-6 bg-white">
@@ -51,7 +57,8 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
     );
   }
 
-  const metricsArray = [
+  // Metrics for each framework
+  const ragasMetrics = [
     { label: 'Groundedness', value: metrics.groundedness },
     { label: 'Coherence', value: metrics.coherence },
     { label: 'Relevance', value: metrics.relevance },
@@ -61,6 +68,33 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
     { label: 'Context Recall', value: metrics.contextRecall },
   ];
 
+  const bleuRougeMetrics = [
+    { label: 'BLEU Score', value: metrics.bleuScore ?? 0 },
+    { label: 'ROUGE-L', value: metrics.rougeL ?? 0 },
+    { label: 'Precision', value: metrics.precision ?? 0 },
+    { label: 'Recall', value: metrics.recall ?? 0 },
+  ];
+
+  const llamaIndexMetrics = [
+    { label: 'Correctness', value: metrics.llamaCorrectness ?? 0 },
+    { label: 'Relevancy', value: metrics.llamaRelevancy ?? 0 },
+    { label: 'Faithfulness', value: metrics.llamaFaithfulness ?? 0 },
+    { label: 'Overall Score', value: metrics.overallScore ?? 0 },
+  ];
+
+  // Get metrics to display based on selected framework
+  const getDisplayMetrics = () => {
+    switch (selectedFramework) {
+      case 'bleu_rouge':
+        return bleuRougeMetrics;
+      case 'llamaindex':
+        return llamaIndexMetrics;
+      case 'ragas':
+      default:
+        return ragasMetrics;
+    }
+  };
+
   // Get SLA status color
   const getSLAStatusColor = (compliance: number) => {
     if (compliance >= 85) return 'bg-green-100 border-green-300 text-green-900';
@@ -68,14 +102,21 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
     return 'bg-red-100 border-red-300 text-red-900';
   };
 
-  // Get framework badge colors
-  const getFrameworkColor = (framework: string) => {
-    const colors: Record<string, string> = {
+  // Get framework button colors
+  const getFrameworkButtonStyle = (framework: FrameworkType, isSelected: boolean) => {
+    if (!isSelected) return 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+    
+    const colors: Record<FrameworkType, string> = {
       ragas: 'bg-blue-100 text-blue-800 border-blue-300',
       bleu_rouge: 'bg-purple-100 text-purple-800 border-purple-300',
       llamaindex: 'bg-orange-100 text-orange-800 border-orange-300',
     };
-    return colors[framework] || 'bg-gray-100 text-gray-800 border-gray-300';
+    return colors[framework];
+  };
+
+  const getFrameworkLabel = (framework: string) => {
+    if (framework === 'bleu_rouge') return 'BLEU/ROUGE';
+    return framework.charAt(0).toUpperCase() + framework.slice(1);
   };
 
   return (
@@ -90,38 +131,51 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
 
       {/* Framework and SLA Summary Row */}
       <Card className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-slate-700 mb-2">Evaluation Frameworks</h3>
-            <div className="flex flex-wrap gap-2">
-              {frameworksUsed.length > 0 ? (
-                frameworksUsed.map((framework) => (
-                  <Badge
-                    key={framework}
-                    className={`${getFrameworkColor(framework)} border`}
-                  >
-                    {framework === 'bleu_rouge' ? 'BLEU/ROUGE' : framework.charAt(0).toUpperCase() + framework.slice(1)}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-xs text-slate-600">No frameworks specified</span>
-              )}
-            </div>
-          </div>
-
-          {slaCompliance !== undefined && (
-            <div className="flex flex-col items-end">
-              <p className="text-xs font-semibold text-slate-600 mb-2">SLA Compliance</p>
-              <div className={`px-3 py-2 rounded-lg border ${getSLAStatusColor(slaCompliance)}`}>
-                <p className="text-lg font-bold">{slaCompliance.toFixed(1)}%</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">Evaluation Frameworks</h3>
+              <div className="flex flex-wrap gap-2">
+                {frameworksUsed.length > 0 ? (
+                  frameworksUsed.map((framework) => (
+                    <Button
+                      key={framework}
+                      onClick={() => setSelectedFramework(framework as FrameworkType)}
+                      variant="outline"
+                      size="sm"
+                      className={`border ${getFrameworkButtonStyle(framework as FrameworkType, selectedFramework === framework)}`}
+                    >
+                      {getFrameworkLabel(framework)}
+                    </Button>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-600">No frameworks specified</span>
+                )}
               </div>
             </div>
-          )}
+
+            {slaCompliance !== undefined && (
+              <div className="flex flex-col items-end">
+                <p className="text-xs font-semibold text-slate-600 mb-2">SLA Compliance</p>
+                <div className={`px-3 py-2 rounded-lg border ${getSLAStatusColor(slaCompliance)}`}>
+                  <p className="text-lg font-bold">{slaCompliance.toFixed(1)}%</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Framework description */}
+          <div className="text-xs text-slate-600">
+            {selectedFramework === 'ragas' && 'Showing RAGAS framework metrics (Reliability, Adaptability, Generalization, and Scalability)'}
+            {selectedFramework === 'bleu_rouge' && 'Showing BLEU/ROUGE metrics (text similarity and n-gram overlap scores)'}
+            {selectedFramework === 'llamaindex' && 'Showing LLamaIndex metrics (LLM-based evaluation results)'}
+          </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {metricsArray.map((metric) => (
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
+        {getDisplayMetrics().map((metric) => (
           <Card key={metric.label} className="p-4 bg-white border border-gray-200 hover:shadow-md transition-shadow">
             <p className="text-xs text-gray-600 mb-2 font-medium">{metric.label}</p>
             <p className="text-2xl font-bold text-blue-600">{metric.value.toFixed(1)}</p>

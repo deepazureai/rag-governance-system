@@ -134,13 +134,32 @@ export class BatchProcessingService {
       for (const record of records) {
         try {
           // Extract query, response, and retrieved documents from record data
-          const query = record.data.query || '';
-          const response = record.data.response || '';
-          const retrievedDocuments = record.data.retrieved_documents ? 
-            (Array.isArray(record.data.retrieved_documents) ? 
-              record.data.retrieved_documents : 
-              [{ content: record.data.retrieved_documents, source: 'unknown' }]
-            ) : [];
+          const query = record.data.userPrompt || record.data.query || '';
+          const response = record.data.llmResponse || record.data.response || '';
+          
+          // Build retrieved documents from context field or retrieved_documents field
+          let retrievedDocuments: Array<{ content: string; source: string; relevance?: number }> = [];
+          
+          if (record.data.retrieved_documents && Array.isArray(record.data.retrieved_documents)) {
+            // Use retrieved_documents if available
+            retrievedDocuments = record.data.retrieved_documents;
+          } else if (record.data.context) {
+            // Otherwise use context field as the primary retrieved document
+            retrievedDocuments = [
+              {
+                content: record.data.context,
+                source: 'query_context',
+                relevance: 85, // Default relevance for context field
+              }
+            ];
+          }
+          
+          console.log('[v0] Batch evaluation data:', {
+            query: query.substring(0, 50),
+            response: response.substring(0, 50),
+            retrievedDocsCount: retrievedDocuments.length,
+            hasContext: !!record.data.context,
+          });
           
           // Evaluate with multi-framework approach
           logger.info(`[BatchProcessingService] Evaluating record ${evaluatedCount + 1}/${records.length}`);
