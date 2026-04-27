@@ -60,6 +60,7 @@ export default function AlertsPage() {
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('critical');
@@ -70,7 +71,7 @@ export default function AlertsPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
-  const [summary, setSummary] = useState({ critical: 0, warning: 0, healthy: 0 });
+  const [summary, setSummary] = useState({ open: 0, acknowledged: 0, dismissed: 0 });
 
   // Fetch applications on mount
   useEffect(() => {
@@ -117,11 +118,13 @@ export default function AlertsPage() {
     setIsLoading(true);
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      if (!apiUrl.endsWith('/api')) {
-        apiUrl = apiUrl + '/api';
+      
+      // Remove /api suffix if it exists, we'll add it in the endpoint
+      if (apiUrl.endsWith('/api')) {
+        apiUrl = apiUrl.slice(0, -4);
       }
 
-      console.log('[v0] Fetching alerts from:', apiUrl);
+      console.log('[v0] Fetching alerts from base URL:', apiUrl);
       console.log('[v0] Selected apps:', selectedAppIds);
       console.log('[v0] Active filter:', activeFilter);
       console.log('[v0] Alert type:', alertType);
@@ -132,10 +135,13 @@ export default function AlertsPage() {
       // Fetch alerts for each selected app
       const alertPromises = selectedAppIds.map((appId) =>
         fetch(
-          `${apiUrl}/alerts/applications/${appId}?alertLevel=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
+          `${apiUrl}/api/alerts/applications/${appId}?alertLevel=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
           { method: 'GET', headers: { 'Content-Type': 'application/json' } }
         ).then((res) => {
           console.log('[v0] Alert response status:', res.status);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
           return res.json();
         })
       );
@@ -151,6 +157,8 @@ export default function AlertsPage() {
           console.log('[v0] Found alerts:', result.data.alerts.length);
           allAlerts.push(...result.data.alerts);
           totalRecords = result.data.pagination?.total || 0;
+        } else if (!result.success) {
+          console.warn('[v0] Alert fetch failed:', result.error);
         }
       });
 
@@ -160,10 +168,15 @@ export default function AlertsPage() {
 
       // Fetch summary for selected apps
       const summaryPromises = selectedAppIds.map((appId) =>
-        fetch(`${apiUrl}/alerts/summary/${appId}`, {
+        fetch(`${apiUrl}/api/alerts/summary/${appId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-        }).then((res) => res.json())
+        }).then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
       );
 
       const summaryResults = await Promise.all(summaryPromises);
@@ -173,9 +186,9 @@ export default function AlertsPage() {
 
       summaryResults.forEach((result) => {
         if (result.success && result.data.summary) {
-          totalCritical += result.data.summary.critical || 0;
-          totalWarning += result.data.summary.warning || 0;
-          totalHealthy += result.data.summary.healthy || 0;
+          totalCritical += result.data.summary.open || 0;
+          totalWarning += result.data.summary.acknowledged || 0;
+          totalHealthy += result.data.summary.dismissed || 0;
         }
       });
 
@@ -184,6 +197,7 @@ export default function AlertsPage() {
       setSelectAll(false);
     } catch (error) {
       console.error('[v0] Error fetching alerts:', error);
+      setError(`Failed to load alerts: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -263,6 +277,17 @@ export default function AlertsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Alerts Management</h1>
           <p className="text-gray-600 mt-2">Monitor and manage SLA deviations and system alerts</p>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Error loading alerts</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4">
