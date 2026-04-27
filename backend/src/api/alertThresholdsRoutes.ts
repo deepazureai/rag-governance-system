@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { INDUSTRY_STANDARD_THRESHOLDS, AlertThresholdConfig } from '@/types';
+import mongoose from 'mongoose';
 
 export const alertThresholdsRouter = Router();
 
@@ -129,11 +130,6 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
     });
   }
 });
-      error: 'Failed to save threshold configuration',
-      details: error.message,
-    });
-  }
-});
 
 /**
  * Get threshold configuration for a specific application
@@ -179,15 +175,6 @@ alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => 
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve thresholds for application',
-      details: error.message,
-    });
-  }
-});
-  } catch (error: any) {
-    console.error('[API] Reset thresholds error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset threshold configuration',
       details: error.message,
     });
   }
