@@ -381,8 +381,7 @@ export class BatchProcessingService {
 
     throw error;
   }
-
-  private async readDataFromSource(
+}
     sourceType: string,
     sourceConfig: Record<string, unknown>,
     applicationId: string
