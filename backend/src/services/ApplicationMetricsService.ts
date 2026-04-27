@@ -273,7 +273,7 @@ export class ApplicationMetricsService {
       
       // Only set if value exists or is a required field
       if (avgValue !== undefined || ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall'].includes(key)) {
-        aggregated[key as keyof AggregatedMetrics] = avgValue ?? 0;
+        (aggregated as any)[key as keyof AggregatedMetrics] = avgValue ?? 0;
       }
     }
 

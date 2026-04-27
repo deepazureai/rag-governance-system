@@ -73,7 +73,7 @@ export class GovernanceMetricsService {
       const value = evaluation[metricName] || 0;
       const metricThreshold = thresholdConfig[metricName as keyof typeof thresholdConfig];
       
-      if (!metricThreshold) continue;
+      if (!metricThreshold || typeof metricThreshold === 'string' || typeof metricThreshold === 'boolean') continue;
       
       let status: 'critical' | 'warning' | 'healthy';
       

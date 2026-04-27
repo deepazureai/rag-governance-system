@@ -105,7 +105,7 @@ export class DataProcessingService {
           dataQuality,
           metadata: {
             ingestionDate: new Date(),
-            sourceType: sourceType,
+            sourceType: sourceType as 'local_folder' | 'azure_blob' | 'database' | 'splunk' | 'datadog' | 'api',
             checksum,
             isDuplicate: false,
             evaluationFramework: framework,
