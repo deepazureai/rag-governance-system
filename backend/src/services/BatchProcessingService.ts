@@ -384,7 +384,7 @@ export class BatchProcessingService {
 
   private async readDataFromSource(
     sourceType: string,
-    sourceConfig: any,
+    sourceConfig: Record<string, unknown>,
     applicationId: string
   ): Promise<{
     records: ParsedRecord[];
@@ -393,21 +393,24 @@ export class BatchProcessingService {
     error?: FileAccessError;
   }> {
     // Try local folder first if sourceConfig is provided
-    if ((sourceType === 'local_folder' || sourceType === 'local-folder') && sourceConfig?.folderPath) {
-      logger.info(`[BatchProcessingService] Reading from local folder: ${sourceConfig.folderPath}`);
-      const connector = new LocalFolderConnector({ folderPath: sourceConfig.folderPath });
+    const folderPath = sourceConfig?.folderPath as string | undefined;
+    const fileName = sourceConfig?.fileName as string | undefined;
+    
+    if ((sourceType === 'local_folder' || sourceType === 'local-folder') && folderPath) {
+      logger.info(`[BatchProcessingService] Reading from local folder: ${folderPath}`);
+      const connector = new LocalFolderConnector({ folderPath });
       
-      const result = await connector.readDataFile(sourceConfig.folderPath, sourceConfig.fileName, applicationId);
+      const result = await connector.readDataFile(folderPath, fileName || '', applicationId);
 
       if (result.error) {
         logger.warn(`[BatchProcessingService] Local folder read failed, falling back to MongoDB`);
         // Fall through to MongoDB if local file doesn't exist
       } else {
-        const fileSize = connector.getFileSize(sourceConfig.folderPath, sourceConfig.fileName) || 0;
+        const fileSize = connector.getFileSize(folderPath, fileName || '') || 0;
         return {
           records: result.records,
           fileSize,
-          fileName: sourceConfig.fileName,
+          fileName: fileName || 'local_file',
         };
       }
     }
