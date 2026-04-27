@@ -155,11 +155,21 @@ export class BatchProcessingService {
           }
           
           console.log('[v0] Batch evaluation data:', {
-            query: query.substring(0, 50),
-            response: response.substring(0, 50),
+            query: query.substring(0, 100),
+            response: response.substring(0, 100),
             retrievedDocsCount: retrievedDocuments.length,
             hasContext: !!record.data.context,
+            contextPreview: record.data.context?.substring(0, 100),
           });
+          
+          // Log the actual structure for debugging
+          if (retrievedDocuments.length > 0) {
+            console.log('[v0] Retrieved documents structure:', {
+              firstDocContent: retrievedDocuments[0].content.substring(0, 100),
+              firstDocSource: retrievedDocuments[0].source,
+              firstDocRelevance: retrievedDocuments[0].relevance,
+            });
+          }
           
           // Evaluate with multi-framework approach
           logger.info(`[BatchProcessingService] Evaluating record ${evaluatedCount + 1}/${records.length}`);

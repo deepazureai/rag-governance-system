@@ -258,12 +258,32 @@ export class MultiFrameworkEvaluator {
    * Merge framework results and map to dashboard metrics
    */
   private static mergeAndMapMetrics(frameworkResults: FrameworkResult[]): EvaluationMetrics {
+    logger.debug('[mergeAndMapMetrics] Starting merge', {
+      frameworkCount: frameworkResults.length,
+      frameworks: frameworkResults.map(r => r.framework),
+    });
+    
     // Collect all metrics
     const allMetrics: Partial<EvaluationMetrics> = {};
     
     for (const result of frameworkResults) {
+      logger.debug(`[mergeAndMapMetrics] Processing ${result.framework}`, {
+        metricsKeys: Object.keys(result.metrics),
+        metricsValues: Object.entries(result.metrics).reduce((acc, [k, v]) => {
+          acc[k] = typeof v === 'number' ? v.toFixed(2) : v;
+          return acc;
+        }, {} as Record<string, any>),
+      });
       Object.assign(allMetrics, result.metrics);
     }
+    
+    logger.debug('[mergeAndMapMetrics] All metrics collected', {
+      totalMetricsCount: Object.keys(allMetrics).length,
+      allMetricsValues: Object.entries(allMetrics).reduce((acc, [k, v]) => {
+        acc[k] = typeof v === 'number' ? v.toFixed(2) : v;
+        return acc;
+      }, {} as Record<string, any>),
+    });
     
     // Map to dashboard metrics with fallbacks
     const mapped: EvaluationMetrics = {
@@ -293,6 +313,14 @@ export class MultiFrameworkEvaluator {
       groundedness: mapped.groundedness.toFixed(2),
       coherence: mapped.coherence.toFixed(2),
       relevance: mapped.relevance.toFixed(2),
+      answerRelevancy: mapped.answerRelevancy.toFixed(2),
+      contextPrecision: mapped.contextPrecision.toFixed(2),
+      contextRecall: mapped.contextRecall.toFixed(2),
+      bleuScore: mapped.bleuScore.toFixed(2),
+      rougeL: mapped.rougeL.toFixed(2),
+      llamaCorrectness: mapped.llamaCorrectness.toFixed(2),
+      llamaRelevancy: mapped.llamaRelevancy.toFixed(2),
+      llamaFaithfulness: mapped.llamaFaithfulness.toFixed(2),
       overallScore: mapped.overallScore.toFixed(2),
     });
     
@@ -322,35 +350,69 @@ export class MultiFrameworkEvaluator {
     response: string,
     docs: Array<{ content: string; source: string; relevance?: number }>
   ): number {
-    if (!response || docs.length === 0) return 0;
+    if (!response || docs.length === 0) {
+      logger.debug('[calculateFaithfulness] Early return - no response or docs', {
+        hasResponse: !!response,
+        docsCount: docs.length,
+      });
+      return 0;
+    }
     
     const docContent = docs.map(d => d.content).join(' ');
-    const responseWords = response.toLowerCase().split(/\s+/);
+    const responseWords = response.toLowerCase().split(/\s+/).filter(w => w.length > 0);
     const docWords = new Set(docContent.toLowerCase().split(/\s+/));
     
     const matchedWords = responseWords.filter(w => docWords.has(w)).length;
-    return Math.min(100, (matchedWords / responseWords.length) * 100);
+    const score = Math.min(100, (matchedWords / responseWords.length) * 100);
+    
+    logger.debug('[calculateFaithfulness] Calculation complete', {
+      responseWordsCount: responseWords.length,
+      docWordsCount: docWords.size,
+      matchedWords,
+      score: score.toFixed(2),
+    });
+    
+    return score;
   }
   
   private static calculateAnswerRelevancy(query: string, response: string): number {
-    if (!query || !response) return 0;
+    if (!query || !response) {
+      logger.debug('[calculateAnswerRelevancy] Early return - no query or response', {
+        hasQuery: !!query,
+        hasResponse: !!response,
+      });
+      return 0;
+    }
     
     const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const responseWords = response.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     
-    if (queryWords.length === 0 || responseWords.length === 0) return 50; // Default middle value
+    logger.debug('[calculateAnswerRelevancy] Word counts', {
+      queryWordsCount: queryWords.length,
+      responseWordsCount: responseWords.length,
+      queryWordsPreview: queryWords.slice(0, 5),
+      responseWordsPreview: responseWords.slice(0, 5),
+    });
     
-    // Count matches of significant words (length > 2)
+    if (queryWords.length === 0 || responseWords.length === 0) {
+      logger.debug('[calculateAnswerRelevancy] Returning default 50 due to empty word arrays');
+      return 50;
+    }
+    
     const querySet = new Set(queryWords);
     const exactMatches = responseWords.filter(w => querySet.has(w)).length;
-    
-    // Calculate relevance score based on what % of query concepts are in response
     const relevanceScore = (exactMatches / queryWords.length) * 100;
-    
-    // Ensure response is reasonably long (at least 10% of query)
     const lengthPenalty = responseWords.length >= (queryWords.length / 10) ? 1 : 0.7;
+    const score = Math.min(100, relevanceScore * lengthPenalty);
     
-    return Math.min(100, relevanceScore * lengthPenalty);
+    logger.debug('[calculateAnswerRelevancy] Calculation complete', {
+      exactMatches,
+      relevanceScore: relevanceScore.toFixed(2),
+      lengthPenalty,
+      finalScore: score.toFixed(2),
+    });
+    
+    return score;
   }
   
   private static calculateContextRelevancy(
@@ -428,12 +490,30 @@ export class MultiFrameworkEvaluator {
   }
   
   private static calculateBLEU(response: string, reference: string): number {
-    if (!response || !reference) return 0;
+    logger.debug('[calculateBLEU] Starting BLEU calculation', {
+      responseLength: response?.length || 0,
+      referenceLength: reference?.length || 0,
+      hasResponse: !!response,
+      hasReference: !!reference,
+    });
+    
+    if (!response || !reference) {
+      logger.debug('[calculateBLEU] Early return - no response or reference');
+      return 0;
+    }
     
     const responseTokens = response.toLowerCase().split(/\s+/).filter(t => t.length > 0);
     const referenceTokens = reference.toLowerCase().split(/\s+/).filter(t => t.length > 0);
     
-    if (responseTokens.length === 0 || referenceTokens.length === 0) return 0;
+    logger.debug('[calculateBLEU] Token counts', {
+      responseTokensCount: responseTokens.length,
+      referenceTokensCount: referenceTokens.length,
+    });
+    
+    if (responseTokens.length === 0 || referenceTokens.length === 0) {
+      logger.debug('[calculateBLEU] Early return - no tokens');
+      return 0;
+    }
     
     // 1-gram matches
     let unigramMatches = 0;
@@ -468,7 +548,17 @@ export class MultiFrameworkEvaluator {
     
     // Weight towards unigram for short references
     const weight = referenceTokens.length < 20 ? 0.7 : 0.5;
-    return Math.min(100, ((unigramPrecision * weight + bigramPrecision * (1 - weight)) * 100));
+    const score = Math.min(100, ((unigramPrecision * weight + bigramPrecision * (1 - weight)) * 100));
+    
+    logger.debug('[calculateBLEU] Calculation complete', {
+      unigramMatches,
+      bigramMatches,
+      unigramPrecision: unigramPrecision.toFixed(3),
+      bigramPrecision: bigramPrecision.toFixed(3),
+      finalScore: score.toFixed(2),
+    });
+    
+    return score;
   }
   
   private static calculateROUGE(response: string, reference: string): number {
@@ -518,19 +608,27 @@ export class MultiFrameworkEvaluator {
     response: string,
     docs: Array<{ content: string; source: string; relevance?: number }>
   ): number {
-    // LlamaIndex correctness similar to RAGAS correctness
-    return this.calculateCorrectness(response, docs);
+    logger.debug('[calculateLlamaCorrectness] Starting calculation');
+    const score = this.calculateCorrectness(response, docs);
+    logger.debug('[calculateLlamaCorrectness] Result', { score: score.toFixed(2) });
+    return score;
   }
   
   private static calculateLlamaRelevancy(query: string, response: string): number {
-    return this.calculateAnswerRelevancy(query, response);
+    logger.debug('[calculateLlamaRelevancy] Starting calculation');
+    const score = this.calculateAnswerRelevancy(query, response);
+    logger.debug('[calculateLlamaRelevancy] Result', { score: score.toFixed(2) });
+    return score;
   }
   
   private static calculateLlamaFaithfulness(
     response: string,
     docs: Array<{ content: string; source: string; relevance?: number }>
   ): number {
-    return this.calculateFaithfulness(response, docs);
+    logger.debug('[calculateLlamaFaithfulness] Starting calculation');
+    const score = this.calculateFaithfulness(response, docs);
+    logger.debug('[calculateLlamaFaithfulness] Result', { score: score.toFixed(2) });
+    return score;
   }
 }
 
