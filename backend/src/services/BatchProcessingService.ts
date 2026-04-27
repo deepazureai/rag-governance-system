@@ -497,12 +497,12 @@ export class BatchProcessingService {
     };
   }
 
-  async getBatchStatus(batchId: string): Promise<any> {
+  async getBatchStatus(batchId: string): Promise<Record<string, unknown> | null> {
     const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
     return BatchCollection.findOne({ batchId });
   }
 
-  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<any[]> {
+  async getApplicationBatches(applicationId: string, limit: number = 10): Promise<Record<string, unknown>[]> {
     const BatchCollection = mongoose.connection.collection('scheduledbatchjobs');
     return BatchCollection.find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
   }
