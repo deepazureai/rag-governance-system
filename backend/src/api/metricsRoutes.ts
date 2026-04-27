@@ -165,69 +165,6 @@ metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/metrics/refresh
- * Refresh metrics data for selected applications
- */
-metricsRouter.post('/refresh', async (req: Request, res: Response) => {
-  try {
-    const { applicationIds } = req.body;
-
-    if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'applicationIds must be a non-empty array',
-      });
-    }
-
-    logger.info(`[v0] Refreshing metrics for ${applicationIds.length} applications`);
-
-    // Fetch latest metrics
-    const metricsArray = await metricsService.fetchMetricsForApps(applicationIds);
-
-    if (metricsArray.length === 0) {
-      return res.json({
-        success: true,
-        data: {
-          type: 'empty',
-          message: 'No metrics data available yet for selected applications',
-        },
-      });
-    }
-
-    // Aggregate if multiple apps
-    if (metricsArray.length === 1) {
-      return res.json({
-        success: true,
-        data: {
-          type: 'single',
-          metrics: metricsArray[0],
-          frameworksUsed: metricsArray[0].frameworksUsed,
-          slaCompliance: metricsArray[0].slaCompliance,
-        },
-      });
-    }
-
-    const aggregatedMetrics = metricsService.aggregateMetrics(metricsArray);
-
-    res.json({
-      success: true,
-      data: {
-        type: 'aggregated',
-        metrics: aggregatedMetrics,
-        frameworksUsed: aggregatedMetrics.frameworksUsed,
-        slaCompliance: aggregatedMetrics.slaCompliance,
-        applicationCount: metricsArray.length,
-      },
-    });
-  } catch (error) {
-    logger.error(`[v0] Metrics refresh error:`, error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to refresh metrics',
-    });
-  }
-});
 
 /**
  * POST /api/metrics/calculate-alerts

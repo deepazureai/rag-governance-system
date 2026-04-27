@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 export interface ApplicationMetrics {
   applicationId: string;
   applicationName: string;
+  // RAGAS metrics
   groundedness: number;
   coherence: number;
   relevance: number;
@@ -11,12 +12,21 @@ export interface ApplicationMetrics {
   answerRelevancy: number;
   contextPrecision: number;
   contextRecall: number;
+  // BLEU/ROUGE metrics
+  bleuScore?: number;
+  rougeL?: number;
+  // LLamaIndex metrics
+  llamaCorrectness?: number;
+  llamaRelevancy?: number;
+  llamaFaithfulness?: number;
+  overallScore?: number;
   timestamp: string;
   frameworksUsed?: string[];
   slaCompliance?: number;
 }
 
 export interface AggregatedMetrics {
+  // RAGAS metrics
   groundedness: number;
   coherence: number;
   relevance: number;
@@ -24,6 +34,14 @@ export interface AggregatedMetrics {
   answerRelevancy: number;
   contextPrecision: number;
   contextRecall: number;
+  // BLEU/ROUGE metrics
+  bleuScore?: number;
+  rougeL?: number;
+  // LLamaIndex metrics
+  llamaCorrectness?: number;
+  llamaRelevancy?: number;
+  llamaFaithfulness?: number;
+  overallScore?: number;
   applicationCount: number;
   timestamp: string;
   frameworksUsed?: string[];
@@ -109,6 +127,12 @@ export class ApplicationMetricsService {
       'answerRelevancy',
       'contextPrecision',
       'contextRecall',
+      'bleuScore',
+      'rougeL',
+      'llamaCorrectness',
+      'llamaRelevancy',
+      'llamaFaithfulness',
+      'overallScore',
     ] as const;
 
     const aggregated: any = {};
@@ -116,31 +140,37 @@ export class ApplicationMetricsService {
     // Average each metric across all evaluations
     for (const key of metricKeys) {
       const sum = evaluations.reduce((acc: number, evaluation: any) => {
-        const mapKey = this.mapMetricKey(key);
-        const value = evaluation.evaluation?.[mapKey];
+        // First try to get the exact metric from evaluation.evaluation
+        let value = evaluation.evaluation?.[key];
         
-        // If value doesn't exist, try to derive it from other available metrics
+        // If not found, try to map from database field names
         if (value === undefined || value === null) {
-          // Use context_relevancy as a proxy for relevance if available
-          if (key === 'relevance' && evaluation.evaluation?.context_relevancy !== undefined) {
-            return acc + evaluation.evaluation.context_relevancy;
-          }
-          // Use correctness as a proxy for coherence/groundedness if available
-          if ((key === 'coherence' || key === 'groundedness') && evaluation.evaluation?.correctness !== undefined) {
-            return acc + evaluation.evaluation.correctness;
-          }
+          const dbKey = this.mapMetricKey(key);
+          value = evaluation.evaluation?.[dbKey];
+        }
+        
+        // If still not found, try without underscore conversion
+        if (value === undefined || value === null) {
+          value = evaluation.evaluation?.[key];
+        }
+        
+        // Skip undefined/null values
+        if (value === undefined || value === null) {
           return acc;
         }
+        
         return acc + value;
       }, 0);
+      
       aggregated[key] = evaluations.length > 0 ? sum / evaluations.length : 0;
     }
 
+    logger.debug(`[v0] Calculated average metrics:`, aggregated);
     return aggregated;
   }
 
   /**
-   * Map metric names from evaluation format to ApplicationMetrics format
+   * Map metric names from camelCase to snake_case (and vice versa if needed)
    */
   private mapMetricKey(key: string): string {
     const keyMap: { [k: string]: string } = {
@@ -151,6 +181,12 @@ export class ApplicationMetricsService {
       answerRelevancy: 'answer_relevancy',
       contextPrecision: 'context_precision',
       contextRecall: 'context_recall',
+      bleuScore: 'bleu_score',
+      rougeL: 'rouge_l',
+      llamaCorrectness: 'llama_correctness',
+      llamaRelevancy: 'llama_relevancy',
+      llamaFaithfulness: 'llama_faithfulness',
+      overallScore: 'overall_score',
     };
     return keyMap[key] || key;
   }
@@ -219,6 +255,12 @@ export class ApplicationMetricsService {
       'answerRelevancy',
       'contextPrecision',
       'contextRecall',
+      'bleuScore',
+      'rougeL',
+      'llamaCorrectness',
+      'llamaRelevancy',
+      'llamaFaithfulness',
+      'overallScore',
     ] as const;
 
     const aggregated: Partial<AggregatedMetrics> = {
@@ -228,8 +270,13 @@ export class ApplicationMetricsService {
 
     // Average each metric across all applications
     for (const key of metricKeys) {
-      const sum = metricsArray.reduce((acc, m) => acc + (m[key] || 0), 0);
-      aggregated[key] = sum / metricsArray.length;
+      const validValues = metricsArray
+        .map(m => m[key as keyof ApplicationMetrics] as number)
+        .filter(v => v !== undefined && v !== null && !isNaN(v));
+      
+      aggregated[key as keyof AggregatedMetrics] = validValues.length > 0 
+        ? validValues.reduce((a, b) => a + b, 0) / validValues.length 
+        : 0 as any;
     }
 
     // Aggregate frameworks used (collect all unique frameworks)
@@ -247,7 +294,14 @@ export class ApplicationMetricsService {
       aggregated.slaCompliance = slaComplianceValues.reduce((a, b) => a + b, 0) / slaComplianceValues.length;
     }
 
-    logger.info(`[v0] Aggregated metrics for ${metricsArray.length} applications`);
+    logger.info(`[v0] Aggregated metrics for ${metricsArray.length} applications`, {
+      groundedness: (aggregated.groundedness as number)?.toFixed(2),
+      coherence: (aggregated.coherence as number)?.toFixed(2),
+      relevance: (aggregated.relevance as number)?.toFixed(2),
+      bleuScore: (aggregated.bleuScore as number)?.toFixed(2),
+      rougeL: (aggregated.rougeL as number)?.toFixed(2),
+      llamaCorrectness: (aggregated.llamaCorrectness as number)?.toFixed(2),
+    });
     return aggregated as AggregatedMetrics;
   }
 }
