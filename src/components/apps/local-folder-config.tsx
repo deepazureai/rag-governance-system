@@ -65,7 +65,20 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
         return;
       }
       
-      console.log('[v0] File content loaded successfully:', { fileName, contentLength: content.length, lines: content.split('\n').length });
+      const lines = content.split('\n');
+      const nonEmptyLines = lines.filter(l => l.trim());
+      
+      console.log('[v0] File content loaded successfully:', { 
+        fileName, 
+        contentLength: content.length, 
+        totalLines: lines.length,
+        nonEmptyLines: nonEmptyLines.length,
+        firstLineLength: nonEmptyLines[0]?.length,
+        firstLinePreview: nonEmptyLines[0]?.substring(0, 150),
+        hasCommasInFirst: nonEmptyLines[0]?.includes(','),
+        hasTabs: nonEmptyLines[0]?.includes('\t'),
+        charCodes: nonEmptyLines[0]?.substring(0, 50).split('').map(c => c.charCodeAt(0))
+      });
       setFileContent(content);
       setIsFileLoaded(true);
     };
@@ -128,13 +141,37 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
 
       // Check if it looks like CSV format (has delimiter)
       const firstLine = nonEmptyLines[0];
-      const hasCommas = firstLine.includes(',');
-      const hasSemicolons = firstLine.includes(';');
-      const hasTabs = firstLine.includes('\t');
-      const hasPipes = firstLine.includes('|');
+      const secondLine = nonEmptyLines[1]; // Check second line for data format
       
-      if (!hasCommas && !hasSemicolons && !hasTabs && !hasPipes) {
-        throw new Error('File does not appear to be valid delimited format. Expected commas, semicolons, tabs, or pipes.');
+      // Try to detect delimiter - check both header and first data row
+      const hasCommas = firstLine.includes(',') || (secondLine && secondLine.includes(','));
+      const hasSemicolons = firstLine.includes(';') || (secondLine && secondLine.includes(';'));
+      const hasTabs = firstLine.includes('\t') || (secondLine && secondLine.includes('\t'));
+      const hasPipes = firstLine.includes('|') || (secondLine && secondLine.includes('|'));
+      
+      // Also check if line appears to have multiple fields by length and content analysis
+      // If first line is long and contains field-like names, it's probably valid
+      const looksLikeCsvHeader = firstLine.length > 20 && 
+                                 (firstLine.toLowerCase().includes('id') || 
+                                  firstLine.toLowerCase().includes('name') ||
+                                  firstLine.toLowerCase().includes('data') ||
+                                  firstLine.toLowerCase().includes('user') ||
+                                  firstLine.toLowerCase().includes('time') ||
+                                  firstLine.toLowerCase().includes('status') ||
+                                  firstLine.match(/[a-z][a-z0-9]*[A-Z][a-z0-9]*/)); // camelCase detection
+      
+      console.log('[v0] Delimiter detection:', { 
+        hasCommas, 
+        hasSemicolons,
+        hasTabs,
+        hasPipes,
+        looksLikeCsvHeader,
+        firstLineLength: firstLine.length,
+        firstLinePreview: firstLine.substring(0, 150)
+      });
+      
+      if (!hasCommas && !hasSemicolons && !hasTabs && !hasPipes && !looksLikeCsvHeader) {
+        throw new Error('File does not appear to be valid delimited format. Expected commas, semicolons, tabs, pipes, or CSV-like structure.');
       }
 
       console.log('[v0] File validation successful:', { 
@@ -142,7 +179,8 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
         hasCommas, 
         hasSemicolons,
         hasTabs,
-        hasPipes
+        hasPipes,
+        looksLikeCsvHeader
       });
       
       setIsValidated(true);
