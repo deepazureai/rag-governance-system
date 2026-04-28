@@ -54,6 +54,12 @@ const getAlertType = (metricName?: string): 'evaluation' | 'performance' => {
   return performanceMetrics.includes(metricName) ? 'performance' : 'evaluation';
 };
 
+// Helper to get application name from ID
+const getAppName = (appId: string, apps: Application[]): string => {
+  const app = apps.find(a => a.applicationId === appId);
+  return app?.name || appId;
+};
+
 export default function AlertsPage() {
   const [mounted, setMounted] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -180,19 +186,19 @@ export default function AlertsPage() {
       );
 
       const summaryResults = await Promise.all(summaryPromises);
-      let totalCritical = 0,
-        totalWarning = 0,
-        totalHealthy = 0;
+      let totalOpen = 0,
+        totalAcknowledged = 0,
+        totalDismissed = 0;
 
       summaryResults.forEach((result) => {
         if (result.success && result.data.summary) {
-          totalCritical += result.data.summary.open || 0;
-          totalWarning += result.data.summary.acknowledged || 0;
-          totalHealthy += result.data.summary.dismissed || 0;
+          totalOpen += result.data.summary.open || 0;
+          totalAcknowledged += result.data.summary.acknowledged || 0;
+          totalDismissed += result.data.summary.dismissed || 0;
         }
       });
 
-      setSummary({ critical: totalCritical, warning: totalWarning, healthy: totalHealthy });
+      setSummary({ open: totalOpen, acknowledged: totalAcknowledged, dismissed: totalDismissed });
       setSelectedAlerts(new Set());
       setSelectAll(false);
     } catch (error) {
@@ -272,11 +278,33 @@ export default function AlertsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 p-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Alerts Management</h1>
-          <p className="text-gray-600 mt-2">Monitor and manage SLA deviations and system alerts</p>
+        {/* Header with Refresh Button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Alerts Management</h1>
+            <p className="text-gray-600 mt-2">Monitor and manage SLA deviations and system alerts</p>
+          </div>
+          <Button
+            onClick={() => {
+              setPage(1);
+              fetchAlerts();
+            }}
+            disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
+          >
+            {isLoading ? 'Refreshing...' : 'Refresh Alerts'}
+          </Button>
         </div>
+
+        {/* Application Context Header */}
+        {selectedAppIds.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">Showing alerts for:</span>{' '}
+              {selectedAppIds.map(id => getAppName(id, applications)).join(', ')}
+            </p>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (
@@ -292,15 +320,21 @@ export default function AlertsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4">
           <Card className="p-4 border-l-4 border-l-red-500">
-            <p className="text-sm text-gray-600">Open Alerts</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
+              {selectedAppIds.length > 1 ? 'Total Open Alerts' : 'Open Alerts'}
+            </p>
             <p className="text-2xl font-bold text-red-600">{summary.open}</p>
           </Card>
           <Card className="p-4 border-l-4 border-l-yellow-500">
-            <p className="text-sm text-gray-600">Acknowledged</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
+              {selectedAppIds.length > 1 ? 'Total Acknowledged' : 'Acknowledged'}
+            </p>
             <p className="text-2xl font-bold text-yellow-600">{summary.acknowledged}</p>
           </Card>
           <Card className="p-4 border-l-4 border-l-green-500">
-            <p className="text-sm text-gray-600">Dismissed</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
+              {selectedAppIds.length > 1 ? 'Total Dismissed' : 'Dismissed'}
+            </p>
             <p className="text-2xl font-bold text-green-600">{summary.dismissed}</p>
           </Card>
         </div>
@@ -445,6 +479,7 @@ export default function AlertsPage() {
                           className="rounded"
                         />
                       </th>
+                      <th className="text-left py-2 px-4 font-semibold">Application</th>
                       <th className="text-left py-2 px-4 font-semibold">Metric</th>
                       <th className="text-left py-2 px-4 font-semibold">Value</th>
                       <th className="text-left py-2 px-4 font-semibold">SLA</th>
@@ -463,6 +498,9 @@ export default function AlertsPage() {
                             onChange={() => handleAlertSelect(alert.id)}
                             className="rounded"
                           />
+                        </td>
+                        <td className="py-3 px-4 font-medium text-blue-600">
+                          {getAppName((alert as any).applicationId || alert.appId, applications)}
                         </td>
                         <td className="py-3 px-4 font-medium">{alert.metricName}</td>
                         <td className="py-3 px-4">{alert.metricValue.toFixed(2)}</td>
