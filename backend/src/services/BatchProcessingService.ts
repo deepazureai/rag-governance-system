@@ -166,22 +166,28 @@ export class BatchProcessingService {
         logger.warn(`[BatchProcessingService] Governance metrics failed:`, govError instanceof Error ? govError.message : String(govError));
       }
 
-      // Phase 5: Alerts
+      // Phase 5: Generate Alerts from Batch Evaluation
       try {
-        const AlertsCollection = mongoose.connection.collection('alerts');
-        const evaluations = await EvaluationCollection.find({ batchId }).toArray();
-        const alertsWrapper = {
-          updateOne: async (filter: any, update: any, options: any) => { await AlertsCollection.updateOne(filter, update, options); },
-        };
+        logger.info(`[BatchProcessingService] Phase 5: Generating alerts for batch ${batchId}`);
+        const { AlertIntegrationLayerService } = await import('./AlertIntegrationLayerService.js');
+        
+        // Fetch evaluated records from the collection
+        const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+        const evaluations = await EvaluationCollection.find({ applicationId, batchId }).toArray();
         
         if (evaluations.length > 0) {
-          await AlertGenerationService.generateAlertsForBatch(applicationId, evaluations, alertsWrapper as any);
+          const alertResult = await AlertIntegrationLayerService.generateAlertsFromBatchEvaluation(
+            applicationId,
+            evaluations
+          );
+          logger.info(`[BatchProcessingService] Batch alerts generated - Total: ${alertResult.alertsGenerated}, Critical: ${alertResult.criticalAlerts}`);
+        } else {
+          logger.info(`[BatchProcessingService] No evaluations found for batch ${batchId}`);
         }
-        
-        const govMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
-        await AlertGenerationService.generatePerformanceAlerts(applicationId, govMetrics, { metrics: {}, overallScoreThresholds: { good: 70, excellent: 85 } }, alertsWrapper as any);
       } catch (alertError: unknown) {
-        logger.error(`[BatchProcessingService] Alerts failed:`, alertError instanceof Error ? alertError.message : String(alertError));
+        const alertErrorMsg = alertError instanceof Error ? alertError.message : String(alertError);
+        logger.error(`[BatchProcessingService] Error generating batch alerts: ${alertErrorMsg}`);
+        // Don't fail the batch processing if alerts fail - this is non-critical
       }
 
       // Update Application Master Status

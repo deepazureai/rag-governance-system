@@ -23,7 +23,7 @@ alertsRouter.post('/batch-create', async (req: Request, res: Response) => {
     }
 
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
     const slaCollection = mongoose.connection.collection('applicationslas');
 
     // Fetch app SLA thresholds
@@ -70,7 +70,7 @@ alertsRouter.post('/batch-create', async (req: Request, res: Response) => {
               updatedAt: currentTime,
             };
 
-            const result = await alertsCollection.insertOne(alert);
+            const result = await generatedAlertsCollection.insertOne(alert);
             createdAlerts.push({ ...alert, _id: result.insertedId });
 
             logger.info(
@@ -147,7 +147,7 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
 
     const { status, metricName, dateStart, dateEnd, alertLevel, type = 'all', page = 1, pageSize = 25 } = req.query;
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
 
     // Build query filter
     const filter: any = { applicationId };
@@ -191,14 +191,14 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
     const skip = (pageNum - 1) * size;
 
     // Fetch alerts with pagination
-    const alerts = await alertsCollection
+    const alerts = await generatedAlertsCollection
       .find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(size)
       .toArray();
 
-    const totalCount = await alertsCollection.countDocuments(filter);
+    const totalCount = await generatedAlertsCollection.countDocuments(filter);
 
     return res.json({
       success: true,
@@ -239,7 +239,7 @@ alertsRouter.patch('/:alertId/acknowledge', async (req: Request, res: Response) 
     const { acknowledgedBy, userComment } = req.body;
 
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
 
     const updateData = {
       $set: {
@@ -251,7 +251,7 @@ alertsRouter.patch('/:alertId/acknowledge', async (req: Request, res: Response) 
       },
     };
 
-    const result = await alertsCollection.findOneAndUpdate(
+    const result = await generatedAlertsCollection.findOneAndUpdate(
       { alertId },
       updateData,
       { returnDocument: 'after' }
@@ -297,7 +297,7 @@ alertsRouter.patch('/:alertId/dismiss', async (req: Request, res: Response) => {
     const { dismissedBy, userComment } = req.body;
 
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
 
     const updateData = {
       $set: {
@@ -309,7 +309,7 @@ alertsRouter.patch('/:alertId/dismiss', async (req: Request, res: Response) => {
       },
     };
 
-    const result = await alertsCollection.findOneAndUpdate(
+    const result = await generatedAlertsCollection.findOneAndUpdate(
       { alertId },
       updateData,
       { returnDocument: 'after' }
@@ -354,7 +354,7 @@ alertsRouter.post('/bulk-action', async (req: Request, res: Response) => {
     }
 
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
 
     let filter: any = { applicationId, status: 'open' };
     let updateData: any = { updatedAt: new Date(), userComment: userComment || '' };
@@ -380,7 +380,7 @@ alertsRouter.post('/bulk-action', async (req: Request, res: Response) => {
       filter.alertId = { $in: alertIds };
     }
 
-    const result = await alertsCollection.updateMany(filter, updateData);
+    const result = await generatedAlertsCollection.updateMany(filter, updateData);
 
     logger.info(
       `[Alerts] Bulk ${action} action for app ${applicationId}: ${result.modifiedCount} alerts updated`
@@ -418,26 +418,26 @@ alertsRouter.get('/summary/:applicationId', async (req: Request, res: Response) 
     }
 
 
-    const alertsCollection = mongoose.connection.collection('alerts');
+    const generatedAlertsCollection = mongoose.connection.collection('generatedalerts');
 
     // Count by status
-    const openCount = await alertsCollection.countDocuments({
+    const openCount = await generatedAlertsCollection.countDocuments({
       applicationId,
       status: 'open',
     });
 
-    const acknowledgedCount = await alertsCollection.countDocuments({
+    const acknowledgedCount = await generatedAlertsCollection.countDocuments({
       applicationId,
       status: 'acknowledged',
     });
 
-    const dismissedCount = await alertsCollection.countDocuments({
+    const dismissedCount = await generatedAlertsCollection.countDocuments({
       applicationId,
       status: 'dismissed',
     });
 
     // Get count by metric
-    const byMetric = await alertsCollection
+    const byMetric = await generatedAlertsCollection
       .aggregate([
         { $match: { applicationId, status: 'open' } },
         {

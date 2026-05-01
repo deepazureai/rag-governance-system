@@ -113,9 +113,12 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const endpoint = appId
-        ? `/api/alert-thresholds/app/${appId}`
-        : '/api/alert-thresholds/defaults';
+      if (!appId) {
+        setSaveMessage({ type: 'error', text: 'No application selected' });
+        return;
+      }
+
+      const endpoint = `/api/alert-thresholds/app/${appId}`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -126,10 +129,10 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
       const data = await response.json();
 
       if (data.success) {
-        setSaveMessage({ type: 'success', text: 'Thresholds saved successfully' });
+        setSaveMessage({ type: 'success', text: 'Alert thresholds saved successfully' });
         setTimeout(() => setSaveMessage(null), 3000);
       } else {
-        setSaveMessage({ type: 'error', text: 'Failed to save thresholds' });
+        setSaveMessage({ type: 'error', text: data.error || 'Failed to save thresholds' });
       }
     } catch (err) {
       console.error('[v0] Error saving thresholds:', err);

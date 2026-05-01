@@ -63,9 +63,38 @@ async function initializeMongoDB(): Promise<void> {
   try {
     await mongoose.connect(mongoUrl, mongoOptions);
     console.log('[MongoDB] Connected successfully');
+    
+    // Initialize alert-related collections and indexes
+    await initializeAlertCollections();
   } catch (error) {
     console.error('[MongoDB] Connection failed:', error);
     throw new Error('Failed to connect to MongoDB. Check DATABASE_URL and ensure MongoDB is running.');
+  }
+}
+
+async function initializeAlertCollections(): Promise<void> {
+  try {
+    const db = mongoose.connection;
+    
+    // Create alert thresholds collection with index
+    const alertThresholdsCollection = db.collection('alertthresholds');
+    await alertThresholdsCollection.createIndex(
+      { applicationId: 1 },
+      { unique: true }
+    );
+    console.log('[MongoDB] Alert thresholds collection and indexes created');
+    
+    // Create generated alerts collection with indexes
+    const generatedAlertsCollection = db.collection('generatedalerts');
+    await generatedAlertsCollection.createIndex({ applicationId: 1, createdAt: -1 });
+    await generatedAlertsCollection.createIndex({ severity: 1 });
+    await generatedAlertsCollection.createIndex({ status: 1 });
+    await generatedAlertsCollection.createIndex({ alertType: 1 });
+    console.log('[MongoDB] Generated alerts collection and indexes created');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('[MongoDB] Error creating alert collections/indexes (non-critical):', errorMessage);
+    // Don't throw - this is non-critical
   }
 }
 

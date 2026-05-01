@@ -56,24 +56,24 @@ export class AlertIntegrationLayerService {
   }
 
   /**
-   * Generate real-time alerts during data ingestion
-   * Called immediately after records are saved to database
+   * Generate and store alerts - handles both ingestion and batch evaluation
+   * Called immediately after records are processed
    * Uses per-application thresholds for alert severity calculation
    */
-  static async generateIngestionTimeAlerts(
+  static async generateAndStoreAlerts(
     applicationId: string,
     records: Array<Record<string, any>>,
     dataSourceType: 'ingestion' | 'batch' = 'ingestion'
   ): Promise<void> {
     try {
-      logger.info(`[AlertIntegrationLayer] Generating ingestion-time alerts for ${records.length} records, app: ${applicationId}`);
+      logger.info(`[AlertIntegrationLayer] Generating and storing ${dataSourceType} alerts for ${records.length} records, app: ${applicationId}`);
 
       // Step 1: Fetch per-application thresholds
       const thresholds = await this.getApplicationThresholds(applicationId);
       logger.info(`[AlertIntegrationLayer] Thresholds fetched for app ${applicationId}:`, thresholds);
 
       // Step 2: Process each record and create alerts for violations
-      const AlertsCollection = mongoose.connection.collection('alerts');
+      const GeneratedAlertsCollection = mongoose.connection.collection('generatedalerts');
       const createdAlerts: Array<Record<string, any>> = [];
 
       for (const record of records) {
@@ -207,11 +207,11 @@ export class AlertIntegrationLayerService {
    */
   static async getApplicationSLACompliance(applicationId: string): Promise<{ compliance: number; totalRecords: number; alertedRecords: number }> {
     try {
-      const AlertsCollection = mongoose.connection.collection('alerts');
+      const GeneratedAlertsCollection = mongoose.connection.collection('generatedalerts');
       const EvaluationsCollection = mongoose.connection.collection('evaluationrecords');
 
       const totalRecords = await EvaluationsCollection.countDocuments({ applicationId });
-      const alertedRecords = await AlertsCollection.countDocuments({ applicationId });
+      const alertedRecords = await GeneratedAlertsCollection.countDocuments({ applicationId });
 
       const compliance = totalRecords > 0 ? ((totalRecords - alertedRecords) / totalRecords) * 100 : 100;
 
@@ -224,6 +224,63 @@ export class AlertIntegrationLayerService {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`[AlertIntegrationLayer] Error calculating SLA compliance: ${errorMessage}`);
       return { compliance: 0, totalRecords: 0, alertedRecords: 0 };
+    }
+  }
+
+  /**
+   * Backward compatibility: old method name
+   * Deprecated: Use generateAndStoreAlerts() instead
+   */
+  static async generateIngestionTimeAlerts(
+    applicationId: string,
+    records: Array<Record<string, any>>,
+    dataSourceType: 'ingestion' | 'batch' = 'ingestion'
+  ): Promise<void> {
+    return this.generateAndStoreAlerts(applicationId, records, dataSourceType);
+  }
+
+  /**
+   * Generate alerts from batch evaluation results
+   * Called from BatchProcessingService after evaluation completes
+   * Reuses existing generateAndStoreAlerts() logic
+   */
+  static async generateAlertsFromBatchEvaluation(
+    applicationId: string,
+    evaluatedRecords: Array<Record<string, any>>
+  ): Promise<{ alertsGenerated: number; criticalAlerts: number }> {
+    try {
+      logger.info(
+        `[AlertIntegrationLayer] Generating alerts from batch evaluation for app: ${applicationId}`
+      );
+
+      // Reuse existing method with 'batch' dataSourceType
+      await this.generateAndStoreAlerts(applicationId, evaluatedRecords, 'batch');
+
+      // Get alert summary
+      const GeneratedAlertsCollection = mongoose.connection.collection('generatedalerts');
+      const totalAlerts = await GeneratedAlertsCollection.countDocuments({
+        applicationId,
+        dataSourceType: 'batch',
+      });
+
+      const criticalAlerts = await GeneratedAlertsCollection.countDocuments({
+        applicationId,
+        severity: 'critical',
+        dataSourceType: 'batch',
+      });
+
+      logger.info(
+        `[AlertIntegrationLayer] Batch alerts generated - Total: ${totalAlerts}, Critical: ${criticalAlerts}`
+      );
+
+      return {
+        alertsGenerated: totalAlerts,
+        criticalAlerts,
+      };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`[AlertIntegrationLayer] Error generating batch alerts: ${errorMessage}`);
+      throw err;
     }
   }
 }

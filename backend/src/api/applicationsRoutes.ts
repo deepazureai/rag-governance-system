@@ -151,6 +151,20 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     await SLACollection.insertOne(slaConfig);
     console.log('[API] SLA configuration created with industry benchmarks');
 
+    // AUTO-INITIALIZE Alert Thresholds with Industry Standards
+    try {
+      console.log('[API] Initializing alert thresholds with industry standards for:', applicationId);
+      const { AlertIntegrationLayerService } = await import('../services/AlertIntegrationLayerService.js');
+      
+      const industryThresholds = AlertIntegrationLayerService.getIndustryStandardThresholds();
+      await AlertIntegrationLayerService.saveApplicationThresholds(applicationId, industryThresholds);
+      
+      console.log('[API] Alert thresholds initialized for application:', applicationId);
+    } catch (thresholdError: any) {
+      console.warn('[API] Warning: Failed to initialize alert thresholds:', thresholdError.message);
+      // Don't fail app creation if thresholds initialization fails
+    }
+
     // Trigger data ingestion job asynchronously (Phase 1)
     if (appData.dataSource) {
       console.log('[API] Initiating data ingestion for application:', applicationId);
