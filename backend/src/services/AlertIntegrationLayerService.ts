@@ -76,15 +76,28 @@ export class AlertIntegrationLayerService {
       const GeneratedAlertsCollection = mongoose.connection.collection('generatedalerts');
       const createdAlerts: Array<Record<string, any>> = [];
 
+      logger.info(`[AlertIntegrationLayer] Processing ${records.length} records for alerts`);
+      
       for (const record of records) {
         const recordId = record._id || record.id || uuidv4();
-        const metrics = record.evaluation?.metrics || {};
+        
+        // Extract metrics from the evaluation record - search in multiple locations
+        let extractedMetrics: Record<string, any> = {};
+        
+        // Check if evaluation object has the metrics
+        if (record.evaluation && typeof record.evaluation === 'object') {
+          extractedMetrics = record.evaluation;
+        } else if (record.metrics && typeof record.metrics === 'object') {
+          extractedMetrics = record.metrics;
+        }
+        
+        logger.info(`[AlertIntegrationLayer] Record ${recordId} has metrics:`, Object.keys(extractedMetrics).slice(0, 5));
 
         // Quality Metric Alerts
-        const qualityMetrics = ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall', 'overallScore'];
+        const metricNames = ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy', 'contextPrecision', 'contextRecall', 'overallScore'];
         
-        for (const metricName of qualityMetrics) {
-          const metricValue = metrics[metricName];
+        for (const metricName of metricNames) {
+          const metricValue = extractedMetrics[metricName];
           const threshold = thresholds[metricName];
 
           if (typeof metricValue === 'number' && typeof threshold === 'number' && metricValue < threshold) {
