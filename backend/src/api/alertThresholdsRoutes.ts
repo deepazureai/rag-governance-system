@@ -69,23 +69,6 @@ alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => 
   }
 });
 
-    // Return defaults for now
-    res.json({
-      success: true,
-      data: { ...INDUSTRY_STANDARD_THRESHOLDS, appId, isCustom: false },
-      isCustom: false,
-      message: 'Using industry standard thresholds',
-    });
-  } catch (error: any) {
-    console.error('[API] Get app thresholds error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve thresholds for application',
-      details: error.message,
-    });
-  }
-});
-
 /**
  * POST /api/alert-thresholds/app/:appId
  * Create or update threshold configuration for a specific application
@@ -146,55 +129,6 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       error: 'Failed to save threshold configuration',
-      details: error.message,
-    });
-  }
-});
-
-/**
- * Get threshold configuration for a specific application
- * Returns custom config if exists, otherwise returns defaults
- */
-alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => {
-  try {
-    const { appId } = req.params;
-    console.log('[v0] GET /api/alert-thresholds/app/:appId - appId:', appId);
-
-    // Query MongoDB for custom thresholds
-    try {
-      const db = mongoose.connection;
-      const alertThresholdsCollection = db.collection('alertthresholds');
-      const customThresholds = await alertThresholdsCollection.findOne({ appId });
-
-      if (customThresholds) {
-        console.log('[v0] Found custom thresholds for app:', appId);
-        return res.json({
-          success: true,
-          data: customThresholds,
-          isCustom: true,
-          source: 'custom',
-        });
-      }
-    } catch (dbErr: unknown) {
-      const dbErrorMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      console.log('[v0] Error querying MongoDB for thresholds:', dbErrorMsg);
-      // Fall through to defaults
-    }
-
-    // Return defaults if no custom config found
-    console.log('[v0] Using industry standard thresholds for app:', appId);
-    res.json({
-      success: true,
-      data: { ...INDUSTRY_STANDARD_THRESHOLDS, appId, isCustom: false },
-      isCustom: false,
-      source: 'industry_standard',
-      message: 'Using industry standard thresholds',
-    });
-  } catch (error: any) {
-    console.error('[v0] Get app thresholds error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve thresholds for application',
       details: error.message,
     });
   }
