@@ -490,12 +490,12 @@ export default function AlertsPage() {
                   </thead>
                   <tbody>
                     {alerts.map((alert) => (
-                      <tr key={alert.id} className="border-b hover:bg-gray-50">
+                      <tr key={alert._id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <input
                             type="checkbox"
-                            checked={selectedAlerts.has(alert.id)}
-                            onChange={() => handleAlertSelect(alert.id)}
+                            checked={selectedAlerts.has(alert._id)}
+                            onChange={() => handleAlertSelect(alert._id)}
                             className="rounded"
                           />
                         </td>
