@@ -161,7 +161,7 @@ alertsRouter.get('/applications/:applicationId', async (req: Request, res: Respo
     }
 
     if (alertLevel) {
-      filter.alertLevel = String(alertLevel);
+      filter.severity = String(alertLevel);
     }
 
     // Filter by alert type (evaluation vs performance)

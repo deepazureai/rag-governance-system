@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 interface Application {
   _id: string;
-  applicationId: string;
+  id: string;
   name: string;
 }
 
@@ -56,7 +56,7 @@ const getAlertType = (metricName?: string): 'evaluation' | 'performance' => {
 
 // Helper to get application name from ID
 const getAppName = (appId: string, apps: Application[]): string => {
-  const app = apps.find(a => a.applicationId === appId);
+  const app = apps.find(a => a.id === appId);
   return app?.name || appId;
 };
 
@@ -111,7 +111,7 @@ export default function AlertsPage() {
           setApplications(result.data);
           // Auto-select first app if available
           if (result.data.length > 0 && selectedAppIds.length === 0) {
-            setSelectedAppIds([result.data[0].applicationId]);
+            setSelectedAppIds([result.data[0].id]);
           }
         }
       }
@@ -350,13 +350,13 @@ export default function AlertsPage() {
                     key={app._id}
                     onClick={() =>
                       setSelectedAppIds(
-                        selectedAppIds.includes(app.applicationId)
-                          ? selectedAppIds.filter((id) => id !== app.applicationId)
-                          : [...selectedAppIds, app.applicationId]
+                        selectedAppIds.includes(app.id)
+                          ? selectedAppIds.filter((id) => id !== app.id)
+                          : [...selectedAppIds, app.id]
                       )
                     }
                     className={
-                      selectedAppIds.includes(app.applicationId)
+                      selectedAppIds.includes(app.id)
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-800'
                     }
