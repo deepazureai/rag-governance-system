@@ -25,7 +25,7 @@ export class WebSocketService {
   }
 
   private setupConnections(): void {
-    this.wss.on('connection', (ws: WebSocket, req) => {
+    this.wss.on('connection', (ws: WebSocket, req: any) => {
       console.log('[WebSocket] New connection');
 
       ws.on('message', async (message: string) => {
@@ -48,7 +48,7 @@ export class WebSocketService {
         this.removeConnection(ws);
       });
 
-      ws.on('error', (error) => {
+      ws.on('error', (error: any) => {
         console.error('[WebSocket] Connection error:', error);
       });
     });

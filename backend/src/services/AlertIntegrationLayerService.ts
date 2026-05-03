@@ -107,7 +107,7 @@ export class AlertIntegrationLayerService {
               acknowledgedBy: null,
             };
 
-            await AlertsCollection.updateOne(
+            await GeneratedAlertsCollection.updateOne(
               { applicationId, recordId, metricName },
               { $set: alert },
               { upsert: true }
@@ -144,7 +144,7 @@ export class AlertIntegrationLayerService {
               acknowledgedBy: null,
             };
 
-            await AlertsCollection.updateOne(
+            await GeneratedAlertsCollection.updateOne(
               { applicationId, recordId, metricName: latencyMetric },
               { $set: alert },
               { upsert: true }

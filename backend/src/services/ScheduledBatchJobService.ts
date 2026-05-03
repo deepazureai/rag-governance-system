@@ -5,7 +5,7 @@ import { batchProcessingService } from './BatchProcessingService.js';
 import { logger } from '../utils/logger.js';
 
 export class ScheduledBatchJobService {
-  private cronJobs: Map<string, cron.ScheduledTask> = new Map();
+  private cronJobs: Map<string, any> = new Map();
 
   /**
    * Create a new scheduled batch job for an application

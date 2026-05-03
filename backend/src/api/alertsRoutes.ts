@@ -257,7 +257,7 @@ alertsRouter.patch('/:alertId/acknowledge', async (req: Request, res: Response) 
       { returnDocument: 'after' }
     );
 
-    if (!result.value) {
+    if (!result || !result.value) {
       return res.status(404).json({
         success: false,
         message: `Alert ${alertId} not found`,
@@ -315,7 +315,7 @@ alertsRouter.patch('/:alertId/dismiss', async (req: Request, res: Response) => {
       { returnDocument: 'after' }
     );
 
-    if (!result.value) {
+    if (!result || !result.value) {
       return res.status(404).json({
         success: false,
         message: `Alert ${alertId} not found`,

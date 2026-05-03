@@ -111,7 +111,7 @@ async function createServer(): Promise<Express> {
   );
 
   // Logger middleware
-  app.use((req: Request, res: Response, next) => {
+  app.use((req: Request, res: Response, next: any) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
   });
