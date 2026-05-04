@@ -108,18 +108,20 @@ export function BatchProcessingTab() {
         throw new Error('No database connection configured for this application');
       }
 
-      console.log('[v0] Executing batch for app:', selectedAppId, 'with dataSourceId:', selectedApp.dataSourceId);
+      console.log('[v0] Executing database batch for app:', selectedAppId, 'with dataSourceId:', selectedApp.dataSourceId);
 
-      // Call backend to execute batch process from database
-      const result = await batchClient.executeBatch(
+      // Call new database-specific batch endpoint
+      const result = await batchClient.executeDatabaseBatch(
         selectedAppId,
-        selectedApp.dataSourceId,  // Pass the database connection ID
-        'database',                 // Source type is database
-        {}                          // Config will be fetched from dbconnections collection
+        selectedApp.dataSourceId
       );
 
+      if (!result.success) {
+        throw new Error(result.message || 'Batch processing failed');
+      }
+
       await fetchBatchHistory();
-      alert('Batch processing started successfully');
+      alert(`Batch processing completed!\nTotal: ${result.stats?.totalRecords}, Inserted: ${result.stats?.insertedRecords}, Success Rate: ${result.stats?.successRate}`);
     } catch (error: any) {
       alert(`Failed to execute batch: ${error.message}`);
     } finally {

@@ -3,8 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { batchProcessingService } from '../services/BatchProcessingService.js';
 import { scheduledBatchJobService } from '../services/ScheduledBatchJobService.js';
 import { archiveService } from '../services/ArchiveService.js';
+import { postgreSQLConnectorService } from '../services/PostgreSQLConnectorService.js';
 import { logger } from '../utils/logger.js';
 import { getStringParam, getNumberParam } from '../utils/paramParser.js';
+import mongoose from 'mongoose';
 
 export function createBatchProcessingRouter(): Router {
   const router = express.Router();
@@ -50,9 +52,154 @@ export function createBatchProcessingRouter(): Router {
   });
 
   /**
-   * GET /api/batch/application/:applicationId/history
-   * Get batch history for an application - MUST come BEFORE /:batchId routes
+   * POST /api/batch/database/execute
+   * Execute batch processing from a database source (PostgreSQL)
+   * Body: { applicationId, dataSourceId, sourceType }
    */
+  router.post('/database/execute', async (req: Request, res: Response) => {
+    try {
+      const { applicationId, dataSourceId, sourceType } = req.body;
+
+      if (!applicationId || !dataSourceId) {
+        return res.status(400).json({
+          success: false,
+          message: 'applicationId and dataSourceId are required',
+        });
+      }
+
+      logger.info('[BatchAPI-Database] Starting database batch process', {
+        applicationId,
+        dataSourceId,
+        sourceType,
+      });
+
+      // 1. Fetch database connection config from dbconnections collection
+      const DBConnectionsCollection = mongoose.connection.collection('dbconnections');
+      const dbConnection: any = await DBConnectionsCollection.findOne({ id: dataSourceId });
+
+      if (!dbConnection) {
+        return res.status(404).json({
+          success: false,
+          message: `Database connection not found: ${dataSourceId}`,
+        });
+      }
+
+      logger.info('[BatchAPI-Database] Database connection found', {
+        connectionName: dbConnection.connectionName,
+        sourceType: dbConnection.sourceType,
+      });
+
+      // 2. Verify source type is database
+      if (dbConnection.sourceType !== 'postgresql' && dbConnection.sourceType !== 'mysql' && dbConnection.sourceType !== 'sql_server') {
+        return res.status(400).json({
+          success: false,
+          message: `Unsupported database type: ${dbConnection.sourceType}`,
+        });
+      }
+
+      // 3. For now, only support PostgreSQL
+      if (dbConnection.sourceType !== 'postgresql') {
+        return res.status(400).json({
+          success: false,
+          message: `Database type ${dbConnection.sourceType} not yet supported. Currently supporting PostgreSQL.`,
+        });
+      }
+
+      // 4. Execute database batch process (returns immediately, runs async)
+      const result = await postgreSQLConnectorService.fetchAndInsertData(
+        applicationId,
+        dataSourceId,
+        dbConnection.config,
+        dbConnection.columnMapping
+      );
+
+      logger.info('[BatchAPI-Database] Database batch process completed', result);
+
+      // 5. Trigger evaluation pipeline
+      logger.info('[BatchAPI-Database] Triggering evaluation pipeline for batchId:', result.batchId);
+      try {
+        await batchProcessingService.triggerEvaluationPipeline(applicationId, result.batchId);
+      } catch (pipelineError: any) {
+        logger.error('[BatchAPI-Database] Error triggering evaluation pipeline:', pipelineError.message);
+        // Don't fail the response - data was successfully fetched and inserted
+      }
+
+      res.json({
+        success: true,
+        message: 'Database batch processing started',
+        batchId: result.batchId,
+        stats: {
+          totalRecords: result.totalRecords,
+          insertedRecords: result.insertedRecords,
+          failedRecords: result.failedRecords,
+          successRate: `${((result.insertedRecords / result.totalRecords) * 100).toFixed(2)}%`,
+        },
+      });
+    } catch (error: any) {
+      logger.error('[BatchAPI-Database] Batch processing error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Database batch processing failed',
+      });
+    }
+  });
+
+  /**
+   * POST /api/batch/database/test-connection
+   * Test PostgreSQL connection before batch processing
+   * Body: { dataSourceId }
+   */
+  router.post('/database/test-connection', async (req: Request, res: Response) => {
+    try {
+      const { dataSourceId } = req.body;
+
+      if (!dataSourceId) {
+        return res.status(400).json({
+          success: false,
+          message: 'dataSourceId is required',
+        });
+      }
+
+      // Fetch database connection config
+      const DBConnectionsCollection = mongoose.connection.collection('dbconnections');
+      const dbConnection: any = await DBConnectionsCollection.findOne({ id: dataSourceId });
+
+      if (!dbConnection) {
+        return res.status(404).json({
+          success: false,
+          message: `Database connection not found: ${dataSourceId}`,
+        });
+      }
+
+      if (dbConnection.sourceType !== 'postgresql') {
+        return res.status(400).json({
+          success: false,
+          message: `Database type ${dbConnection.sourceType} not yet supported`,
+        });
+      }
+
+      // Test connection
+      const testResult = await postgreSQLConnectorService.testConnection(dbConnection.config);
+
+      if (!testResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: testResult.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: testResult.message,
+      });
+    } catch (error: any) {
+      logger.error('[BatchAPI-Database] Connection test error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Connection test failed',
+      });
+    }
+  });
   router.get('/application/:applicationId/history', async (req: Request, res: Response) => {
     try {
       const applicationId = getStringParam(req.params.applicationId);

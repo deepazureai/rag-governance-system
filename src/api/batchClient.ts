@@ -234,4 +234,38 @@ export const batchClient = {
       return { success: false };
     }
   },
+
+  /**
+   * Execute database batch processing
+   */
+  async executeDatabaseBatch(applicationId: string, dataSourceId: string) {
+    try {
+      const url = `${API_BASE_URL}/batch/database/execute`;
+      console.log('[v0] Executing database batch with URL:', url);
+      const response = await axios.post(url, {
+        applicationId,
+        dataSourceId,
+        sourceType: 'database',
+      });
+      return response.data;
+    } catch (error: any) {
+      console.log('[v0] Database batch execute error:', error.message);
+      return { success: false, message: error.message };
+    }
+  },
+
+  /**
+   * Test database connection
+   */
+  async testDatabaseConnection(dataSourceId: string) {
+    try {
+      const url = `${API_BASE_URL}/batch/database/test-connection`;
+      console.log('[v0] Testing database connection with URL:', url);
+      const response = await axios.post(url, { dataSourceId });
+      return response.data;
+    } catch (error: any) {
+      console.log('[v0] Database connection test error:', error.message);
+      return { success: false, message: error.message };
+    }
+  },
 };

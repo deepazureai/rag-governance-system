@@ -274,6 +274,131 @@ export class BatchProcessingService {
   async getApplicationBatches(applicationId: string, limit: number = 10): Promise<any[]> {
     return mongoose.connection.collection('scheduledbatchjobs').find({ applicationId }).sort({ createdAt: -1 }).limit(limit).toArray();
   }
+
+  /**
+   * Trigger evaluation pipeline for raw data already in rawdatarecords collection
+   * Used when data is inserted by external sources (e.g., database connector)
+   */
+  async triggerEvaluationPipeline(applicationId: string, batchId: string): Promise<any> {
+    logger.info(`[BatchProcessingService] Triggering evaluation pipeline`, { applicationId, batchId });
+
+    try {
+      // Fetch raw data records from MongoDB
+      const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+      const rawRecords = await RawDataCollection.find({ applicationId, batchId }).toArray();
+
+      if (!rawRecords || rawRecords.length === 0) {
+        logger.warn(`[BatchProcessingService] No raw records found for batch ${batchId}`);
+        return { status: 'no_data', recordsProcessed: 0 };
+      }
+
+      logger.info(`[BatchProcessingService] Found ${rawRecords.length} raw records for evaluation`);
+
+      // Phase 3: Evaluate
+      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+      let evaluatedCount = 0;
+
+      for (const record of rawRecords) {
+        try {
+          const query = (record.recordData?.userPrompt || record.recordData?.query || record.query || '') as string;
+          const response = (record.recordData?.llmResponse || record.recordData?.response || record.response || '') as string;
+
+          let retrievedDocuments: Array<{ content: string; source: string; relevance?: number }> = [];
+
+          if (record.recordData?.retrieved_documents && Array.isArray(record.recordData.retrieved_documents)) {
+            retrievedDocuments = record.recordData.retrieved_documents;
+          } else if (record.recordData?.context || record.context) {
+            retrievedDocuments = [{ content: record.recordData?.context || record.context, source: 'query_context', relevance: 85 }];
+          }
+
+          const { frameworkResults, mappedMetrics } = await MultiFrameworkEvaluator.evaluateMultiFramework(
+            query,
+            response,
+            retrievedDocuments
+          );
+
+          const evaluationRecord = {
+            applicationId,
+            connectionId: record.connectionId,
+            batchId,
+            recordData: record.recordData,
+            query,
+            response,
+            retrievedDocuments,
+            frameworksUsed: frameworkResults.map((r) => r.framework),
+            rawFrameworkResults: frameworkResults,
+            ...mappedMetrics,
+            evaluation: { ...mappedMetrics, rawMetrics: mappedMetrics },
+            evaluatedAt: new Date(),
+            status: 'completed',
+          };
+
+          await EvaluationCollection.insertOne(evaluationRecord);
+          evaluatedCount++;
+        } catch (evalError: unknown) {
+          logger.error(`[BatchProcessingService] Evaluation failed:`, evalError instanceof Error ? evalError.message : String(evalError));
+        }
+      }
+
+      logger.info(`[BatchProcessingService] Evaluated ${evaluatedCount} records`);
+
+      // Phase 4: Governance
+      try {
+        const governanceMetrics = await AIActivityGovernanceService.calculateAIActivityMetrics(applicationId);
+        const GovernanceCollection = mongoose.connection.collection('governancemetrics');
+        await GovernanceCollection.updateOne(
+          { applicationId, batchId },
+          { $set: { ...governanceMetrics, applicationId, batchId, calculatedAt: new Date() } },
+          { upsert: true }
+        );
+      } catch (govError: unknown) {
+        logger.warn(`[BatchProcessingService] Governance metrics failed:`, govError instanceof Error ? govError.message : String(govError));
+      }
+
+      // Phase 5: Generate Alerts from Batch Evaluation
+      try {
+        logger.info(`[BatchProcessingService] Phase 5: Generating alerts for batch ${batchId}`);
+        const { AlertIntegrationLayerService } = await import('./AlertIntegrationLayerService.js');
+
+        // Fetch evaluated records from the collection
+        const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+        const evaluations = await EvaluationCollection.find({ applicationId, batchId }).toArray();
+
+        if (evaluations.length > 0) {
+          const alertResult = await AlertIntegrationLayerService.generateAlertsFromBatchEvaluation(
+            applicationId,
+            evaluations
+          );
+          logger.info(`[BatchProcessingService] Batch alerts generated - Total: ${alertResult.alertsGenerated}, Critical: ${alertResult.criticalAlerts}`);
+        } else {
+          logger.info(`[BatchProcessingService] No evaluations found for batch ${batchId}`);
+        }
+      } catch (alertError: unknown) {
+        const alertErrorMsg = alertError instanceof Error ? alertError.message : String(alertError);
+        logger.error(`[BatchProcessingService] Error generating batch alerts: ${alertErrorMsg}`);
+      }
+
+      // Update Application Master Status
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { $set: { initialDataProcessingStatus: 'completed', metricsCount: rawRecords.length, updatedAt: new Date() } }
+      );
+
+      return { status: 'completed', recordsProcessed: evaluatedCount, recordsEvaluated: evaluatedCount };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`[BatchProcessingService] Evaluation pipeline failed:`, errorMessage);
+
+      const ApplicationMasterCollection = mongoose.connection.collection('applicationmasters');
+      await ApplicationMasterCollection.updateOne(
+        { id: applicationId },
+        { $set: { initialDataProcessingStatus: 'failed', error: errorMessage, updatedAt: new Date() } }
+      ).catch(() => {});
+
+      throw error;
+    }
+  }
 }
 
 export const batchProcessingService = new BatchProcessingService();
