@@ -9,6 +9,51 @@ export interface App {
   ragFramework: string;
   dataSource: string;
   owner: string;
+  dataSourceType?: 'file' | 'database' | 'azure_blob';  // NEW: Type of data source
+  dataSourceId?: string;  // NEW: Reference to dbconnections collection if database source
+}
+
+/**
+ * Database Connection Configuration
+ * Stores encrypted PostgreSQL/MySQL connection details and column mappings
+ * Used for batch processing from external databases
+ */
+export interface DatabaseConnection {
+  _id?: string;
+  id: string;
+  applicationId: string;
+  connectionName: string;  // e.g., "Production PostgreSQL DB"
+  sourceType: 'postgresql' | 'mysql' | 'sql_server';
+  config: {
+    host: string;
+    port: number;
+    database: string;
+    tableName: string;
+    username: string;
+    password: string;  // Encrypted before storage
+    ssl: boolean;
+  };
+  columnMapping: {
+    userIdColumn: string;
+    sessionIdColumn?: string;
+    promptColumn: string;
+    contextColumn?: string;
+    responseColumn: string;
+    promptTimestampColumn?: string;
+    contextRetrievalStartTimeColumn?: string;
+    contextRetrievalEndTimeColumn?: string;
+    llmRequestStartTimeColumn?: string;
+    llmResponseEndTimeColumn?: string;
+    contextChunkCountColumn?: string;
+    contextTotalLengthWordsColumn?: string;
+    promptLengthWordsColumn?: string;
+    responseLengthWordsColumn?: string;
+    statusColumn?: string;
+  };
+  isActive: boolean;
+  lastSyncTime?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface EvaluationMetric {

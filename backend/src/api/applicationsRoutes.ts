@@ -121,6 +121,8 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       framework: appData.framework || 'unknown',
       status: 'active',
       dataSource: appData.dataSource || { type: 'database', config: {} },
+      dataSourceType: appData.dataSource?.type === 'local_folder' ? 'file' : (appData.dataSource?.type === 'database' ? 'database' : 'azure_blob'), // NEW: Track source type
+      dataSourceId: undefined, // Will be set if database source
       initialDataProcessingStatus: 'pending',
       metricsCount: 0,
       createdAt: new Date(),
@@ -135,6 +137,69 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
     const result = await ApplicationMasterCollection.insertOne(newApp);
     
     console.log('[API] Application saved to MongoDB with _id:', result.insertedId);
+
+    // If database source, save connection details to dbconnections collection
+    let dataSourceId: string | undefined;
+    if (appData.dataSource?.type === 'database' && appData.dataSource?.config) {
+      try {
+        console.log('[API] Saving database connection configuration for application:', applicationId);
+        
+        const DBConnectionsCollection = mongoose.connection.collection('dbconnections');
+        const dbConnectionId = `dbconn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const dbConnection = {
+          id: dbConnectionId,
+          applicationId,
+          connectionName: `${appData.dataSource.config.type} - ${appData.dataSource.config.host}:${appData.dataSource.config.port}/${appData.dataSource.config.database}`,
+          sourceType: appData.dataSource.config.type,
+          config: {
+            host: appData.dataSource.config.host,
+            port: appData.dataSource.config.port,
+            database: appData.dataSource.config.database,
+            tableName: appData.dataSource.config.table,
+            username: appData.dataSource.config.username,
+            password: appData.dataSource.config.password, // TODO: Encrypt before storing
+            ssl: appData.dataSource.config.ssl || false,
+          },
+          columnMapping: {
+            userIdColumn: appData.dataSource.config.columnMapping?.userIdColumn || 'user_id',
+            promptColumn: appData.dataSource.config.columnMapping?.promptColumn || 'user_prompt',
+            contextColumn: appData.dataSource.config.columnMapping?.contextColumn || 'context',
+            responseColumn: appData.dataSource.config.columnMapping?.responseColumn || 'llm_response',
+            promptTimestampColumn: appData.dataSource.config.columnMapping?.promptTimestampColumn || 'prompt_timestamp',
+            contextRetrievalStartTimeColumn: appData.dataSource.config.columnMapping?.contextRetrievalStartTimeColumn || 'context_retrieval_start_time',
+            contextRetrievalEndTimeColumn: appData.dataSource.config.columnMapping?.contextRetrievalEndTimeColumn || 'context_retrieval_end_time',
+            llmRequestStartTimeColumn: appData.dataSource.config.columnMapping?.llmRequestStartTimeColumn || 'llm_request_start_time',
+            llmResponseEndTimeColumn: appData.dataSource.config.columnMapping?.llmResponseEndTimeColumn || 'llm_response_end_time',
+            contextChunkCountColumn: appData.dataSource.config.columnMapping?.contextChunkCountColumn || 'context_chunk_count',
+            contextTotalLengthWordsColumn: appData.dataSource.config.columnMapping?.contextTotalLengthWordsColumn || 'context_total_length_words',
+            promptLengthWordsColumn: appData.dataSource.config.columnMapping?.promptLengthWordsColumn || 'prompt_length_words',
+            responseLengthWordsColumn: appData.dataSource.config.columnMapping?.responseLengthWordsColumn || 'response_length_words',
+            statusColumn: appData.dataSource.config.columnMapping?.statusColumn || 'status',
+          },
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        
+        await DBConnectionsCollection.insertOne(dbConnection);
+        dataSourceId = dbConnectionId;
+        
+        console.log('[API] Database connection saved with ID:', dbConnectionId);
+        
+        // Update application with dataSourceId reference
+        newApp.dataSourceId = dataSourceId;
+        await ApplicationMasterCollection.updateOne(
+          { id: applicationId },
+          { $set: { dataSourceId } }
+        );
+        
+        console.log('[API] Application linked to database connection:', dataSourceId);
+      } catch (dbConnError: any) {
+        console.error('[API] Error saving database connection:', dbConnError.message);
+        console.warn('[API] Application created but database connection save failed. User can configure later.');
+      }
+    }
 
     // AUTO-CREATE SLA Configuration with Industry Benchmarks
     console.log('[API] Creating SLA configuration with industry benchmarks for:', applicationId);
