@@ -19,6 +19,8 @@ interface Application {
   id: string;
   name: string;
   status: string;
+  dataSourceType?: 'file' | 'database' | 'azure_blob';  // NEW: Track source type
+  dataSourceId?: string;  // NEW: Reference to database connection
 }
 
 interface BatchHistory {
@@ -57,9 +59,11 @@ export function BatchProcessingTab() {
         const response = await fetch(`${apiUrl}/api/applications`);
         const data = await response.json();
         if (data.success && data.data) {
-          setApplications(data.data);
-          if (data.data.length > 0) {
-            setSelectedAppId(data.data[0].id);
+          // Filter to only show database-source applications
+          const dbApps = data.data.filter((app: Application) => app.dataSourceType === 'database');
+          setApplications(dbApps);
+          if (dbApps.length > 0) {
+            setSelectedAppId(dbApps[0].id);
           }
         }
       } catch (error: any) {
@@ -94,12 +98,24 @@ export function BatchProcessingTab() {
     try {
       setExecuting(true);
 
-      // TODO: Get connection details and source config
+      // Get the selected application details including dataSourceId
+      const selectedApp = applications.find((app) => app.id === selectedAppId);
+      if (!selectedApp) {
+        throw new Error('Selected application not found');
+      }
+
+      if (!selectedApp.dataSourceId) {
+        throw new Error('No database connection configured for this application');
+      }
+
+      console.log('[v0] Executing batch for app:', selectedAppId, 'with dataSourceId:', selectedApp.dataSourceId);
+
+      // Call backend to execute batch process from database
       const result = await batchClient.executeBatch(
         selectedAppId,
-        '', // connectionId
-        'local-folder', // sourceType
-        {} // sourceConfig
+        selectedApp.dataSourceId,  // Pass the database connection ID
+        'database',                 // Source type is database
+        {}                          // Config will be fetched from dbconnections collection
       );
 
       await fetchBatchHistory();
@@ -136,22 +152,28 @@ export function BatchProcessingTab() {
   return (
     <div className="space-y-6">
       <Card className="p-6 bg-white">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Database Application</h3>
         
         <Select value={selectedAppId || ''} onValueChange={setSelectedAppId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select an application..." />
+            <SelectValue placeholder="Select a database-connected application..." />
           </SelectTrigger>
           <SelectContent>
-            {applications.map((app) => (
-              <SelectItem key={app.id} value={app.id}>
-                {app.name}
+            {applications.length === 0 ? (
+              <SelectItem value="_none" disabled>
+                No database-connected applications found
               </SelectItem>
-            ))}
+            ) : (
+              applications.map((app) => (
+                <SelectItem key={app.id} value={app.id}>
+                  {app.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
         <p className="text-xs text-gray-500 mt-2">
-          Select an application to view and execute batch processing
+          Only applications connected to external databases are shown. Select one to execute batch processing from the connected PostgreSQL table.
         </p>
       </Card>
       <div>
@@ -161,7 +183,11 @@ export function BatchProcessingTab() {
 
       {!selectedAppId ? (
         <Card className="p-8 bg-gray-50 text-center">
-          <p className="text-gray-500">Select an application to view batch processing history</p>
+          <p className="text-gray-500">
+            {applications.length === 0
+              ? 'No database-connected applications available. Create an application with database data source in the App Catalog to get started.'
+              : 'Select a database-connected application to view batch processing history'}
+          </p>
         </Card>
       ) : (
         <>
@@ -171,7 +197,7 @@ export function BatchProcessingTab() {
               <div>
                 <h3 className="font-semibold text-gray-900">Execute Batch Processing</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Manually trigger batch processing to read data, archive, and insert fresh records
+                  Fetch raw evaluation data from the connected PostgreSQL database table, then process through the evaluation pipeline
                 </p>
               </div>
               <Button
@@ -182,7 +208,7 @@ export function BatchProcessingTab() {
                 {executing ? (
                   <>
                     <Spinner className="w-4 h-4" />
-                    Executing...
+                    Processing...
                   </>
                 ) : (
                   <>
