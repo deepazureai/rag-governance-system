@@ -122,7 +122,7 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
       status: 'active',
       dataSource: appData.dataSource || { type: 'database', config: {} },
       dataSourceType: appData.dataSource?.type === 'local_folder' ? 'file' : (appData.dataSource?.type === 'database' ? 'database' : 'azure_blob'), // NEW: Track source type
-      dataSourceId: undefined, // Will be set if database source
+      dataSourceId: null as any, // Will be set if database source
       initialDataProcessingStatus: 'pending',
       metricsCount: 0,
       createdAt: new Date(),
