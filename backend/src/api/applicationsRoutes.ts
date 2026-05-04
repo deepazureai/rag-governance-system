@@ -147,7 +147,7 @@ applicationsRouter.post('/create', async (req: Request, res: Response) => {
         const DBConnectionsCollection = mongoose.connection.collection('dbconnections');
         const dbConnectionId = `dbconn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
-        const dbConnection = {
+        const dbConnection: any = {
           id: dbConnectionId,
           applicationId,
           connectionName: `${appData.dataSource.config.type} - ${appData.dataSource.config.host}:${appData.dataSource.config.port}/${appData.dataSource.config.database}`,
