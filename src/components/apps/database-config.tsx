@@ -21,13 +21,7 @@ export interface DatabaseConfigWithMapping {
   table: string;
   username: string;
   password: string;
-  columnMapping: {
-    promptColumn: string;
-    contextColumn: string;
-    responseColumn: string;
-    userIdColumn: string;
-    timestampColumn?: string;
-  };
+  columnMapping: Record<string, string>; // Dynamic mapping for all columns
 }
 
 type Step = 'connection' | 'schema' | 'mapping' | 'complete';
@@ -52,12 +46,22 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   
-  const [columnMapping, setColumnMapping] = useState({
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({
+    userIdColumn: '',
+    sessionIdColumn: '',
     promptColumn: '',
     contextColumn: '',
     responseColumn: '',
-    userIdColumn: '',
-    timestampColumn: '',
+    promptTimestampColumn: '',
+    contextRetrievalStartTimeColumn: '',
+    contextRetrievalEndTimeColumn: '',
+    llmRequestStartTimeColumn: '',
+    llmResponseEndTimeColumn: '',
+    contextChunkCountColumn: '',
+    contextTotalLengthWordsColumn: '',
+    promptLengthWordsColumn: '',
+    responseLengthWordsColumn: '',
+    statusColumn: '',
   });
   
   const [error, setError] = useState('');
@@ -192,6 +196,7 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
   const handleSaveMapping = async () => {
     setError('');
     
+    // Validate required columns
     if (!columnMapping.promptColumn || !columnMapping.responseColumn || !columnMapping.userIdColumn) {
       setError('Prompt, Response, and User ID columns are required');
       return;
@@ -204,6 +209,14 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
       console.log('[v0] Preparing database configuration for application creation...');
 
       // Prepare the complete database configuration to pass back to the wizard
+      // Only include mappings that have a value selected
+      const configColumnMapping: Record<string, string> = {};
+      Object.entries(columnMapping).forEach(([key, value]) => {
+        if (value) {
+          configColumnMapping[key] = value;
+        }
+      });
+
       const config: DatabaseConfigWithMapping = {
         type,
         host,
@@ -212,13 +225,7 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
         table,
         username,
         password,
-        columnMapping: {
-          promptColumn: columnMapping.promptColumn,
-          contextColumn: columnMapping.contextColumn,
-          responseColumn: columnMapping.responseColumn,
-          userIdColumn: columnMapping.userIdColumn,
-          timestampColumn: columnMapping.timestampColumn,
-        },
+        columnMapping: configColumnMapping,
       };
 
       console.log('[v0] Database config prepared:', config);
@@ -235,20 +242,6 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
     } catch (err: any) {
       console.error('[v0] Error preparing configuration:', err);
       setError(err.message || 'Failed to prepare database configuration');
-      onValidationChange?.(false);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-        columnMapping,
-      };
-
-      onConfigure(config);
-      onValidationChange?.(true);
-      setStep('complete');
-    } catch (err: any) {
-      console.error('[v0] Error saving connection:', err);
-      setError(err.message || 'Failed to save connection and schema mapping');
       onValidationChange?.(false);
     } finally {
       setIsConnecting(false);
@@ -398,41 +391,102 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
         <div className="space-y-3">
           <div className="bg-blue-50 border border-blue-200 p-3 rounded">
             <p className="text-sm text-blue-700 font-medium">Table: {table}</p>
-            <p className="text-xs text-blue-600 mt-1">Map your database columns to evaluation metrics</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Map your database columns to evaluation fields ({tableColumns.length} columns available)
+            </p>
           </div>
-          
-          <ColumnSelect
-            label="Prompt/Query Column"
-            value={columnMapping.promptColumn}
-            onChange={(val: string) => setColumnMapping({ ...columnMapping, promptColumn: val })}
-            required
-          />
-          
-          <ColumnSelect
-            label="Response Column"
-            value={columnMapping.responseColumn}
-            onChange={(val: string) => setColumnMapping({ ...columnMapping, responseColumn: val })}
-            required
-          />
-          
-          <ColumnSelect
-            label="Context Column (Optional)"
-            value={columnMapping.contextColumn}
-            onChange={(val: string) => setColumnMapping({ ...columnMapping, contextColumn: val })}
-          />
-          
-          <ColumnSelect
-            label="User ID Column"
-            value={columnMapping.userIdColumn}
-            onChange={(val: string) => setColumnMapping({ ...columnMapping, userIdColumn: val })}
-            required
-          />
-          
-          <ColumnSelect
-            label="Timestamp Column (Optional)"
-            value={columnMapping.timestampColumn}
-            onChange={(val: string) => setColumnMapping({ ...columnMapping, timestampColumn: val })}
-          />
+
+          {/* Required Fields Section */}
+          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded">
+            <p className="text-xs font-semibold text-yellow-900 mb-3">Required Fields *</p>
+            <div className="grid grid-cols-1 gap-3">
+              <ColumnSelect
+                label="User ID Column *"
+                value={columnMapping.userIdColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, userIdColumn: val })}
+                required
+              />
+              <ColumnSelect
+                label="Prompt/Query Column *"
+                value={columnMapping.promptColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, promptColumn: val })}
+                required
+              />
+              <ColumnSelect
+                label="Response Column *"
+                value={columnMapping.responseColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, responseColumn: val })}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Optional Fields Section */}
+          <div className="bg-gray-50 border border-gray-200 p-3 rounded">
+            <p className="text-xs font-semibold text-gray-900 mb-3">Optional Fields</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+              <ColumnSelect
+                label="Session ID Column"
+                value={columnMapping.sessionIdColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, sessionIdColumn: val })}
+              />
+              <ColumnSelect
+                label="Context Column"
+                value={columnMapping.contextColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, contextColumn: val })}
+              />
+              <ColumnSelect
+                label="Prompt Timestamp Column"
+                value={columnMapping.promptTimestampColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, promptTimestampColumn: val })}
+              />
+              <ColumnSelect
+                label="Context Retrieval Start Time"
+                value={columnMapping.contextRetrievalStartTimeColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, contextRetrievalStartTimeColumn: val })}
+              />
+              <ColumnSelect
+                label="Context Retrieval End Time"
+                value={columnMapping.contextRetrievalEndTimeColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, contextRetrievalEndTimeColumn: val })}
+              />
+              <ColumnSelect
+                label="LLM Request Start Time"
+                value={columnMapping.llmRequestStartTimeColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, llmRequestStartTimeColumn: val })}
+              />
+              <ColumnSelect
+                label="LLM Response End Time"
+                value={columnMapping.llmResponseEndTimeColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, llmResponseEndTimeColumn: val })}
+              />
+              <ColumnSelect
+                label="Context Chunk Count"
+                value={columnMapping.contextChunkCountColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, contextChunkCountColumn: val })}
+              />
+              <ColumnSelect
+                label="Context Total Length (Words)"
+                value={columnMapping.contextTotalLengthWordsColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, contextTotalLengthWordsColumn: val })}
+              />
+              <ColumnSelect
+                label="Prompt Length (Words)"
+                value={columnMapping.promptLengthWordsColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, promptLengthWordsColumn: val })}
+              />
+              <ColumnSelect
+                label="Response Length (Words)"
+                value={columnMapping.responseLengthWordsColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, responseLengthWordsColumn: val })}
+              />
+              <ColumnSelect
+                label="Status Column"
+                value={columnMapping.statusColumn}
+                onChange={(val: string) => setColumnMapping({ ...columnMapping, statusColumn: val })}
+              />
+            </div>
+          </div>
         </div>
       )}
 
