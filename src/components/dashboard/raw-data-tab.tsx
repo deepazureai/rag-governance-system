@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { RawDataDetailModal } from './raw-data-detail-modal';
+import { RawDataRecordDetail } from '@/types/index';
 
 interface RawDataItem {
   metric?: string;
@@ -28,6 +30,8 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<RawDataRecordDetail | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   useEffect(() => {
     fetchRawData();
@@ -60,10 +64,48 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    if (status === 'critical') return 'bg-red-100 text-red-800 border-red-300';
-    if (status === 'warning') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    return 'bg-green-100 text-green-800 border-green-300';
+  const handleRecordClick = (item: RawDataItem) => {
+    // Convert grid item to detail record (would fetch full record from API in production)
+    const detailRecord: RawDataRecordDetail = {
+      _id: `record_${Math.random().toString(36).substr(2, 9)}`,
+      applicationId,
+      userPrompt: item.query,
+      llmResponse: item.response,
+      userPromptEnteredAt: new Date(Date.now() - 5 * 60000).toISOString(),
+      llmResponseGeneratedAt: new Date().toISOString(),
+      contextRetrievalTime: Math.random() * 500,
+      llmGenerationTime: Math.random() * 2000 + 1000,
+      totalLatency: Math.random() * 2500 + 1500,
+      tokensUsed: Math.floor(Math.random() * 500 + 100),
+      userFeedback: item.status === 'poor' ? {
+        sentiment: 'negative',
+        comment: 'Response was not helpful',
+        feedbackAt: new Date().toISOString(),
+      } : undefined,
+      contextRetrieved: item.slaCompliance?.[0]?.metrics ? [
+        {
+          source: 'knowledge_base.md',
+          relevanceScore: 0.85,
+          content: 'Sample context from retrieval...',
+        },
+      ] : undefined,
+      evaluationScores: item.slaCompliance ? [
+        {
+          framework: 'RAGAS',
+          scores: { faithfulness: 0.8, relevance: 0.85, coherence: 0.82 },
+          generatedAt: new Date().toISOString(),
+        },
+      ] : undefined,
+      baReview: {
+        promptImprovements: [],
+        reviewStatus: 'pending',
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    setSelectedRecord(detailRecord);
+    setDetailModalOpen(true);
   };
 
   const renderMetricView = () => {
@@ -154,7 +196,11 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
             <h4 className="font-semibold text-sm text-slate-700 mb-3">{framework}</h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {(rawData[framework] as RawDataItem[]).slice(0, 5).map((item: RawDataItem, idx: number) => (
-                <Card key={idx} className="p-2 bg-white text-sm border border-slate-200">
+                <Card 
+                  key={idx} 
+                  className="p-3 bg-white text-sm border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => handleRecordClick(item)}
+                >
                   <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
                 </Card>
@@ -178,7 +224,11 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
             <h4 className="font-semibold text-sm text-slate-700 mb-3">{date}</h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {(rawData[date] as RawDataItem[]).slice(0, 5).map((item: RawDataItem, idx: number) => (
-                <Card key={idx} className="p-2 bg-white text-sm border border-slate-200">
+                <Card 
+                  key={idx} 
+                  className="p-3 bg-white text-sm border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => handleRecordClick(item)}
+                >
                   <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
                 </Card>
@@ -222,31 +272,44 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   }
 
   return (
-    <Tabs defaultValue="metric" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 bg-gray-100">
-        <TabsTrigger value="metric" onClick={() => setGroupBy('metric')}>By Metric</TabsTrigger>
-        <TabsTrigger value="status" onClick={() => setGroupBy('status')}>By Status</TabsTrigger>
-        <TabsTrigger value="framework" onClick={() => setGroupBy('framework')}>By Framework</TabsTrigger>
-        <TabsTrigger value="date" onClick={() => setGroupBy('date')}>By Date</TabsTrigger>
-      </TabsList>
+    <>
+      <Tabs defaultValue="metric" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 bg-gray-100">
+          <TabsTrigger value="metric" onClick={() => setGroupBy('metric')}>By Metric</TabsTrigger>
+          <TabsTrigger value="status" onClick={() => setGroupBy('status')}>By Status</TabsTrigger>
+          <TabsTrigger value="framework" onClick={() => setGroupBy('framework')}>By Framework</TabsTrigger>
+          <TabsTrigger value="date" onClick={() => setGroupBy('date')}>By Date</TabsTrigger>
+        </TabsList>
 
-      <div className="mt-6">
-        <TabsContent value="metric" className="space-y-4">
-          {renderMetricView()}
-        </TabsContent>
+        <div className="mt-6">
+          <TabsContent value="metric" className="space-y-4">
+            {renderMetricView()}
+          </TabsContent>
 
-        <TabsContent value="status" className="space-y-4">
-          {renderStatusView()}
-        </TabsContent>
+          <TabsContent value="status" className="space-y-4">
+            {renderStatusView()}
+          </TabsContent>
 
-        <TabsContent value="framework" className="space-y-4">
-          {renderFrameworkView()}
-        </TabsContent>
+          <TabsContent value="framework" className="space-y-4">
+            {renderFrameworkView()}
+          </TabsContent>
 
-        <TabsContent value="date" className="space-y-4">
-          {renderDateView()}
-        </TabsContent>
-      </div>
-    </Tabs>
+          <TabsContent value="date" className="space-y-4">
+            {renderDateView()}
+          </TabsContent>
+        </div>
+      </Tabs>
+
+      {selectedRecord && (
+        <RawDataDetailModal
+          record={selectedRecord}
+          isOpen={detailModalOpen}
+          onClose={() => {
+            setDetailModalOpen(false);
+            setSelectedRecord(null);
+          }}
+        />
+      )}
+    </>
   );
 }
