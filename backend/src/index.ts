@@ -26,6 +26,7 @@ import { alertsRouter } from './api/alertsRoutes.js';
 import { alertIntegrationRouter } from './api/alertIntegrationRoutes.js';
 import { governanceMetricsRouter } from './api/governanceMetricsRoutes.js';
 import baReviewRouter from './api/baReviewRoutes.js';
+import promptTemplateRouter from './api/promptTemplateRoutes.js';
 import { getFrameworkRegistry } from './frameworks/registry.js';
 import { createDatabase } from './services/database.js';
 import { createEvaluationService } from './services/evaluation.js';
@@ -175,6 +176,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/alert-integration', alertIntegrationRouter);
   app.use('/api/governance-metrics', governanceMetricsRouter);
   app.use('/api/ba-review', baReviewRouter);
+  app.use('/api/prompt-templates', promptTemplateRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {
