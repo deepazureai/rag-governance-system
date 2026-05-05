@@ -9,7 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface DatabaseConfigProps {
   onConfigure: (config: DatabaseConfigWithMapping) => void;
-  applicationId?: string; // Added to link connection to application
   isLoading?: boolean;
   onValidationChange?: (isValid: boolean) => void;
 }
@@ -38,7 +37,7 @@ interface TableColumn {
   type: string;
 }
 
-export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValidationChange }: DatabaseConfigProps) {
+export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: DatabaseConfigProps) {
   const [step, setStep] = useState<Step>('connection');
   const [type, setType] = useState<'sql_server' | 'postgresql' | 'mysql'>('postgresql');
   const [host, setHost] = useState('');
@@ -198,77 +197,13 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
       return;
     }
 
-    if (!applicationId) {
-      setError('Application ID is required to save connection');
-      return;
-    }
-
     setIsConnecting(true);
     setError('');
 
     try {
-      console.log('[v0] Saving connection and schema mapping to backend...');
+      console.log('[v0] Preparing database configuration for application creation...');
 
-      // Step 1: Save connection with encrypted credentials
-      const connectionResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/connections/save-connection`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId,
-          connectionName: `${type} - ${host}:${port}/${database}`,
-          type,
-          server: host,
-          port,
-          database,
-          username,
-          password,
-          authType: 'username_password',
-        }),
-      });
-
-      if (!connectionResponse.ok) {
-        const errorData = await connectionResponse.json();
-        throw new Error(errorData.message || 'Failed to save database connection');
-      }
-
-      const connectionData = await connectionResponse.json();
-      const connectionId = connectionData.data.connectionId;
-
-      console.log('[v0] Connection saved:', connectionId);
-
-      // Step 2: Save schema mapping
-      const mappingResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/schema-mappings/save-schema-mapping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId,
-          connectionId,
-          tableName: table,
-          columnMappings: {
-            prompt: columnMapping.promptColumn,
-            context: columnMapping.contextColumn || null,
-            response: columnMapping.responseColumn,
-            userId: columnMapping.userIdColumn,
-            timestamp: columnMapping.timestampColumn || null,
-          },
-          columnTypes: tableColumns.reduce((acc, col) => {
-            acc[col.name] = col.type;
-            return acc;
-          }, {} as Record<string, string>),
-          pollingIntervalMinutes: 60,
-          recordsPerPoll: 1000,
-        }),
-      });
-
-      if (!mappingResponse.ok) {
-        const errorData = await mappingResponse.json();
-        throw new Error(errorData.message || 'Failed to save schema mapping');
-      }
-
-      console.log('[v0] Schema mapping saved successfully');
-
-      setSuccess('Connection and schema mapping saved! Polling service will begin data ingestion.');
-      
+      // Prepare the complete database configuration to pass back to the wizard
       const config: DatabaseConfigWithMapping = {
         type,
         host,
@@ -277,6 +212,34 @@ export function DatabaseConfig({ onConfigure, applicationId, isLoading, onValida
         table,
         username,
         password,
+        columnMapping: {
+          promptColumn: columnMapping.promptColumn,
+          contextColumn: columnMapping.contextColumn,
+          responseColumn: columnMapping.responseColumn,
+          userIdColumn: columnMapping.userIdColumn,
+          timestampColumn: columnMapping.timestampColumn,
+        },
+      };
+
+      console.log('[v0] Database config prepared:', config);
+      setSuccess('Database configuration ready! Click "Save Application" to create the application.');
+      
+      // Call the parent callback to pass config back to wizard
+      // The wizard will send this to the backend when creating the application
+      onConfigure(config);
+      
+      // Update validation state
+      onValidationChange?.(true);
+      
+      setStep('complete');
+    } catch (err: any) {
+      console.error('[v0] Error preparing configuration:', err);
+      setError(err.message || 'Failed to prepare database configuration');
+      onValidationChange?.(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
         columnMapping,
       };
 
