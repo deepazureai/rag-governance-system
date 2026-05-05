@@ -189,18 +189,158 @@ export interface Alert {
   threshold: number;            // The threshold that was exceeded
 }
 
-export interface QueryLog {
-  id: string;
-  appId: string;
-  query: string;
-  response: string;
-  retrievedDocuments: Document[];
+/**
+ * BA Prompt Review and Template Builder Types
+ */
+
+export interface BAPromptImprovement {
+  originalPrompt: string;
+  improvedPrompt: string;
+  reason: string;
+  baName: string;
+  baEmail: string;
+  estimatedScoreImpact?: number;
+  createdAt: string;
+}
+
+export interface ContextRetrieved {
+  source: string;
   relevanceScore: number;
-  latency: number;
-  timestamp: string;
-  evaluationMetrics?: DetailedEvaluationMetrics;
-  tokensUsed: number;
-  costEstimate: number;
+  content: string;
+}
+
+export interface UserFeedback {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  comment?: string;
+  feedbackAt?: string;
+}
+
+export interface BAReviewData {
+  promptImprovements: BAPromptImprovement[];
+  reviewStatus: 'pending' | 'reviewed' | 'improved' | 'approved';
+  reviewedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  notes?: string;
+}
+
+export interface RawDataRecordDetail {
+  _id: string;
+  applicationId: string;
+  // Original raw data
+  userPrompt: string;
+  llmResponse: string;
+  
+  // Authentic timestamps and metrics
+  userPromptEnteredAt: string;  // ISO string
+  llmResponseGeneratedAt: string;  // ISO string
+  contextRetrievalTime?: number;  // ms
+  llmGenerationTime?: number;  // ms
+  totalLatency?: number;  // ms
+  tokensUsed?: number;
+  
+  // User feedback (thumbs up/down)
+  userFeedback?: UserFeedback;
+  
+  // Context retrieved
+  contextRetrieved?: ContextRetrieved[];
+  
+  // Framework scores
+  evaluationScores?: {
+    framework: string;
+    scores: Record<string, number>;
+    generatedAt: string;
+  }[];
+  
+  // BA Review
+  baReview?: BAReviewData;
+  
+  // Template usage
+  templateId?: string;
+  templateVersion?: number;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromptTemplateVersion {
+  version: number;
+  promptTemplate: string;
+  qualityGuidelines: string;
+  createdBy: string;
+  createdAt: string;
+  description?: string;
+}
+
+export interface PromptTemplate {
+  _id: string;
+  applicationId: string;
+  templateName: string;
+  description: string;
+  
+  promptTemplate: string;
+  qualityGuidelines: string;
+  
+  category?: string;
+  tags?: string[];
+  
+  matchingPatterns?: string[];
+  autoApply: boolean;
+  autoApplyThreshold?: number;
+  
+  expectedQualityScore?: number;
+  expectedUserSatisfaction?: number;
+  
+  versions: PromptTemplateVersion[];
+  currentVersion: number;
+  
+  status: 'draft' | 'published' | 'archived';
+  publishedAt?: string;
+  publishedBy?: string;
+  
+  usageMetrics: {
+    totalUsageCount: number;
+    lastUsedAt?: string;
+    averageQualityScore?: number;
+    averageUserSatisfaction?: number;
+    successRate?: number;
+  };
+  
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BAReviewQueueItem {
+  _id: string;
+  applicationId: string;
+  rawDataRecordId: string;
+  
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  priorityScore: number;
+  priorityReason: 'low_score' | 'negative_feedback' | 'high_latency' | 'manual_flag' | 'template_candidate';
+  
+  userPrompt: string;
+  llmResponse: string;
+  context?: string;
+  
+  averageScore?: number;
+  userFeedback?: 'positive' | 'negative' | 'neutral';
+  latency?: number;
+  
+  status: 'pending' | 'in_progress' | 'reviewed' | 'approved' | 'archived';
+  assignedToBA?: string;
+  
+  queuedAt: string;
+  reviewStartedAt?: string;
+  reviewCompletedAt?: string;
+  
+  similarRecordIds?: string[];
+  similarityScore?: number;
+  groupId?: string;
+  
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
