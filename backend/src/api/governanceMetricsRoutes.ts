@@ -713,11 +713,17 @@ governanceMetricsRouter.get('/raw-data/:appId', async (req: Request, res: Respon
           if (!groupedData[framework]) {
             groupedData[framework] = [];
           }
-          groupedData[framework].push({
-            query: metric.rawData.query.substring(0, 100),
-            response: metric.rawData.response.substring(0, 100),
-            slaCompliance: metric.slaCompliance,
-          });
+          // Include value and status from SLA compliance for each SLA metric
+          for (const sla of metric.slaCompliance) {
+            groupedData[framework].push({
+              query: metric.rawData.query.substring(0, 100),
+              response: metric.rawData.response.substring(0, 100),
+              metric: sla.metricName,
+              value: sla.value,
+              status: sla.status,
+              slaCompliance: metric.slaCompliance,
+            });
+          }
         }
       }
     } else if (groupBy === 'date') {
@@ -727,11 +733,17 @@ governanceMetricsRouter.get('/raw-data/:appId', async (req: Request, res: Respon
         if (!groupedData[date]) {
           groupedData[date] = [];
         }
-        groupedData[date].push({
-          query: metric.rawData.query.substring(0, 100),
-          response: metric.rawData.response.substring(0, 100),
-          slaCompliance: metric.slaCompliance,
-        });
+        // Include value and status from SLA compliance for each SLA metric
+        for (const sla of metric.slaCompliance) {
+          groupedData[date].push({
+            query: metric.rawData.query.substring(0, 100),
+            response: metric.rawData.response.substring(0, 100),
+            metric: sla.metricName,
+            value: sla.value,
+            status: sla.status,
+            slaCompliance: metric.slaCompliance,
+          });
+        }
       }
     }
 
