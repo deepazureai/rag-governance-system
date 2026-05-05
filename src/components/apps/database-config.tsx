@@ -7,11 +7,38 @@ import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, Database, Table2 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
-interface DatabaseConfigProps {
-  onConfigure: (config: DatabaseConfigWithMapping) => void;
-  isLoading?: boolean;
-  onValidationChange?: (isValid: boolean) => void;
+interface ColumnSelectProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  tableColumns: TableColumn[];
 }
+
+interface TableColumn {
+  name: string;
+  type: string;
+}
+
+const ColumnSelect = ({ label, value, onChange, required, tableColumns }: ColumnSelectProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-600">*</span>}
+    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+    >
+      <option value="">Select a column...</option>
+      {tableColumns.map((col) => (
+        <option key={col.name} value={col.name}>
+          {col.name} ({col.type})
+        </option>
+      ))}
+    </select>
+  </div>
+);
 
 export interface DatabaseConfigWithMapping {
   type: 'sql_server' | 'postgresql' | 'mysql';
@@ -25,11 +52,6 @@ export interface DatabaseConfigWithMapping {
 }
 
 type Step = 'connection' | 'schema' | 'mapping' | 'complete';
-
-interface TableColumn {
-  name: string;
-  type: string;
-}
 
 export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: DatabaseConfigProps) {
   const [step, setStep] = useState<Step>('connection');
@@ -405,18 +427,21 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
                 value={columnMapping.userIdColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, userIdColumn: val })}
                 required
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Prompt/Query Column *"
                 value={columnMapping.promptColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, promptColumn: val })}
                 required
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Response Column *"
                 value={columnMapping.responseColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, responseColumn: val })}
                 required
+                tableColumns={tableColumns}
               />
             </div>
           </div>
@@ -429,61 +454,73 @@ export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: D
                 label="Session ID Column"
                 value={columnMapping.sessionIdColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, sessionIdColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Context Column"
                 value={columnMapping.contextColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, contextColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Prompt Timestamp Column"
                 value={columnMapping.promptTimestampColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, promptTimestampColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Context Retrieval Start Time"
                 value={columnMapping.contextRetrievalStartTimeColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, contextRetrievalStartTimeColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Context Retrieval End Time"
                 value={columnMapping.contextRetrievalEndTimeColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, contextRetrievalEndTimeColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="LLM Request Start Time"
                 value={columnMapping.llmRequestStartTimeColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, llmRequestStartTimeColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="LLM Response End Time"
                 value={columnMapping.llmResponseEndTimeColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, llmResponseEndTimeColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Context Chunk Count"
                 value={columnMapping.contextChunkCountColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, contextChunkCountColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Context Total Length (Words)"
                 value={columnMapping.contextTotalLengthWordsColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, contextTotalLengthWordsColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Prompt Length (Words)"
                 value={columnMapping.promptLengthWordsColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, promptLengthWordsColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Response Length (Words)"
                 value={columnMapping.responseLengthWordsColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, responseLengthWordsColumn: val })}
+                tableColumns={tableColumns}
               />
               <ColumnSelect
                 label="Status Column"
                 value={columnMapping.statusColumn}
                 onChange={(val: string) => setColumnMapping({ ...columnMapping, statusColumn: val })}
+                tableColumns={tableColumns}
               />
             </div>
           </div>
