@@ -8,10 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "setup": "node scripts/setup.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts",
-    "logs": "node scripts/tail-logs.js"
+    "lint": "eslint . --ext .ts"
   },
   "keywords": [
     "RAG",
