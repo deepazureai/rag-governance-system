@@ -9,7 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface RawDataItem {
   metric?: string;
-  value: number;
+  value?: number;  // Make value optional since it may not always be present
   status: string;
   query: string;
   response: string;
@@ -92,7 +92,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               <Card key={idx} className="p-3 border-l-4 border-l-blue-400">
                 <div className="flex items-center justify-between mb-2">
                   <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
-                  <span className="text-sm font-semibold text-gray-700">{item.value.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-gray-700">{item.value != null ? item.value.toFixed(2) : 'N/A'}</span>
                 </div>
                 <p className="text-sm text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                 <p className="text-sm text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
@@ -130,7 +130,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               <Card key={idx} className={`p-3 border-l-4 ${item.status === 'critical' ? 'border-l-red-400' : item.status === 'warning' ? 'border-l-yellow-400' : 'border-l-green-400'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-700">{item.metric}</span>
-                  <span className="text-sm font-semibold text-gray-700">{item.value.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-gray-700">{item.value != null ? item.value.toFixed(2) : 'N/A'}</span>
                 </div>
                 <p className="text-sm text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                 <p className="text-sm text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
