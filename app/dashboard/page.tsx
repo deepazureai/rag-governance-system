@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { ApplicationsTable } from '@/src/components/dashboard/applications-table';
 import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
 import { RawDataTab } from '@/src/components/dashboard/raw-data-tab';
+import { BAReviewDashboard } from '@/src/components/dashboard/ba-review-dashboard';
 import { AlertsDisplay, CollectiveAlertsSummary } from '@/src/components/dashboard/alerts-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ interface Application {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'raw-data'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'raw-data' | 'ba-review'>('metrics');
   const [applications, setApplications] = useState<Application[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [appsError, setAppsError] = useState<string | null>(null);
@@ -303,6 +304,16 @@ export default function DashboardPage() {
             >
               Raw Data
             </button>
+            <button
+              onClick={() => setActiveTab('ba-review')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'ba-review'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              BA Review Queue
+            </button>
           </div>
 
           {activeTab === 'metrics' && (
@@ -325,6 +336,19 @@ export default function DashboardPage() {
               <div className="text-center">
                 <p className="text-blue-900 font-medium mb-1">No data to display</p>
                 <p className="text-sm text-blue-700">Select one or more applications to view raw evaluation data</p>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'ba-review' && selectedAppIds.length > 0 && (
+            <BAReviewDashboard applicationId={selectedAppIds[0]} />
+          )}
+
+          {activeTab === 'ba-review' && selectedAppIds.length === 0 && (
+            <Card className="p-8 bg-blue-50 border border-blue-200">
+              <div className="text-center">
+                <p className="text-blue-900 font-medium mb-1">No application selected</p>
+                <p className="text-sm text-blue-700">Select an application to view BA review queue</p>
               </div>
             </Card>
           )}
