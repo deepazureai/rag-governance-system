@@ -22,7 +22,7 @@ export default function ApplicationSettingsPage() {
     try {
       setErrorMessage('');
       setSuccessMessage('');
-      await updateSLA(updatedConfig);
+      await updateSLA(updatedConfig.metrics, updatedConfig.overallScoreThresholds);
       setSuccessMessage('SLA configuration updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
