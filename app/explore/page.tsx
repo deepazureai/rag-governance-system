@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Send, Trash2, Zap, Copy } from 'lucide-react';
+import { Send, Trash2, Zap, Copy, TrendingUp } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { mockApps, mockQueryLogs } from '@/src/data/mockData';
 import { FrameworkSelector } from '@/src/components/evaluation/framework-selector';
