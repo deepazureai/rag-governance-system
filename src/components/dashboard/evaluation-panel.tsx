@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle, CheckCircle, Zap } from 'lucide-react';
-import { evaluationClient } from '@/api/evaluation-client';
+import { evaluationClient } from '@/src/api/evaluation-client';
 import { RawDataRecordDetail } from '@/types/index';
 
 interface EvaluationPanelProps {

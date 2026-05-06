@@ -23,24 +23,14 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/src/*": [
-        "./src/*"
-      ],
-      "@/components/*": [
-        "./components/*"
-      ],
-      "@/hooks/*": [
-        "./src/hooks/*"
-      ],
-      "@/utils/*": [
-        "./src/utils/*"
-      ],
-      "@/lib/*": [
-        "./lib/*"
-      ]
+      "@/*": ["./*"],
+      "@/src/*": ["./src/*"],
+      "@/components/*": ["./components/*"],
+      "@/components/ui/*": ["./components/ui/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/types/*": ["./src/types/*"]
     },
     "forceConsistentCasingInFileNames": true
   },
