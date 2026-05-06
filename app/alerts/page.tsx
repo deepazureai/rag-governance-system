@@ -396,7 +396,7 @@ export default function AlertsPage() {
                   { value: 'all', label: 'All Alerts' },
                   { value: 'evaluation', label: 'Evaluation Metrics' },
                   { value: 'performance', label: 'Performance' }
-                ].map((type: string) => (
+                ].map((type: { value: string; label: string }) => (
                   <Button
                     key={type.value}
                     onClick={() => {
