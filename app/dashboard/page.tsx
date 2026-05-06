@@ -168,9 +168,9 @@ export default function DashboardPage() {
   };
 
   const allAlerts = getAggregatedAlerts();
-  const unresolvedAlerts = allAlerts.filter((a) => !a.resolved);
-  const criticalAlerts = unresolvedAlerts.filter((a) => a.severity === 'critical');
-  const warningAlerts = unresolvedAlerts.filter((a) => a.severity === 'warning');
+  const unresolvedAlerts = allAlerts.filter((a: any) => !a.resolved);
+  const criticalAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'critical');
+  const warningAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'warning');
 
   if (!mounted) {
     return (

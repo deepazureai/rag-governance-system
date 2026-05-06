@@ -108,7 +108,7 @@ export default function GovernancePage() {
             <p className="text-gray-500">No applications found</p>
           ) : (
             <div className="flex gap-2 flex-wrap">
-              {applications.map((app) => (
+              {applications.map((app: any) => (
                 <button
                   key={app.id}
                   onClick={() => setSelectedAppId(app.id)}

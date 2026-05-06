@@ -139,7 +139,7 @@ export default function AlertsPage() {
       const typeFilter = alertType === 'all' ? '' : `&type=${alertType}`;
 
       // Fetch alerts for each selected app
-      const alertPromises = selectedAppIds.map((appId) =>
+      const alertPromises = selectedAppIds.map((appId: string) =>
         fetch(
           `${apiUrl}/api/alerts/applications/${appId}?alertLevel=${activeFilter}${typeFilter}&page=${page}&pageSize=${pageSize}`,
           { method: 'GET', headers: { 'Content-Type': 'application/json' } }
@@ -158,7 +158,7 @@ export default function AlertsPage() {
       const allAlerts: AlertType[] = [];
       let totalRecords = 0;
 
-      results.forEach((result) => {
+      results.forEach((result: any) => {
         if (result.success && Array.isArray(result.data.alerts)) {
           console.log('[v0] Found alerts:', result.data.alerts.length);
           allAlerts.push(...result.data.alerts);
@@ -173,7 +173,7 @@ export default function AlertsPage() {
       setTotalCount(totalRecords);
 
       // Fetch summary for selected apps
-      const summaryPromises = selectedAppIds.map((appId) =>
+      const summaryPromises = selectedAppIds.map((appId: string) =>
         fetch(`${apiUrl}/api/alerts/summary/${appId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -190,7 +190,7 @@ export default function AlertsPage() {
         totalAcknowledged = 0,
         totalDismissed = 0;
 
-      summaryResults.forEach((result) => {
+      summaryResults.forEach((result: any) => {
         if (result.success && result.data.summary) {
           totalOpen += result.data.summary.open || 0;
           totalAcknowledged += result.data.summary.acknowledged || 0;
@@ -225,7 +225,7 @@ export default function AlertsPage() {
       setSelectedAlerts(new Set());
       setSelectAll(false);
     } else {
-      const allIds = new Set(alerts.map((a) => a.id));
+      const allIds = new Set(alerts.map((a: AlertType) => a.id));
       setSelectedAlerts(allIds);
       setSelectAll(true);
     }
@@ -345,13 +345,13 @@ export default function AlertsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Applications</label>
               <div className="flex flex-wrap gap-2">
-                {applications.map((app) => (
+                {applications.map((app: Application) => (
                   <Button
                     key={app._id}
                     onClick={() =>
                       setSelectedAppIds(
                         selectedAppIds.includes(app.id)
-                          ? selectedAppIds.filter((id) => id !== app.id)
+                          ? selectedAppIds.filter((id: string) => id !== app.id)
                           : [...selectedAppIds, app.id]
                       )
                     }
@@ -370,7 +370,7 @@ export default function AlertsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Severity Filter</label>
               <div className="flex gap-2">
-                {['critical', 'warning', 'healthy'].map((severity) => (
+                {['critical', 'warning', 'healthy'].map((severity: string) => (
                   <Button
                     key={severity}
                     onClick={() => {
@@ -396,7 +396,7 @@ export default function AlertsPage() {
                   { value: 'all', label: 'All Alerts' },
                   { value: 'evaluation', label: 'Evaluation Metrics' },
                   { value: 'performance', label: 'Performance' }
-                ].map((type) => (
+                ].map((type: string) => (
                   <Button
                     key={type.value}
                     onClick={() => {
@@ -489,7 +489,7 @@ export default function AlertsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {alerts.map((alert) => (
+                    {alerts.map((alert: AlertType) => (
                       <tr key={alert.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <input

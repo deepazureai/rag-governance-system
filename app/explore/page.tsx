@@ -75,7 +75,7 @@ Response Time: 245ms | Confidence: 92.3% | Token Usage: 487/2048`;
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockApps.map((app) => (
+                  {mockApps.map((app: any) => (
                     <SelectItem key={app.id} value={app.id}>
                       {app.name}
                     </SelectItem>

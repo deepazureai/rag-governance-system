@@ -62,7 +62,7 @@ export default function AppsPage() {
   }, []);
 
   const filteredApps = useMemo(() => {
-    return applications.filter((app) => {
+    return applications.filter((app: any) => {
       const matchesSearch =
         app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -127,7 +127,7 @@ export default function AppsPage() {
         {/* Loading State */}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map((i: number) => (
               <div key={i} className="h-48 bg-gray-100 rounded-lg animate-pulse" />
             ))}
           </div>
@@ -157,7 +157,7 @@ export default function AppsPage() {
         {/* Applications Grid */}
         {!isLoading && filteredApps.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredApps.map((app) => (
+            {filteredApps.map((app: any) => (
               <AppCard key={app.id} app={app} />
             ))}
           </div>

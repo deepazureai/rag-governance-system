@@ -25,7 +25,7 @@ import { Plus, TrendingUp } from 'lucide-react';
 export default function BenchmarksPage() {
   const benchmark = mockBenchmarks[0];
 
-  const radarData = benchmark.metrics.map((m) => ({
+  const radarData = benchmark.metrics.map((m: any) => ({
     name: m.appName.split(' ')[0],
     retrieval: m.retrieval,
     generation: m.generation,
@@ -118,8 +118,8 @@ export default function BenchmarksPage() {
                   </thead>
                   <tbody>
                     {benchmark.metrics
-                      .sort((a, b) => b.overall - a.overall)
-                      .map((metric, idx) => (
+                      .sort((a: any, b: any) => b.overall - a.overall)
+                      .map((metric: any, idx: number) => (
                         <tr key={metric.appId} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="py-3 px-4 font-medium text-gray-900">{metric.appName}</td>
                           <td className="py-3 px-4 text-center">
@@ -219,7 +219,7 @@ export default function BenchmarksPage() {
         <Card className="p-6 bg-white">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">All Benchmarks</h3>
           <div className="space-y-3">
-            {mockBenchmarks.map((bench) => (
+            {mockBenchmarks.map((bench: any) => (
               <div
                 key={bench.id}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
