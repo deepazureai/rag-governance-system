@@ -16,7 +16,7 @@ export default function ApplicationSettingsPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const { slaConfig, isLoading, error, updateSLA, resetToDefaults } = useApplicationSLA(applicationId);
+  const { slaConfig, isLoading, isError, updateSLA, resetToDefaults } = useApplicationSLA(applicationId);
 
   const handleSave = async (updatedConfig: any) => {
     try {
@@ -80,9 +80,9 @@ export default function ApplicationSettingsPage() {
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        ) : error ? (
+        ) : isError ? (
           <Card className="p-6 bg-destructive/10 border-destructive/20">
-            <p className="text-destructive">Failed to load SLA configuration: {error}</p>
+            <p className="text-destructive">Failed to load SLA configuration</p>
           </Card>
         ) : (
           <>
