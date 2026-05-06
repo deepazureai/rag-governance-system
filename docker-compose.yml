@@ -23,6 +23,27 @@ services:
     networks:
       - rag-network
 
+  # DeepEval Evaluation Service
+  deepeval-service:
+    build:
+      context: ./deepeval-service
+      dockerfile: Dockerfile
+    container_name: rag-deepeval
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-deepeval-dev-key-12345678901234567890}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rag-network
+
   # Backend API Service
   backend:
     build:
@@ -42,8 +63,12 @@ services:
       CORS_ORIGIN: http://localhost:3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOCAL_DATA_FOLDER: /app/local-data
+      DEEPEVAL_SERVICE_URL: http://deepeval-service:8000
+      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-deepeval-dev-key-12345678901234567890}
     depends_on:
       mongodb:
+        condition: service_healthy
+      deepeval-service:
         condition: service_healthy
     volumes:
       # Mount local data folder for batch processing
