@@ -4,12 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Alert, AlertThresholdConfig, MetricThreshold, INDUSTRY_STANDARD_THRESHOLDS } from '@/src/types/index';
 
-// Construct API_BASE_URL ensuring it has /api path
-let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-if (!apiUrl.endsWith('/api')) {
-  apiUrl = apiUrl + '/api';
-}
-const API_BASE_URL = apiUrl;
+// Construct API_BASE_URL for alert thresholds (uses Next.js proxy)
+const ALERT_THRESHOLDS_API_URL = '/api/alert-thresholds';
 
 export interface UseAlertsReturn {
   alerts: Alert[];
@@ -32,10 +28,14 @@ export function useAlerts(): UseAlertsReturn {
   const loadThresholds = useCallback(async (appId: string): Promise<AlertThresholdConfig> => {
     try {
       if (thresholdCache[appId]) {
+        console.log('[v0] Loading thresholds from cache for appId:', appId);
         return thresholdCache[appId];
       }
 
-      const response = await fetch(`${API_BASE_URL}/alert-thresholds/app/${appId}`);
+      const endpoint = `${ALERT_THRESHOLDS_API_URL}/app/${appId}`;
+      console.log('[v0] Fetching thresholds from:', endpoint);
+      
+      const response = await fetch(endpoint);
       
       if (!response.ok) {
         console.warn(`[v0] Failed to load thresholds for app ${appId}, using defaults`);
@@ -43,6 +43,7 @@ export function useAlerts(): UseAlertsReturn {
       }
       
       const data = await response.json();
+      console.log('[v0] Thresholds response:', { success: data.success, hasData: !!data.data });
 
       if (data.success && data.data) {
         setThresholdCache((prev) => ({ ...prev, [appId]: data.data }));

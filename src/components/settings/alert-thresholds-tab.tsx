@@ -54,8 +54,7 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
           return;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-        const endpoint = `${apiUrl}/api/alert-thresholds/app/${appId}`;
+        const endpoint = `/api/alert-thresholds/app/${appId}`;
         
         try {
           const response = await fetch(endpoint);
@@ -148,7 +147,11 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
 
     try {
       if (appId) {
-        await fetch(`/api/alert-thresholds/app/${appId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/alert-thresholds/app/${appId}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to delete thresholds');
+        }
       }
       setThresholds(INDUSTRY_STANDARD_THRESHOLDS);
       setSaveMessage({ type: 'success', text: 'Thresholds reset to industry standards' });

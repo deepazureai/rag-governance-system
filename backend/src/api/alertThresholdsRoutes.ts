@@ -34,24 +34,26 @@ alertThresholdsRouter.get('/defaults', (req: Request, res: Response) => {
 alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => {
   try {
     const { appId } = req.params;
-    console.log('[API] GET /api/alert-thresholds/app/:appId - appId:', appId);
+    console.log('[v0] GET /api/alert-thresholds/app/:appId - appId:', appId);
 
-    // Query MongoDB for custom thresholds
+    // Query MongoDB for custom thresholds with string conversion
     const AppThresholdsCollection = mongoose.connection.collection('alertthresholds');
-    const customThresholds = await AppThresholdsCollection.findOne({ applicationId: appId });
+    const customThresholds = await AppThresholdsCollection.findOne({ applicationId: String(appId) });
 
-    if (customThresholds) {
-      console.log('[API] Found custom thresholds for app:', appId);
+    console.log('[v0] Query result for appId:', String(appId), 'Found:', customThresholds ? 'Yes' : 'No');
+
+    if (customThresholds && customThresholds.thresholds) {
+      console.log('[v0] Returning custom thresholds for app:', appId);
       return res.json({
         success: true,
-        data: customThresholds.thresholds || INDUSTRY_STANDARD_THRESHOLDS,
+        data: customThresholds.thresholds,
         isCustom: true,
         source: 'custom',
       });
     }
 
     // Return defaults if no custom config found
-    console.log('[API] Using industry standard thresholds for app:', appId);
+    console.log('[v0] Using industry standard thresholds for app:', appId);
     res.json({
       success: true,
       data: INDUSTRY_STANDARD_THRESHOLDS,
@@ -60,7 +62,7 @@ alertThresholdsRouter.get('/app/:appId', async (req: Request, res: Response) => 
       message: 'Using industry standard thresholds',
     });
   } catch (error: any) {
-    console.error('[API] Get app thresholds error:', error);
+    console.error('[v0] Get app thresholds error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch thresholds for application',
@@ -79,6 +81,7 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
     const thresholdConfig = req.body;
 
     console.log('[v0] POST /api/alert-thresholds/app/:appId - appId:', appId);
+    console.log('[v0] Threshold config received:', JSON.stringify(thresholdConfig).substring(0, 200));
 
     // Validate threshold configuration
     if (!thresholdConfig || typeof thresholdConfig !== 'object') {
@@ -88,30 +91,51 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
       });
     }
 
+    // Validate appId is a string
+    if (!appId || typeof appId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid application ID',
+      });
+    }
+
     // Save to MongoDB
     try {
       const db = mongoose.connection;
       const alertThresholdsCollection = db.collection('alertthresholds');
       
+      // Ensure applicationId is stored as string
+      const updateData = {
+        applicationId: String(appId),
+        thresholds: thresholdConfig,
+        isCustom: true,
+        updatedAt: new Date(),
+      };
+
+      console.log('[v0] Saving to MongoDB with applicationId:', String(appId));
+
       const result = await alertThresholdsCollection.updateOne(
-        { applicationId: appId },
+        { applicationId: String(appId) },
         {
-          $set: {
-            applicationId: appId,
-            thresholds: thresholdConfig,
-            isCustom: true,
-            updatedAt: new Date(),
-          },
+          $set: updateData,
         },
         { upsert: true }
       );
 
-      console.log('[API] Thresholds saved for app:', appId, 'Result:', result);
+      console.log('[v0] MongoDB updateOne result:', {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+        upsertedId: result.upsertedId,
+      });
+
+      // Verify the save was successful
+      const verify = await alertThresholdsCollection.findOne({ applicationId: String(appId) });
+      console.log('[v0] Verification - Document after save:', verify ? 'Found' : 'NOT FOUND');
 
       res.json({
         success: true,
         data: {
-          applicationId: appId,
+          applicationId: String(appId),
           thresholds: thresholdConfig,
           isCustom: true,
           updatedAt: new Date(),
@@ -121,7 +145,7 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
       });
     } catch (dbErr: unknown) {
       const dbErrorMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      console.error('[API] MongoDB save error:', dbErrorMsg);
+      console.error('[v0] MongoDB save error:', dbErrorMsg);
       throw dbErr;
     }
   } catch (error: any) {
@@ -135,10 +159,46 @@ alertThresholdsRouter.post('/app/:appId', async (req: Request, res: Response) =>
 });
 
 /**
- * POST /api/alert-thresholds/validate
- * Validate a threshold configuration without saving
- * Used for preview functionality in UI
+ * DELETE /api/alert-thresholds/app/:appId
+ * Delete custom threshold configuration for a specific application
+ * Next load will use industry standard defaults
  */
+alertThresholdsRouter.delete('/app/:appId', async (req: Request, res: Response) => {
+  try {
+    const { appId } = req.params;
+    console.log('[v0] DELETE /api/alert-thresholds/app/:appId - appId:', appId);
+
+    if (!appId || typeof appId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid application ID',
+      });
+    }
+
+    const db = mongoose.connection;
+    const alertThresholdsCollection = db.collection('alertthresholds');
+    
+    const result = await alertThresholdsCollection.deleteOne({ applicationId: String(appId) });
+
+    console.log('[v0] DELETE result:', {
+      deletedCount: result.deletedCount,
+    });
+
+    res.json({
+      success: true,
+      message: 'Threshold configuration deleted. Industry standards will be used next time.',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error: any) {
+    console.error('[v0] Delete thresholds error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete threshold configuration',
+      details: error.message,
+    });
+  }
+});
+
 alertThresholdsRouter.post('/validate', (req: Request, res: Response) => {
   try {
     const config = req.body as AlertThresholdConfig;
