@@ -24,7 +24,7 @@ export function DashboardRefreshButton({
       setIsRefreshing(true);
       onRefreshStart?.();
 
-      logger.info(`[DashboardRefresh] Refreshing data for app ${applicationId}`);
+      FrontendLogger.info(`[DashboardRefresh] Refreshing data for app ${applicationId}`);
 
       // Trigger batch processing to fetch latest data
       const result = await batchClient.executeBatch(
@@ -34,7 +34,7 @@ export function DashboardRefreshButton({
         {} // sourceConfig will be fetched from connection
       );
 
-      logger.info(`[DashboardRefresh] Refresh completed:`, result);
+      FrontendLogger.info(`[DashboardRefresh] Refresh completed:`, result);
       onRefreshComplete?.(result.success);
 
       // Show success message
@@ -44,7 +44,7 @@ export function DashboardRefreshButton({
         alert('Failed to refresh data');
       }
     } catch (error: any) {
-      logger.error(`[DashboardRefresh] Refresh failed:`, error);
+      FrontendLogger.error(`[DashboardRefresh] Refresh failed:`, error);
       alert(`Refresh failed: ${error.message}`);
       onRefreshComplete?.(false);
     } finally {

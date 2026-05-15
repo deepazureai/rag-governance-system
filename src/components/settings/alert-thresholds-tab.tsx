@@ -103,7 +103,7 @@ export function AlertThresholdsTab({ appId }: AlertThresholdsTabProps) {
   // Generate preview of triggered alerts
   const generatePreviewAlerts = () => {
     // Mock preview - in real app, would call backend with test metrics
-    const alerts = [];
+    const alerts: Array<{ metric: string; severity: string; value: number }> = [];
     // Could add mock data here for demonstration
     setPreviewAlerts(alerts);
   };

@@ -33,11 +33,19 @@ interface BatchHistory {
     failedRecords: number;
     currentStep: string;
   };
+  metadata: {
+    fileName: string;
+    fileSize?: number;
+    recordCount: number;
+    duplicateRecordsRemoved: number;
+    validationErrors: string[];
+  };
   createdAt: string;
   completedAt?: string;
   errorDetails?: {
     message: string;
     phase: string;
+    code: string;
   };
 }
 

@@ -49,7 +49,7 @@ export function ConnectionsTab() {
         id: '2',
         appId: '2',
         appName: 'Document Q&A',
-        dataSourceType: 'azure-blob' as const,
+        dataSourceType: 'azure_blob' as const,
         connectionName: 'Logs Storage',
         isEnabled: true,
         lastTested: '2024-04-14T15:45:00',
