@@ -1,48 +1,50 @@
-import { mockMetrics, mockQueryPerformance, mockRelevanceScores, mockAlerts, mockGovernanceMetrics } from '@/src/data/mockData';
-import { App } from '@/src/types';
+import { App, Alert } from '@/src/types';
+import { alertsApi, metricsApi } from '@/src/api/services';
 
-export function getFilteredMetrics(selectedAppIds: string[], allApps: App[]) {
-  const isAllApps = selectedAppIds.length === 0;
-  
-  // Filter apps
-  const filteredApps = isAllApps
-    ? allApps
-    : allApps.filter((app) => selectedAppIds.includes(app.id));
+export async function getFilteredAlerts(selectedAppIds: string[]) {
+  try {
+    const isAllApps = selectedAppIds.length === 0;
 
-  // Aggregate metrics - for simplicity, average the metric values
-  const aggregatedMetrics = mockMetrics.map((metric) => ({
-    ...metric,
-    value: isAllApps
-      ? metric.value
-      : metric.value * (filteredApps.length / allApps.length), // Proportional scaling
-  }));
-
-  return {
-    metrics: aggregatedMetrics,
-    apps: filteredApps,
-    appCount: filteredApps.length,
-  };
+    if (isAllApps) {
+      // Get all alerts
+      const response = await alertsApi.getAll();
+      return response.data || [];
+    } else {
+      // Get alerts for selected apps
+      const alertPromises = selectedAppIds.map((appId) =>
+        alertsApi.getByApp(appId)
+          .then((res) => res.data || [])
+          .catch(() => [])
+      );
+      const alertArrays = await Promise.all(alertPromises);
+      return alertArrays.flat();
+    }
+  } catch (error) {
+    console.error('[v0] Error fetching alerts:', error);
+    return [];
+  }
 }
 
-export function getFilteredAlerts(selectedAppIds: string[], allApps: App[]) {
-  const isAllApps = selectedAppIds.length === 0;
-  const filteredAppIds = isAllApps ? allApps.map((app) => app.id) : selectedAppIds;
+export async function getFilteredMetrics(selectedAppIds: string[]) {
+  try {
+    const isAllApps = selectedAppIds.length === 0;
 
-  return mockAlerts.filter((alert) => filteredAppIds.includes(alert.appId));
-}
-
-export function getFilteredGovernanceMetrics(selectedAppIds: string[]) {
-  // Governance metrics are typically system-wide, but we can show them conditionally
-  // when specific apps are selected vs all apps
-  if (selectedAppIds.length === 0) {
-    // All apps - show full metrics
-    return mockGovernanceMetrics;
-  } else {
-    // Selected apps - scale metrics based on app count
-    const scaleFactor = selectedAppIds.length / 3; // Assuming 3 apps in mock data
-    return mockGovernanceMetrics.map((metric) => ({
-      ...metric,
-      value: Math.round(metric.value * scaleFactor),
-    }));
+    if (isAllApps) {
+      // This would need a getAllMetrics endpoint
+      // For now, return empty since we're transitioning to API
+      return [];
+    } else {
+      // Get metrics for selected apps
+      const metricsPromises = selectedAppIds.map((appId) =>
+        metricsApi.getByApp(appId)
+          .then((res) => res || [])
+          .catch(() => [])
+      );
+      const metricsArrays = await Promise.all(metricsPromises);
+      return metricsArrays.flat();
+    }
+  } catch (error) {
+    console.error('[v0] Error fetching metrics:', error);
+    return [];
   }
 }
