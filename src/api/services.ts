@@ -11,7 +11,7 @@ import {
   GovernancePolicy,
   ApiResponse,
   PaginatedResponse,
-} from '@/types';
+} from '@/src/types';
 
 // Apps API
 export const appsApi = {

@@ -47,7 +47,7 @@ export const dataSourcesClient = {
       const response = await fetch(`${API_BASE}/data-sources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId, ...config }),
+        body: JSON.stringify({ ...config, appId }),
       });
       if (!response.ok) throw new Error('Failed to create configuration');
       return response.json();
