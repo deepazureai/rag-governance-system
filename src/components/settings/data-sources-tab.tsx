@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Check, X } from 'lucide-react';
 import { DATA_SOURCE_TYPES } from '@/src/constants/dataSources';
-import { DatabaseForm } from './data-sources/database-form';
-import { AzureLogsForm } from './data-sources/azure-logs-form';
-import { AzureBlobForm } from './data-sources/azure-blob-form';
-import { SplunkForm } from './data-sources/splunk-form';
-import { DatadogForm } from './data-sources/datadog-form';
+import { DatabaseConnectorForm } from '@/src/components/apps/connectors/database-connector';
+import { AzureBlobConnectorForm } from '@/src/components/apps/connectors/azure-blob-connector';
+import { SplunkConnectorForm } from '@/src/components/apps/connectors/splunk-connector';
+import { DatadogConnectorForm } from '@/src/components/apps/connectors/datadog-connector';
 import { DataSourceConfig, DataSourceType } from '@/src/types/dataSource';
 
 export function DataSourcesTab() {
@@ -69,25 +68,37 @@ export function DataSourcesTab() {
   const appConfigs = selectedAppId ? getConfigurationsForApp(selectedAppId) : [];
 
   const renderFormComponent = (type: DataSourceType, config?: DataSourceConfig) => {
-    const formProps = {
-      config,
-      onSave: handleSaveConfig,
-      onTest: () => handleTestConnection(config?.id || ''),
-      isTesting: testingConfigId === config?.id,
-      testResult: config ? testResults[config.id] : undefined,
-    };
-
     switch (type) {
       case 'database':
-        return <DatabaseForm {...formProps} />;
-      case 'azure-logs':
-        return <AzureLogsForm {...formProps} />;
-      case 'azure-blob':
-        return <AzureBlobForm {...formProps} />;
+        return (
+          <DatabaseConnectorForm
+            onConfigChange={handleSaveConfig}
+            onTestResult={() => {}}
+          />
+        );
+      case 'azure_blob':
+        return (
+          <AzureBlobConnectorForm
+            onConfigChange={handleSaveConfig}
+            onTestResult={() => {}}
+          />
+        );
       case 'splunk':
-        return <SplunkForm {...formProps} />;
+        return (
+          <SplunkConnectorForm
+            onConfigChange={handleSaveConfig}
+            onTestResult={() => {}}
+          />
+        );
       case 'datadog':
-        return <DatadogForm {...formProps} />;
+        return (
+          <DatadogConnectorForm
+            onConfigChange={handleSaveConfig}
+            onTestResult={() => {}}
+          />
+        );
+      case 'local_folder':
+        return <div className="text-gray-600">Local Folder support coming soon</div>;
       default:
         return null;
     }
