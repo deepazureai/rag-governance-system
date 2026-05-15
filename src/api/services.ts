@@ -6,7 +6,6 @@ import {
   RelevanceScore,
   AlertRule,
   Alert,
-  QueryLog,
   Benchmark,
   GovernancePolicy,
   ApiResponse,
@@ -49,14 +48,6 @@ export const alertRulesApi = {
   update: (id: string, data: Partial<AlertRule>) =>
     apiClient.put<AlertRule>(`/alert-rules/${id}`, data),
   delete: (id: string) => apiClient.delete<{ success: boolean }>(`/alert-rules/${id}`),
-};
-
-// Query Logs API
-export const queryLogsApi = {
-  getByApp: (appId: string, params?: any) =>
-    apiClient.get<PaginatedResponse<QueryLog>>(`/apps/${appId}/query-logs`, { params }),
-  getById: (appId: string, queryId: string) =>
-    apiClient.get<QueryLog>(`/apps/${appId}/query-logs/${queryId}`),
 };
 
 // Benchmarks API

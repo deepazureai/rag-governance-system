@@ -103,7 +103,7 @@ export function ProcessingPreview({
         )}
       </div>
 
-      {successRate !== 100 && (
+      {Number(successRate) !== 100 && (
         <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
           <p className="text-sm text-yellow-800">
             <strong>Note:</strong> Some records could not be processed. Review the data format and ensure it matches the expected structure.
@@ -111,7 +111,7 @@ export function ProcessingPreview({
         </div>
       )}
 
-      {successRate === 100 && (
+      {Number(successRate) === 100 && (
         <div className="bg-green-50 p-3 rounded border border-green-200">
           <p className="text-sm text-green-800">
             <strong>Success!</strong> All records have been processed and will be stored in the database.

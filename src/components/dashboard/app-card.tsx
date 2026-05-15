@@ -39,13 +39,13 @@ export function AppCard({ app }: AppCardProps) {
         <div>
           <p className="text-gray-600 text-xs">Data Source</p>
           <p className="text-gray-900 font-medium truncate">
-            {typeof app.dataSource === 'string' ? app.dataSource : (app.dataSource?.type ? app.dataSource.type.replace('_', ' ').toUpperCase() : 'N/A')}
+            {app.dataSource || 'N/A'}
           </p>
         </div>
         <div>
           <p className="text-gray-600 text-xs">Deployed</p>
           <p className="text-gray-900 font-medium">
-            {app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : 'N/A'}
+            {app.deploymentDate || 'N/A'}
           </p>
         </div>
       </div>

@@ -51,6 +51,12 @@ export interface DatabaseConfigWithMapping {
   columnMapping: Record<string, string>; // Dynamic mapping for all columns
 }
 
+interface DatabaseConfigProps {
+  onConfigure: (config: DatabaseConfigWithMapping) => void;
+  isLoading?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
+}
+
 type Step = 'connection' | 'schema' | 'mapping' | 'complete';
 
 export function DatabaseConfig({ onConfigure, isLoading, onValidationChange }: DatabaseConfigProps) {

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { RawDataDetailModal } from './raw-data-detail-modal';
 import { RawDataRecordDetail } from '@/types/index';
+import { getStatusColor } from '@/src/utils/format';
 
 interface RawDataItem {
   metric?: string;
