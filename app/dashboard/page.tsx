@@ -8,6 +8,7 @@ import { MetricsDisplay } from '@/src/components/dashboard/metrics-display';
 import { RawDataTab } from '@/src/components/dashboard/raw-data-tab';
 import { BAReviewDashboard } from '@/src/components/dashboard/ba-review-dashboard';
 import { KnowledgeBaseTab } from '@/src/components/dashboard/knowledge-base-tab';
+import { TemplatesTab } from '@/src/components/dashboard/templates-tab';
 import { AlertsDisplay, CollectiveAlertsSummary } from '@/src/components/dashboard/alerts-display';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ interface Application {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'raw-data' | 'ba-review' | 'knowledge-base'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'raw-data' | 'ba-review' | 'knowledge-base' | 'templates'>('metrics');
   const [applications, setApplications] = useState<Application[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [appsError, setAppsError] = useState<string | null>(null);
@@ -325,6 +326,16 @@ export default function DashboardPage() {
             >
               Knowledge Base
             </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'templates'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Templates
+            </button>
           </div>
 
           {activeTab === 'metrics' && (
@@ -373,6 +384,19 @@ export default function DashboardPage() {
               <div className="text-center">
                 <p className="text-blue-900 font-medium mb-1">No application selected</p>
                 <p className="text-sm text-blue-700">Select an application to upload documents or search the knowledge base</p>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'templates' && selectedAppIds.length > 0 && (
+            <TemplatesTab applicationId={selectedAppIds[0]} />
+          )}
+
+          {activeTab === 'templates' && selectedAppIds.length === 0 && (
+            <Card className="p-8 bg-blue-50 border border-blue-200">
+              <div className="text-center">
+                <p className="text-blue-900 font-medium mb-1">No application selected</p>
+                <p className="text-sm text-blue-700">Select an application to browse, create, and manage prompt templates</p>
               </div>
             </Card>
           )}
