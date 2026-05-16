@@ -5,6 +5,14 @@ import { Card } from '@/components/ui/card';
 import { MetricsData } from '@/src/hooks/useMetricsFetch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HelpCircle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { getMetricDefinition, getScoreColor } from '@/src/utils/metricDefinitions';
 
 interface MetricsDisplayProps {
   metrics: MetricsData | null;
@@ -175,13 +183,42 @@ export function MetricsDisplay({ metrics, applicationCount, isLoading, isEmpty, 
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
-        {getDisplayMetrics().map((metric) => (
-          <Card key={metric.label} className="p-4 bg-white border border-gray-200 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-600 mb-2 font-medium">{metric.label}</p>
-            <p className="text-2xl font-bold text-blue-600">{metric.value.toFixed(1)}</p>
-            <p className="text-xs text-gray-500 mt-1">/ 100</p>
-          </Card>
-        ))}
+        {getDisplayMetrics().map((metric) => {
+          const definition = getMetricDefinition(metric.label);
+          const scoreColor = definition ? getScoreColor(metric.value, definition) : '';
+
+          return (
+            <TooltipProvider key={metric.label}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Card className="p-4 bg-white border border-gray-200 hover:shadow-md transition-shadow cursor-help group">
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-xs text-gray-600 font-medium">{metric.label}</p>
+                      <HelpCircle className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    </div>
+                    <p className={`text-2xl font-bold ${scoreColor} rounded px-2 py-1`}>
+                      {metric.value.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">/ 100</p>
+                  </Card>
+                </TooltipTrigger>
+                {definition && (
+                  <TooltipContent side="top" className="max-w-xs">
+                    <div className="space-y-2">
+                      <p className="font-semibold text-sm">{definition.label}</p>
+                      <p className="text-xs">{definition.description}</p>
+                      <div className="text-xs space-y-1 border-t border-gray-200 pt-2 mt-2">
+                        <p>Good: {definition.goodRange}</p>
+                        <p>Warning: {definition.warningRange}</p>
+                        <p>Poor: {definition.poorRange}</p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })}
       </div>
     </div>
   );
