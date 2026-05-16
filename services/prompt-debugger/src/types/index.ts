@@ -3,6 +3,31 @@
  * These are the "single source of truth" for data structures
  */
 
+// LLM Provider Configuration
+export type LLMProvider = 'claude' | 'openai' | 'deepseek' | 'custom';
+
+export interface LLMConfig {
+  provider: LLMProvider;
+  model: string;
+  apiKey: string;
+  baseUrl?: string; // For custom providers
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface LLMRequest {
+  prompt: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface LLMResponse {
+  content: string;
+  provider: LLMProvider;
+  model: string;
+  tokensUsed: number;
+}
+
 /**
  * Represents a low-scoring metric and why it's scoring low
  */

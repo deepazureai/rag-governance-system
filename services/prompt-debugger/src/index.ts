@@ -1,6 +1,6 @@
 /**
  * Prompt Debugger Service - Main Entry Point
- * Initializes Express server with all dependencies
+ * Initializes Express server with configurable LLM providers
  */
 
 import express from 'express';
@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import { DebugAnalyzer } from './services/DebugAnalyzer.js';
 import { DebugRepository } from './persistence/DebugRepository.js';
 import { createDebugRoutes } from './routes/debug.js';
+import { LLMConfig, LLMProvider } from './types/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -16,7 +17,10 @@ dotenv.config();
 // Type definitions for environment
 interface Environment {
   PORT: string;
-  CLAUDE_API_KEY: string;
+  LLM_PROVIDER: LLMProvider;
+  LLM_MODEL: string;
+  LLM_API_KEY: string;
+  LLM_BASE_URL?: string;
   MONGODB_URI: string;
   NODE_ENV: string;
 }
@@ -25,7 +29,7 @@ interface Environment {
  * Validate required environment variables
  */
 function validateEnvironment(): Environment {
-  const required: (keyof Environment)[] = ['CLAUDE_API_KEY', 'MONGODB_URI'];
+  const required: (keyof Environment)[] = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_API_KEY', 'MONGODB_URI'];
   const missing: string[] = [];
 
   required.forEach((key) => {
@@ -38,9 +42,22 @@ function validateEnvironment(): Environment {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
 
+  const provider = process.env.LLM_PROVIDER as LLMProvider;
+  const validProviders: LLMProvider[] = ['claude', 'openai', 'deepseek', 'custom'];
+  if (!validProviders.includes(provider)) {
+    throw new Error(`Invalid LLM_PROVIDER: ${provider}. Must be one of: ${validProviders.join(', ')}`);
+  }
+
+  if (provider === 'custom' && !process.env.LLM_BASE_URL?.trim()) {
+    throw new Error('LLM_BASE_URL is required when LLM_PROVIDER is "custom"');
+  }
+
   return {
     PORT: process.env.PORT || '3001',
-    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY as string,
+    LLM_PROVIDER: provider,
+    LLM_MODEL: process.env.LLM_MODEL as string,
+    LLM_API_KEY: process.env.LLM_API_KEY as string,
+    LLM_BASE_URL: process.env.LLM_BASE_URL,
     MONGODB_URI: process.env.MONGODB_URI as string,
     NODE_ENV: process.env.NODE_ENV || 'development',
   };
@@ -54,9 +71,20 @@ async function main(): Promise<void> {
     // Validate environment
     const env = validateEnvironment();
     console.log(`[v0] Starting Prompt Debugger Service (${env.NODE_ENV})`);
+    console.log(`[v0] Using LLM provider: ${env.LLM_PROVIDER} (${env.LLM_MODEL})`);
+
+    // Create LLM configuration
+    const llmConfig: LLMConfig = {
+      provider: env.LLM_PROVIDER,
+      model: env.LLM_MODEL,
+      apiKey: env.LLM_API_KEY,
+      baseUrl: env.LLM_BASE_URL,
+      temperature: 0.7,
+      maxTokens: 2048,
+    };
 
     // Initialize dependencies
-    const debugAnalyzer = new DebugAnalyzer(env.CLAUDE_API_KEY);
+    const debugAnalyzer = new DebugAnalyzer(llmConfig);
     const debugRepository = new DebugRepository(env.MONGODB_URI);
 
     // Connect to MongoDB

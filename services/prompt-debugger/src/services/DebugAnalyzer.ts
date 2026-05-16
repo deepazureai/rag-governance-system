@@ -1,16 +1,28 @@
 /**
  * DebugAnalyzer - Core business logic for prompt debugging
- * Orchestrates LLM analysis and persistence
+ * Orchestrates LLM analysis and persistence with configurable LLM providers
  */
 
 import { LLMService } from './LLMService.js';
-import { PromptDebugAnalysis, RootCauseAnalysis, DebugRecommendation } from '../types/index.js';
+import { PromptDebugAnalysis, RootCauseAnalysis, DebugRecommendation, LLMConfig } from '../types/index.js';
 
 export class DebugAnalyzer {
   private llmService: LLMService;
+  private llmConfig: LLMConfig;
 
-  constructor(claudeApiKey: string) {
-    this.llmService = new LLMService(claudeApiKey);
+  constructor(llmConfig: LLMConfig) {
+    this.llmConfig = llmConfig;
+    this.llmService = new LLMService(llmConfig);
+    console.log(`[v0] DebugAnalyzer initialized with ${llmConfig.provider} provider`);
+  }
+
+  /**
+   * Change LLM provider at runtime (useful for per-app configuration)
+   */
+  setLLMConfig(llmConfig: LLMConfig): void {
+    this.llmConfig = llmConfig;
+    this.llmService = new LLMService(llmConfig);
+    console.log(`[v0] LLM provider switched to ${llmConfig.provider}`);
   }
 
   async analyzePrompt(
@@ -20,7 +32,7 @@ export class DebugAnalyzer {
     actualOutput: string,
     scores: Record<string, number>,
   ): Promise<PromptDebugAnalysis> {
-    console.log(`[v0] Starting debug analysis for prompt ${promptId} in app ${appId}`);
+    console.log(`[v0] Starting debug analysis for prompt ${promptId} in app ${appId} using ${this.llmConfig.provider}`);
 
     try {
       // Step 1: Analyze root causes for low-scoring metrics
