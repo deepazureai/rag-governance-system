@@ -2,198 +2,183 @@ import axios, { AxiosError } from 'axios';
 import { Env } from '../schemas/validation';
 
 /**
- * Claude LLM Integration Service
- * Handles all calls to Anthropic Claude API for root cause analysis
- * 
- * Strict type safety:
- * - All responses validated with Zod schemas
- * - No `any` types - use `unknown` with type guards
- * - Errors properly typed and handled
+ * Claude LLM Service for root cause analysis
+ * Integrates with Anthropic SDK with strict type safety
  */
 
-interface ClaudeMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface ClaudeResponse {
-  content: Array<{
-    type: 'text';
-    text: string;
-  }>;
-  stop_reason: string;
-}
+import Anthropic from '@anthropic-ai/sdk';
+import { RootCauseAnalysis, DebugRecommendation } from '../types/index.js';
 
 export class LLMService {
-  private apiKey: string;
-  private baseUrl = 'https://api.anthropic.com/v1';
+  private client: Anthropic;
+  private model: string;
+  private maxTokens: number;
 
-  constructor(apiKey: string) {
-    if (!apiKey || apiKey.trim().length === 0) {
+  constructor(apiKey: string, model = 'claude-opus-4-1-20250805', maxTokens = 2048) {
+    if (!apiKey?.trim()) {
       throw new Error('Claude API key is required');
     }
-    this.apiKey = apiKey;
+    this.client = new Anthropic({ apiKey });
+    this.model = model;
+    this.maxTokens = maxTokens;
   }
 
-  /**
-   * Analyze why a prompt scored low on a specific metric
-   * Uses Claude to reason about the evaluation scores
-   */
-  async analyzeRootCause(
-    metric: string,
-    score: number,
-    prompt: string,
-    response: string
-  ): Promise<string> {
-    const message = `
-You are an expert AI evaluation specialist. Analyze why this evaluation metric scored low.
+  async analyzeRootCauses(
+    promptText: string,
+    actualOutput: string,
+    scores: Record<string, number>,
+  ): Promise<RootCauseAnalysis[]> {
+    const scoredMetrics = Object.entries(scores)
+      .filter(([, score]) => score < 80)
+      .map(([metric, score]) => `- ${metric}: ${score}/100`)
+      .join('\n');
 
-Metric: ${metric}
-Score: ${score}/100
-Prompt: ${prompt}
-Response: ${response}
+    if (!scoredMetrics) {
+      return [];
+    }
 
-Provide a concise root cause analysis (2-3 sentences):
-1. What specifically is causing the low score?
-2. What evidence from the response supports this?
-3. What could be changed to improve the score?
+    const prompt = `Analyze why these metrics scored low.
 
-Be specific and actionable.
-    `.trim();
+Prompt: ${promptText}
+Output: ${actualOutput}
 
-    const result = await this.callClaude(message);
-    return result;
+Low-scoring metrics:
+${scoredMetrics}
+
+For each metric below 80, identify the root cause and provide evidence. Return JSON array:
+[{"metric": "name", "currentScore": num, "expectedScore": num, "gap": num, "issue": "description", "severity": "low|medium|high", "evidence": ["quote1"]}]`;
+
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: this.maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Could not extract JSON from Claude response');
+    }
+
+    const analyses = JSON.parse(jsonMatch[0]) as unknown[];
+    return this.validateRootCauseAnalyses(analyses);
   }
 
-  /**
-   * Generate recommendations to improve a low-scoring metric
-   */
   async generateRecommendations(
-    metric: string,
-    score: number,
-    prompt: string,
-    response: string,
-    rootCause: string
-  ): Promise<string> {
-    const message = `
-You are a prompt engineering expert. Given this root cause analysis, provide specific recommendations.
-
-Metric: ${metric}
-Current Score: ${score}/100
-Root Cause: ${rootCause}
-
-Original Prompt: ${prompt}
-Current Response: ${response}
-
-Provide 2-3 specific, actionable recommendations:
-1. For each recommendation, include: what to change, why it helps, and an example
-
-Format as a JSON array:
-[
-  {
-    "title": "Recommendation title",
-    "description": "Why this helps",
-    "example": "Example of how to implement"
-  }
-]
-    `.trim();
-
-    const result = await this.callClaude(message);
-    
-    // Try to parse JSON, but handle non-JSON responses
-    try {
-      const parsed = JSON.parse(result);
-      if (!Array.isArray(parsed)) {
-        throw new Error('Expected array response');
-      }
-      return result; // Return original string if valid JSON array
-    } catch {
-      // If not valid JSON, return wrapped in array format
-      return JSON.stringify([{
-        title: 'Improvement Suggestion',
-        description: result,
-        example: 'See recommendation details above',
-      }]);
+    rootCauses: RootCauseAnalysis[],
+    promptText: string,
+  ): Promise<DebugRecommendation[]> {
+    if (rootCauses.length === 0) {
+      return [];
     }
-  }
 
-  /**
-   * Core Claude API call with proper error handling
-   */
-  private async callClaude(message: string): Promise<string> {
-    try {
-      const messages: ClaudeMessage[] = [
-        { role: 'user', content: message },
-      ];
+    const issues = rootCauses
+      .map((rc) => `- ${rc.metric} (${rc.currentScore}/100): ${rc.issue}`)
+      .join('\n');
 
-      const response = await axios.post(
-        `${this.baseUrl}/messages`,
-        {
-          model: 'claude-3-sonnet-20240229',
-          max_tokens: 1024,
-          messages,
-        },
-        {
-          headers: {
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-        }
-      );
+    const prompt = `Generate specific recommendations to improve these metrics.
 
-      // Type guard for response structure
-      const data = response.data as unknown;
-      if (!this.isClaudeResponse(data)) {
-        throw new Error('Invalid Claude response structure');
-      }
+Current Prompt: ${promptText}
 
-      // Extract text from response
-      const textContent = data.content.find(
-        (c): c is Extract<ClaudeResponse['content'][number], { type: 'text' }> => c.type === 'text'
-      );
+Issues:
+${issues}
 
-      if (!textContent?.text) {
-        throw new Error('No text content in Claude response');
-      }
+Return JSON array with structure:
+[{"id": "rec_1", "metricToImprove": "metric", "title": "title", "description": "desc", "actionableSteps": ["step1"], "exampleBefore": "before", "exampleAfter": "after", "expectedScoreImprovement": 10}]`;
 
-      return textContent.text;
-    } catch (error: unknown) {
-      // Type-safe error handling
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError;
-        const status = axiosError.response?.status ?? 'unknown';
-        console.error(`[v0] Claude API error (${status}):`, axiosError.message);
-        throw new Error(`Claude API failed: ${axiosError.message}`);
-      }
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: this.maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-      if (error instanceof Error) {
-        console.error('[v0] Unexpected error in Claude call:', error.message);
-        throw error;
-      }
-
-      throw new Error('Unknown error calling Claude API');
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
     }
+
+    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Could not extract JSON from Claude response');
+    }
+
+    const recommendations = JSON.parse(jsonMatch[0]) as unknown[];
+    return this.validateRecommendations(recommendations);
   }
 
-  /**
-   * Type guard to validate Claude response structure
-   * Ensures response has expected shape before accessing properties
-   */
-  private isClaudeResponse(value: unknown): value is ClaudeResponse {
-    if (typeof value !== 'object' || value === null) return false;
+  private validateRootCauseAnalyses(data: unknown[]): RootCauseAnalysis[] {
+    const validMetrics = ['groundedness', 'relevance', 'fluency', 'safety', 'coherence', 'completeness'];
+    const validSeverities = ['low', 'medium', 'high'];
 
-    const obj = value as Record<string, unknown>;
+    return data.map((item) => {
+      const obj = item as Record<string, unknown>;
 
-    // Check if it has 'content' array
-    if (!Array.isArray(obj.content)) return false;
+      if (typeof obj.metric !== 'string' || !validMetrics.includes(obj.metric)) {
+        throw new Error(`Invalid metric: ${obj.metric}`);
+      }
+      if (typeof obj.currentScore !== 'number' || obj.currentScore < 0 || obj.currentScore > 100) {
+        throw new Error('Invalid currentScore');
+      }
+      if (typeof obj.expectedScore !== 'number' || obj.expectedScore < 0 || obj.expectedScore > 100) {
+        throw new Error('Invalid expectedScore');
+      }
+      if (typeof obj.issue !== 'string' || obj.issue.length < 5) {
+        throw new Error('Invalid issue');
+      }
+      if (typeof obj.severity !== 'string' || !validSeverities.includes(obj.severity)) {
+        throw new Error(`Invalid severity: ${obj.severity}`);
+      }
+      if (!Array.isArray(obj.evidence) || !obj.evidence.every((e) => typeof e === 'string')) {
+        throw new Error('Invalid evidence array');
+      }
 
-    // Check if at least one item has 'type': 'text'
-    return obj.content.some(
-      (item): item is { type: 'text'; text: string } =>
-        typeof item === 'object' &&
-        item !== null &&
-        (item as Record<string, unknown>).type === 'text' &&
-        typeof (item as Record<string, unknown>).text === 'string'
-    );
+      return {
+        metric: obj.metric as RootCauseAnalysis['metric'],
+        currentScore: obj.currentScore as number,
+        expectedScore: obj.expectedScore as number,
+        gap: (obj.currentScore as number) - (obj.expectedScore as number),
+        issue: obj.issue as string,
+        severity: obj.severity as RootCauseAnalysis['severity'],
+        evidence: obj.evidence as string[],
+      };
+    });
+  }
+
+  private validateRecommendations(data: unknown[]): DebugRecommendation[] {
+    const validMetrics = ['groundedness', 'relevance', 'fluency', 'safety', 'coherence', 'completeness'];
+
+    return data.map((item) => {
+      const obj = item as Record<string, unknown>;
+
+      if (typeof obj.id !== 'string') throw new Error('Invalid id');
+      if (typeof obj.metricToImprove !== 'string' || !validMetrics.includes(obj.metricToImprove)) {
+        throw new Error('Invalid metricToImprove');
+      }
+      if (typeof obj.title !== 'string' || obj.title.length < 3) throw new Error('Invalid title');
+      if (typeof obj.description !== 'string' || obj.description.length < 5) throw new Error('Invalid description');
+      if (!Array.isArray(obj.actionableSteps) || !obj.actionableSteps.every((s) => typeof s === 'string')) {
+        throw new Error('Invalid actionableSteps');
+      }
+      if (typeof obj.exampleBefore !== 'string') throw new Error('Invalid exampleBefore');
+      if (typeof obj.exampleAfter !== 'string') throw new Error('Invalid exampleAfter');
+      if (typeof obj.expectedScoreImprovement !== 'number' || obj.expectedScoreImprovement < 0 || obj.expectedScoreImprovement > 30) {
+        throw new Error('Invalid expectedScoreImprovement');
+      }
+
+      return {
+        id: obj.id as string,
+        metricToImprove: obj.metricToImprove as DebugRecommendation['metricToImprove'],
+        title: obj.title as string,
+        description: obj.description as string,
+        actionableSteps: obj.actionableSteps as string[],
+        exampleBefore: obj.exampleBefore as string,
+        exampleAfter: obj.exampleAfter as string,
+        expectedScoreImprovement: obj.expectedScoreImprovement as number,
+      };
+    });
   }
 }
