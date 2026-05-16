@@ -144,9 +144,11 @@ export function ApplyTemplateModal({
 
           {/* Templates Grid */}
           {loading ? (
-            <LoadingState message="Loading templates..." />
+            <LoadingState isLoading={true} error={null} isEmpty={false} emptyMessage="" onRetry={undefined}>
+              <div />
+            </LoadingState>
           ) : error ? (
-            <ErrorFeedback title="Error" message={error} />
+            <ErrorFeedback message={error} />
           ) : filtered.length === 0 ? (
             <Card className="p-8 text-center bg-gray-50">
               <p className="text-gray-600">No templates found</p>

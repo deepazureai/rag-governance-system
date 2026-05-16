@@ -46,6 +46,7 @@
     "backend",
     "poller",
     "scripts",
+    "services",
     ".next"
   ]
 }

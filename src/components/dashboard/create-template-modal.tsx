@@ -50,7 +50,7 @@ export function CreateTemplateModal({
   const [tagInput, setTagInput] = useState('');
   const [category, setCategory] = useState('General');
 
-  const { execute: createTemplate, loading, error, success } = useApiCall();
+  const { execute: createTemplate, loading, error, data } = useApiCall();
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -90,7 +90,7 @@ export function CreateTemplateModal({
       body: JSON.stringify(templateData),
     });
 
-    if (!error) {
+    if (!error && data) {
       setTemplateName('');
       setTemplateDesc('');
       setTags([]);
@@ -113,7 +113,6 @@ export function CreateTemplateModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Template Info */}
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -199,7 +198,6 @@ export function CreateTemplateModal({
             </div>
           </div>
 
-          {/* Original Prompt Preview */}
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">
               Original Prompt
@@ -209,7 +207,6 @@ export function CreateTemplateModal({
             </Card>
           </div>
 
-          {/* Metrics Summary */}
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">
               Performance Metrics
@@ -218,28 +215,29 @@ export function CreateTemplateModal({
               {Object.entries(metrics).map(([metric, score]) => (
                 <Card key={metric} className="p-2 bg-blue-50 border border-blue-200">
                   <p className="text-xs text-gray-600">{metric}</p>
-                  <p className="text-lg font-bold text-blue-600">{score.toFixed(1)}/100</p>
+                  <p className="text-lg font-bold text-blue-600">{(score as number).toFixed(1)}/100</p>
                 </Card>
               ))}
             </div>
           </div>
 
-          {/* Feedback Messages */}
           {error && (
             <ErrorFeedback
-              title="Failed to create template"
-              message={error instanceof Error ? error.message : 'Unknown error'}
+              message={error}
+              details="Failed to create template. Please try again."
             />
           )}
 
-          {success && (
-            <SuccessFeedback
-              title="Template Created"
-              message="Your template has been saved successfully"
-            />
+          {!!data && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <div className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5">✓</div>
+              <div>
+                <h3 className="font-semibold text-green-900 text-sm">Template Created</h3>
+                <p className="text-xs text-green-700 mt-1">Your template has been saved successfully</p>
+              </div>
+            </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
             <Button
               variant="outline"

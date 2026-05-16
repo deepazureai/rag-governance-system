@@ -141,7 +141,7 @@ export function ConnectionsTab() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3">Select Application</h3>
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
-          {mockApps.map((app) => (
+          {apps.map((app: any) => (
             <button
               key={app.id}
               onClick={() => dispatch(selectApp(app.id))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { Send, Trash2, Zap, Copy, TrendingUp } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
@@ -37,7 +37,7 @@ export default function ExplorePage() {
   const apps = appsData?.data || [];
 
   // Set first app as selected when apps load
-  React.useEffect(() => {
+  useEffect(() => {
     if (apps.length > 0 && !selectedApp) {
       setSelectedApp(apps[0].id);
     }
