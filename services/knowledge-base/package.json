@@ -1,0 +1,30 @@
+{
+  "name": "knowledge-base-service",
+  "version": "1.0.0",
+  "description": "Embedding, indexing, and hybrid search microservice using LangChain",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "zod": "^3.22.4",
+    "langchain": "^0.1.30",
+    "@langchain/openai": "^0.0.20",
+    "@langchain/community": "^0.0.40",
+    "chroma-js": "^2.4.2",
+    "chromadb": "^1.4.16",
+    "mongodb": "^6.3.0",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}
