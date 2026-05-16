@@ -1,15 +1,12 @@
-import axios, { AxiosError } from 'axios';
-import { Env } from '../schemas/validation';
+import axios from 'axios';
+import Anthropic from '@anthropic-ai/sdk';
+import { LLMConfig, LLMResponse, LLMProvider, RootCauseAnalysis, DebugRecommendation } from '../types/index.js';
 
 /**
  * Multi-Provider LLM Service
  * Supports Claude, OpenAI, DeepSeek, and custom providers
  * Strict type safety with type guards on all external API responses
  */
-
-import axios from 'axios';
-import Anthropic from '@anthropic-ai/sdk';
-import { LLMConfig, LLMResponse, LLMProvider, RootCauseAnalysis, DebugRecommendation } from '../types/index.js';
 
 interface ProviderClient {
   provider: LLMProvider;

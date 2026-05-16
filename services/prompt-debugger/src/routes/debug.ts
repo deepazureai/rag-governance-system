@@ -63,22 +63,19 @@ export function createDebugRoutes(
           return;
         }
 
-        const { appId, promptId, promptText, actualOutput, scores } = req.validatedBody;
+        const { appId, promptId, promptText, responseText, scores } = req.validatedBody;
 
         console.log(`[v0] Debug request for prompt ${promptId}`);
 
-        // Convert array of scores to record format
-        const scoreRecord: Record<string, number> = {};
-        scores.forEach((score) => {
-          scoreRecord[score.frameworkName] = score.score;
-        });
+        // Use responseText directly (it's already in the right format)
+        const scoreRecord: Record<string, number> = scores;
 
         // Run analysis
         const analysis = await debugAnalyzer.analyzePrompt(
           promptId,
           appId,
           promptText,
-          actualOutput,
+          responseText,
           scoreRecord,
         );
 

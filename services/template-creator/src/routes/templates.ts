@@ -28,11 +28,12 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
         next();
       } catch (error) {
         if (error instanceof z.ZodError) {
-          return res.status(400).json(
-            errorResponse('VALIDATION_ERROR', 'Invalid request body', {
-              errors: error.errors,
-            })
-          );
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Invalid request body',
+            details: error.errors,
+          });
         }
         next(error);
       }

@@ -103,7 +103,7 @@ export class TemplateRepository {
       { returnDocument: 'after' }
     );
 
-    return result.value || null;
+    return ((result as any)?.value as PromptTemplate) || null;
   }
 
   async cloneTemplate(sourceId: string, newName: string, appId: string, userId: string): Promise<PromptTemplate | null> {
@@ -112,9 +112,9 @@ export class TemplateRepository {
     const source = await this.getTemplate(sourceId);
     if (!source) return null;
 
+    const { _id, ...sourceWithoutId } = source as any;
     const clone = await this.createTemplate({
-      ...source,
-      id: undefined as any,
+      ...sourceWithoutId,
       name: newName,
       appId,
       forkedFrom: sourceId,
@@ -141,9 +141,9 @@ export class TemplateRepository {
     const source = await this.getTemplate(sourceId);
     if (!source) return null;
 
+    const { _id: sourceId2, ...sourceWithoutId2 } = source as any;
     const fork = await this.createTemplate({
-      ...source,
-      id: undefined as any,
+      ...sourceWithoutId2,
       name: newName,
       appId,
       forkedFrom: sourceId,
@@ -183,10 +183,10 @@ export class TemplateRepository {
     const sortBy = criteria.sortBy || 'created';
     const sortOrder = criteria.sortOrder === 'desc' ? -1 : 1;
 
-    if (sortBy === 'created') query = query.sort({ createdAt: sortOrder });
-    else if (sortBy === 'usage') query = query.sort({ usageCount: -sortOrder });
-    else if (sortBy === 'score') query = query.sort({ 'metrics.averageScore': -sortOrder });
-    else if (sortBy === 'name') query = query.sort({ name: sortOrder });
+    if (sortBy === 'created') query = query.sort({ createdAt: sortOrder } as any);
+    else if (sortBy === 'usage') query = query.sort({ usageCount: -sortOrder } as any);
+    else if (sortBy === 'score') query = query.sort({ 'metrics.averageScore': -sortOrder } as any);
+    else if (sortBy === 'name') query = query.sort({ name: sortOrder } as any);
 
     // Pagination
     const limit = criteria.limit || 20;

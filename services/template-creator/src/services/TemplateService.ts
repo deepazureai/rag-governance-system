@@ -17,6 +17,7 @@ export class TemplateService {
     userId: string,
     metadata?: Partial<PromptTemplate>
   ): Promise<PromptTemplate> {
+    const now = new Date();
     const template = await this.repository.createTemplate({
       appId,
       name,
@@ -29,6 +30,11 @@ export class TemplateService {
       expectedOutput: metadata?.expectedOutput,
       analysis: metadata?.analysis,
       metrics: metadata?.metrics,
+      createdAt: now,
+      updatedAt: now,
+      usageCount: 0,
+      version: 1,
+      versionHistory: [],
     });
 
     return template;

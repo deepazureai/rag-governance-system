@@ -94,3 +94,7 @@ export function parseEnv(env: unknown): Env {
   
   return result.data;
 }
+
+// Alias for compatibility
+export const PromptAnalysisRequestSchema = AnalyzePromptRequestSchema;
+export type PromptAnalysisRequest = AnalyzePromptRequest;

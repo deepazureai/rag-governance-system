@@ -98,7 +98,7 @@ async function main(): Promise<void> {
     app.use(express.json({ limit: '10mb' }));
 
     // Request logging middleware
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       console.log(`[v0] ${req.method} ${req.path}`);
       next();
     });

@@ -16,7 +16,7 @@ export class LRUCache<T> {
   }
 
   set(key: string, value: T, ttl?: number): void {
-    const entryTTL = ttl ?? this.config.ttl;
+    const entryTTL = ttl ?? this.config.ttl ?? 3600000; // Default 1 hour
     const expiresAt = Date.now() + entryTTL;
 
     // Remove existing entry
@@ -26,7 +26,12 @@ export class LRUCache<T> {
     }
 
     // Add new entry
-    this.cache.set(key, { value, expiresAt });
+    this.cache.set(key, { 
+      key,
+      value, 
+      timestamp: Date.now(),
+      expiresAt 
+    });
     this.accessOrder.push(key);
 
     // Evict old entries if over size limit
@@ -41,7 +46,7 @@ export class LRUCache<T> {
     }
 
     // Check if expired
-    if (Date.now() > entry.expiresAt) {
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
       this.cache.delete(key);
       this.accessOrder = this.accessOrder.filter((k) => k !== key);
       return null;

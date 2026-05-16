@@ -98,3 +98,21 @@ export function isErrorResponse(value: unknown): value is ErrorResponse {
   const obj = value as Record<string, unknown>;
   return 'error' in obj && typeof obj.error === 'object' && obj.error !== null;
 }
+
+/**
+ * Cache entry for LRU cache
+ */
+export interface CacheEntry<T> {
+  key: string;
+  value: T;
+  timestamp: number;
+  expiresAt?: number;
+}
+
+/**
+ * Configuration for LRU cache
+ */
+export interface LRUCacheConfig {
+  maxSize: number;
+  ttl?: number;
+}
