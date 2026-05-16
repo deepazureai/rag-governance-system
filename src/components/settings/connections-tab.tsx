@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { useAppDispatch, useAppSelector } from '@/src/hooks/useRedux';
 import {
   selectApp,
@@ -11,12 +12,12 @@ import {
   updateConnectionTestStatus,
   updateConnection,
 } from '@/src/store/slices/connectionsSlice';
-import { mockApps } from '@/src/data/mockData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, RotateCcw, CheckCircle, XCircle, Clock, Edit2 } from 'lucide-react';
 import { connectionsClient } from '@/src/api/connectionsClient';
+import { appsApi } from '@/src/api/services';
 import { EditConnectionModal } from './edit-connection-modal';
 
 export function ConnectionsTab() {
@@ -27,7 +28,13 @@ export function ConnectionsTab() {
   const [loading, setLoading] = useState(false);
   const [editingConnection, setEditingConnection] = useState<any>(null);
 
-  const selectedApp = selectedAppId ? mockApps.find((app) => app.id === selectedAppId) : null;
+  // Fetch apps from API
+  const { data: appsData } = useSWR('/api/apps', () => appsApi.getAll(), {
+    revalidateOnFocus: false,
+  });
+
+  const apps = appsData?.data || [];
+  const selectedApp = selectedAppId ? apps.find((app: any) => app.id === selectedAppId) : null;
   const appConnections = selectedAppId ? connections.filter((c) => c.appId === selectedAppId) : [];
 
   useEffect(() => {

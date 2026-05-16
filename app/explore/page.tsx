@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import useSWR from 'swr';
 import { Send, Trash2, Zap, Copy, TrendingUp } from 'lucide-react';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
-import { mockApps } from '@/src/data/mockData';
 import { FrameworkSelector } from '@/src/components/evaluation/framework-selector';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Select,
   SelectContent,
@@ -17,13 +18,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { appsApi } from '@/src/api/services';
 
 export default function ExplorePage() {
-  const [selectedApp, setSelectedApp] = useState<string>(mockApps[0].id);
+  const [selectedApp, setSelectedApp] = useState<string>('');
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [queryHistory, setQueryHistory] = useState<Array<{ query: string; response: string }>>([]);
+
+  // Fetch apps from API
+  const { data: appsData, isLoading: appsLoading } = useSWR(
+    '/api/apps',
+    () => appsApi.getAll(),
+    { revalidateOnFocus: false }
+  );
+
+  const apps = appsData?.data || [];
+
+  // Set first app as selected when apps load
+  React.useEffect(() => {
+    if (apps.length > 0 && !selectedApp) {
+      setSelectedApp(apps[0].id);
+    }
+  }, [apps, selectedApp]);
 
   const handleExecuteQuery = async () => {
     if (!query.trim()) return;
@@ -46,7 +64,7 @@ Response Time: 245ms | Confidence: 92.3% | Token Usage: 487/2048`;
     setIsLoading(false);
   };
 
-  const app = mockApps.find((a) => a.id === selectedApp);
+  const app = apps.find((a: any) => a.id === selectedApp);
 
   return (
     <DashboardLayout>
@@ -75,7 +93,7 @@ Response Time: 245ms | Confidence: 92.3% | Token Usage: 487/2048`;
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockApps.map((app: any) => (
+                  {apps.map((app: any) => (
                     <SelectItem key={app.id} value={app.id}>
                       {app.name}
                     </SelectItem>

@@ -1,9 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { DashboardLayout } from '@/src/components/layout/dashboard-layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import {
   BarChart,
   Bar,
@@ -19,11 +22,39 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts';
-import { mockBenchmarks, mockApps } from '@/src/data/mockData';
 import { Plus, TrendingUp } from 'lucide-react';
+import { benchmarksApi } from '@/src/api/services';
 
 export default function BenchmarksPage() {
-  const benchmark = mockBenchmarks[0];
+  // Fetch benchmarks from API
+  const { data, isLoading, error } = useSWR(
+    '/api/benchmarks',
+    () => benchmarksApi.getAll(),
+    { revalidateOnFocus: false }
+  );
+
+  const benchmarks = data?.data || [];
+  const benchmark = benchmarks[0];
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Spinner />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !benchmark) {
+    return (
+      <DashboardLayout>
+        <div className="text-red-600 p-4">
+          Failed to load benchmarks data
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const radarData = benchmark.metrics.map((m: any) => ({
     name: m.appName.split(' ')[0],
@@ -219,7 +250,7 @@ export default function BenchmarksPage() {
         <Card className="p-6 bg-white">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">All Benchmarks</h3>
           <div className="space-y-3">
-            {mockBenchmarks.map((bench: any) => (
+            {benchmarks.map((bench: any) => (
               <div
                 key={bench.id}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"

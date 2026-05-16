@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
+import useSWR from 'swr';
 import { useDataSources } from '@/src/hooks/useDataSources';
-import { mockApps } from '@/src/data/mockData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { AzureBlobConnectorForm } from '@/src/components/apps/connectors/azure-b
 import { SplunkConnectorForm } from '@/src/components/apps/connectors/splunk-connector';
 import { DatadogConnectorForm } from '@/src/components/apps/connectors/datadog-connector';
 import { DataSourceConfig, DataSourceType } from '@/src/types/dataSource';
+import { appsApi } from '@/src/api/services';
 
 export function DataSourcesTab() {
   const {
@@ -27,6 +28,13 @@ export function DataSourcesTab() {
     selectAppForConfiguration,
     getConfigurationsForApp,
   } = useDataSources();
+
+  // Fetch apps from API
+  const { data: appsData } = useSWR('/api/apps', () => appsApi.getAll(), {
+    revalidateOnFocus: false,
+  });
+
+  const apps = appsData?.data || [];
 
   const [newConfigType, setNewConfigType] = React.useState<DataSourceType | null>(null);
   const [editingConfig, setEditingConfig] = React.useState<DataSourceConfig | null>(null);
@@ -110,7 +118,7 @@ export function DataSourcesTab() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {mockApps.map((app) => (
+          {apps.map((app) => (
             <button
               key={app.id}
               onClick={() => selectAppForConfiguration(app.id)}
