@@ -79,8 +79,9 @@ export class BAReviewQueueService {
       for (const record of recordsToReview) {
         if (processedRecordIds.has(record._id.toString())) continue;
 
-        const { priorityScore, priorityReason } = this.calculatePriority(record);
-        const averageScore = this.calculateAverageScore(record);
+        const typedRecord = record as unknown as RawDataRecord;
+        const { priorityScore, priorityReason } = this.calculatePriority(typedRecord);
+        const averageScore = this.calculateAverageScore(typedRecord);
 
         const queueItem: BAReviewQueueItem = {
           applicationId,
@@ -88,11 +89,11 @@ export class BAReviewQueueService {
           priority: this.getPriorityLevel(priorityScore),
           priorityScore,
           priorityReason,
-          userPrompt: record.userPrompt,
-          llmResponse: record.llmResponse,
+          userPrompt: typedRecord.userPrompt,
+          llmResponse: typedRecord.llmResponse,
           averageScore,
-          userFeedback: record.userFeedback?.sentiment,
-          latency: record.totalLatency,
+          userFeedback: typedRecord.userFeedback?.sentiment,
+          latency: typedRecord.totalLatency,
           status: 'pending',
           queuedAt: new Date(),
           createdAt: new Date(),
@@ -111,7 +112,8 @@ export class BAReviewQueueService {
       // Insert into queue
       if (queueItems.length > 0) {
         const insertResult = await BAReviewQueueCollection.insertMany(queueItems);
-        logger.info(`[BAReviewQueueService] Added ${insertResult.insertedIds.length} items to review queue`);
+        const insertedCount = Object.keys(insertResult.insertedIds).length;
+        logger.info(`[BAReviewQueueService] Added ${insertedCount} items to review queue`);
       }
 
       return {

@@ -153,7 +153,7 @@ export async function pollApplicationData(
         );
       }
 
-      const alertResult = await alertResponse.json();
+      const alertResult = await alertResponse.json() as any;
       logger.info('Alerts created successfully', {
         pollerId,
         alertsCreated: alertResult.data?.alertsCreated || 0,

@@ -1,7 +1,7 @@
-import { logger } from './src/utils';
-import { config } from './src/config';
-import * as mongodb from './src/mongodb';
-import * as poller from './src/poller';
+import { logger } from './utils';
+import { config } from './config';
+import * as mongodb from './mongodb';
+import * as poller from './poller';
 
 let isShuttingDown = false;
 
@@ -62,7 +62,7 @@ async function startPollingLoop(): Promise<void> {
         try {
           // Get the connection for this mapping
           const connections = await mongodb.getConnections(schemaMapping.applicationId);
-          const connection = connections.find(c => c.connectionId === schemaMapping.connectionId);
+          const connection = connections.find((c: any) => c.connectionId === schemaMapping.connectionId);
 
           if (!connection) {
             logger.warn('Connection not found for schema mapping', {

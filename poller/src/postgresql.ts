@@ -17,7 +17,7 @@ export async function initializePostgresPool(connection: DatabaseConnection): Pr
     connectionTimeoutMillis: 5001,
   });
 
-  pgPool.on('error', (err) => {
+  pgPool.on('error', (err: Error) => {
     logger.error('Unexpected pool error', { error: err, connection: connection.connectionName });
   });
 
