@@ -118,7 +118,7 @@ export function DataSourcesTab() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {apps.map((app) => (
+          {apps.map((app: any) => (
             <button
               key={app.id}
               onClick={() => selectAppForConfiguration(app.id)}

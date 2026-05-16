@@ -113,9 +113,15 @@ export function useEvaluation() {
         if (result.success || result.data) {
           dispatch(
             addAlert({
-              type: 'success',
+              id: `alert_${Date.now()}`,
+              appId: '',
+              metricName: selectedFramework,
               message: `Evaluation completed using ${selectedFramework.toUpperCase()}`,
-              duration: 3000,
+              severity: 'healthy',
+              timestamp: new Date().toISOString(),
+              resolved: false,
+              metricValue: 100,
+              threshold: 80,
             })
           );
           return result.data || result;
@@ -125,9 +131,15 @@ export function useEvaluation() {
         setError(errorMessage);
         dispatch(
           addAlert({
-            type: 'error',
+            id: `alert_${Date.now()}`,
+            appId: '',
+            metricName: selectedFramework,
             message: errorMessage,
-            duration: 5001,
+            severity: 'critical',
+            timestamp: new Date().toISOString(),
+            resolved: false,
+            metricValue: 0,
+            threshold: 80,
           })
         );
       } finally {
@@ -162,9 +174,15 @@ export function useEvaluation() {
         if (result.success || result.data) {
           dispatch(
             addAlert({
-              type: 'success',
+              id: `alert_${Date.now()}`,
+              appId: '',
+              metricName: selectedFramework,
               message: `Batch evaluation completed (${evaluations.length} items) using ${selectedFramework.toUpperCase()}`,
-              duration: 3000,
+              severity: 'healthy',
+              timestamp: new Date().toISOString(),
+              resolved: false,
+              metricValue: 100,
+              threshold: 80,
             })
           );
           return result.data?.results || [result.data];
@@ -174,9 +192,15 @@ export function useEvaluation() {
         setError(errorMessage);
         dispatch(
           addAlert({
-            type: 'error',
+            id: `alert_${Date.now()}`,
+            appId: '',
+            metricName: selectedFramework,
             message: errorMessage,
-            duration: 5001,
+            severity: 'critical',
+            timestamp: new Date().toISOString(),
+            resolved: false,
+            metricValue: 0,
+            threshold: 80,
           })
         );
       } finally {
@@ -200,9 +224,15 @@ export function useEvaluation() {
           setSelectedFramework(framework);
           dispatch(
             addAlert({
-              type: 'success',
+              id: `alert_${Date.now()}`,
+              appId: '',
+              metricName: 'framework_switch',
               message: `Switched to ${framework.toUpperCase()} framework`,
-              duration: 3000,
+              severity: 'healthy',
+              timestamp: new Date().toISOString(),
+              resolved: false,
+              metricValue: 100,
+              threshold: 80,
             })
           );
         }
@@ -210,9 +240,15 @@ export function useEvaluation() {
         const errorMessage = err.response?.data?.error || 'Framework switch failed';
         dispatch(
           addAlert({
-            type: 'error',
+            id: `alert_${Date.now()}`,
+            appId: '',
+            metricName: 'framework_switch',
             message: errorMessage,
-            duration: 5001,
+            severity: 'critical',
+            timestamp: new Date().toISOString(),
+            resolved: false,
+            metricValue: 0,
+            threshold: 80,
           })
         );
       }
