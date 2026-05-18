@@ -1,11 +1,9 @@
 fastapi==0.104.1
 uvicorn==0.24.0
 python-dotenv==1.0.0
-deepeval==0.21.50
-pydantic==2.4.2
-langchain==0.0.350
-langchain-core==0.0.13
-aiohttp==3.9.1
-python-multipart==0.0.6
 requests==2.31.0
-grpcio==1.58.0
+deepeval==0.21.53
+pydantic==2.5.0
+langchain==0.1.0
+langchain-openai==0.0.2
+aiohttp==3.9.1
