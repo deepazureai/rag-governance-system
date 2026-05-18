@@ -1,5 +1,4 @@
 import axios from 'axios';
-import Anthropic from '@anthropic-ai/sdk';
 import { LLMConfig, LLMResponse, LLMProvider, RootCauseAnalysis, DebugRecommendation } from '../types/index.js';
 
 /**
@@ -28,7 +27,7 @@ export class LLMService {
     if (!config.model) throw new Error('LLM model is required');
     if (!config.apiKey?.trim()) throw new Error('LLM API key is required');
 
-    const validProviders: LLMProvider[] = ['claude', 'openai', 'deepseek', 'custom'];
+    const validProviders: LLMProvider[] = ['openai', 'deepseek', 'custom'];
     if (!validProviders.includes(config.provider)) {
       throw new Error(`Invalid provider: ${config.provider}`);
     }
@@ -36,8 +35,6 @@ export class LLMService {
 
   private createClient(config: LLMConfig): ProviderClient {
     switch (config.provider) {
-      case 'claude':
-        return new ClaudeClient(config);
       case 'openai':
         return new OpenAIClient(config);
       case 'deepseek':
@@ -186,42 +183,6 @@ Return JSON array with structure:
         expectedScoreImprovement: obj.expectedScoreImprovement as number,
       };
     });
-  }
-}
-
-/**
- * Claude Provider Implementation
- */
-class ClaudeClient implements ProviderClient {
-  provider: LLMProvider = 'claude';
-  private anthropic: Anthropic;
-  private model: string;
-  private maxTokens: number;
-
-  constructor(config: LLMConfig) {
-    this.anthropic = new Anthropic({ apiKey: config.apiKey });
-    this.model = config.model;
-    this.maxTokens = config.maxTokens || 2048;
-  }
-
-  async call(prompt: string): Promise<LLMResponse> {
-    const response = await this.anthropic.messages.create({
-      model: this.model,
-      max_tokens: this.maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
-
-    return {
-      content: content.text,
-      provider: 'claude',
-      model: this.model,
-      tokensUsed: response.usage?.output_tokens || 0,
-    };
   }
 }
 
