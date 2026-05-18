@@ -121,7 +121,7 @@ export class IndexingService {
     // Re-rank if enabled
     let finalResults = combinedResults;
     if (this.rerankConfig.enabled && this.rerankConfig.topK > 0) {
-      finalResults = await this.rerankResults(combinedResults, request);
+      finalResults = await this.rerankResults(combinedResults);
     }
 
     // Sort by final score and limit results
@@ -231,7 +231,6 @@ export class IndexingService {
    */
   private async rerankResults(
     results: SearchResult[],
-    request: HybridSearchRequest,
   ): Promise<SearchResult[]> {
     if (!this.rerankConfig.enabled || results.length === 0) {
       return results;

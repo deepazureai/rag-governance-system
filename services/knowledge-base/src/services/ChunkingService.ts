@@ -100,7 +100,7 @@ export class ChunkingService {
         },
         tokenCount: this.estimateTokenCount(fullContent),
         startPosition: this.getStartPosition(mergedChunks, i, overlapContent),
-        endPosition: this.getEndPosition(mergedChunks, i, fullContent),
+        endPosition: this.getEndPosition(mergedChunks, i),
       };
 
       chunks.push(chunk);
@@ -291,7 +291,7 @@ export class ChunkingService {
   /**
    * Estimate end position in original document
    */
-  private getEndPosition(chunks: string[], currentIndex: number, fullContent: string): number {
+  private getEndPosition(chunks: string[], currentIndex: number): number {
     let position = 0;
     for (let i = 0; i <= currentIndex; i++) {
       position += chunks[i].length;

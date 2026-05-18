@@ -159,12 +159,12 @@ export class PostgreSQLConnectorService {
               failedRecords++;
               return null;
             }
-          }).filter((r) => r !== null);
+            }).filter((r: any): r is any => r !== null);
 
           // Insert batch to MongoDB
           if (rawDataBatch.length > 0) {
             try {
-              await RawDataCollection.insertMany(rawDataBatch, { ordered: false });
+              await RawDataCollection.insertMany(rawDataBatch as any[], { ordered: false });
               insertedRecords += rawDataBatch.length;
               logger.info(`[PostgreSQLConnectorService] Inserted ${rawDataBatch.length} records to MongoDB`, {
                 total: insertedRecords,
@@ -314,7 +314,7 @@ export class PostgreSQLConnectorService {
       );
       client.release();
 
-      return result.rows.map((row) => ({
+      return result.rows.map((row: any) => ({
         name: row.column_name,
         type: row.data_type,
       }));
@@ -323,7 +323,7 @@ export class PostgreSQLConnectorService {
       throw error;
     } finally {
       if (pool) {
-        await pool.end().catch((e) => logger.error('[PostgreSQLConnectorService] Error closing pool:', e));
+        await pool.end().catch((e: any) => logger.error('[PostgreSQLConnectorService] Error closing pool:', e));
       }
     }
   }
