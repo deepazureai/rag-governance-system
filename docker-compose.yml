@@ -1,125 +1,209 @@
 version: '3.8'
 
 services:
-  # MongoDB for metrics and application data
   mongodb:
     image: mongo:7-alpine
-    container_name: rag-mongodb
+    container_name: v0-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
-      MONGO_INITDB_DATABASE: rag-evaluation
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: v0_db
     volumes:
       - mongo_data:/data/db
-      - mongo_config:/data/configdb
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - rag-network
+      - v0-network
 
-  # DeepEval Evaluation Service
-  deepeval-service:
-    build:
-      context: ./deepeval-service
-      dockerfile: Dockerfile
-    container_name: rag-deepeval
+  postgres:
+    image: postgres:16-alpine
+    container_name: v0-postgres
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "5432:5432"
     environment:
-      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-deepeval-dev-key-12345678901234567890}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: v0_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
-      - rag-network
+      - v0-network
 
-  # Backend API Service
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        NODE_ENV: development
-    container_name: rag-backend
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: v0-backend
     restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: production
       PORT: 5001
-      DATABASE_URL: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/rag-evaluation
-      BACKEND_PORT: 5001
-      CORS_ORIGIN: http://localhost:3000
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      LOCAL_DATA_FOLDER: /app/local-data
-      DEEPEVAL_SERVICE_URL: http://deepeval-service:8000
-      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-deepeval-dev-key-12345678901234567890}
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: v0_db
     depends_on:
       mongodb:
         condition: service_healthy
-      deepeval-service:
+      postgres:
         condition: service_healthy
-    volumes:
-      # Mount local data folder for batch processing
-      - ./local-data:/app/local-data
-      # Development: mount source code for hot reload
-      - ./backend/src:/app/src:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     networks:
-      - rag-network
+      - v0-network
 
-  # Frontend UI Service
+  poller:
+    build:
+      context: .
+      dockerfile: poller/Dockerfile
+    container_name: v0-poller
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      NODE_ENV: production
+      PORT: 5002
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: v0_db
+      BACKEND_URL: http://backend:5001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - v0-network
+
+  prompt-debugger:
+    build:
+      context: .
+      dockerfile: services/prompt-debugger/Dockerfile
+    container_name: v0-prompt-debugger
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      NODE_ENV: production
+      PORT: 8001
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      BACKEND_URL: http://backend:5001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - v0-network
+
+  knowledge-base:
+    build:
+      context: .
+      dockerfile: services/knowledge-base/Dockerfile
+    container_name: v0-knowledge-base
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      NODE_ENV: production
+      PORT: 8002
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      BACKEND_URL: http://backend:5001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - v0-network
+
+  template-creator:
+    build:
+      context: .
+      dockerfile: services/template-creator/Dockerfile
+    container_name: v0-template-creator
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      NODE_ENV: production
+      PORT: 8003
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      BACKEND_URL: http://backend:5001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - v0-network
+
+  deepeval:
+    build:
+      context: .
+      dockerfile: deepeval-service/Dockerfile
+    container_name: v0-deepeval
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-test-key}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - v0-network
+
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NODE_ENV: development
-    container_name: rag-frontend
+    container_name: v0-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: http://backend:5001
-      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:5001
+      NEXT_PUBLIC_DEEPEVAL_URL: http://localhost:8000
     depends_on:
-      - backend
-    volumes:
-      # Development: mount source code for hot reload
-      - ./src:/app/src:ro
-      - ./app:/app/app:ro
-      - ./public:/app/public:ro
+      backend:
+        condition: service_healthy
+      deepeval:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     networks:
-      - rag-network
-
-networks:
-  rag-network:
-    driver: bridge
+      - v0-network
 
 volumes:
   mongo_data:
-  mongo_config:
+  postgres_data:
+
+networks:
+  v0-network:
+    driver: bridge
+
