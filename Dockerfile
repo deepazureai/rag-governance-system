@@ -1,4 +1,3 @@
-# Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -6,9 +5,6 @@ WORKDIR /app
 COPY package*.json ./
 COPY next.config.mjs ./
 COPY tsconfig.json ./
-COPY postcss.config.js ./
-COPY tailwind.config.ts ./
-COPY .eslintrc.json ./
 
 RUN npm ci
 
@@ -27,14 +23,11 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
-# Create app user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy only necessary files from builder
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/.next ./.next
