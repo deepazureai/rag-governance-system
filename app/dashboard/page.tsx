@@ -195,14 +195,16 @@ export default function DashboardPage() {
     }
   };
 
-  const allAlerts = getAggregatedAlerts();
-  const unresolvedAlerts = allAlerts.filter((a: any) => !a.resolved);
-  const criticalAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'critical');
-  const warningAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'warning');
+  const allAlerts: Alert[] = getAggregatedAlerts();
+  const unresolvedAlerts: Alert[] = allAlerts.filter((a) => !a.resolved);
+  const criticalAlerts: Alert[] = unresolvedAlerts.filter((a) => a.severity === 'critical');
+  const warningAlerts: Alert[] = unresolvedAlerts.filter((a) => a.severity === 'warning');
   
   // Calculate healthy apps: apps with no unresolved alerts
-  const appsWithAlerts = new Set(unresolvedAlerts.map((a: any) => a.appId));
-  const healthyCount = selectedAppIds.filter((appId) => !appsWithAlerts.has(appId)).length;
+  const appsWithAlerts = new Set(unresolvedAlerts.map((a) => a.appId));
+  const healthyCount: number = selectedAppIds.filter((appId) => !appsWithAlerts.has(appId)).length;
+
+  if (!mounted) {
     return (
       <DashboardLayout>
         <div className="animate-pulse space-y-4">
