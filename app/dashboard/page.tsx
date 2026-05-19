@@ -45,7 +45,33 @@ export default function DashboardPage() {
   const { metrics, isLoading, error, refreshMetrics } = useMetricsFetch();
   const { alerts, calculateAlertsForApp, getAggregatedAlerts, getAppAlerts, resolveAlert } = useAlerts();
 
-  // Fetch all applications on mount
+  // Fetch alerts summary when selected apps change
+  useEffect(() => {
+    const fetchAlertsSummary = async () => {
+      if (selectedAppIds.length === 0) return;
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        for (const appId of selectedAppIds) {
+          const response = await fetch(`${apiUrl}/api/alerts/summary/${appId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data?.summary) {
+              console.log('[v0] Alert summary for app:', appId, result.data.summary);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Error fetching alert summary:', err);
+      }
+    };
+
+    fetchAlertsSummary();
+  }, [selectedAppIds]);
   useEffect(() => {
     const fetchApplications = async () => {
       try {
@@ -173,8 +199,10 @@ export default function DashboardPage() {
   const unresolvedAlerts = allAlerts.filter((a: any) => !a.resolved);
   const criticalAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'critical');
   const warningAlerts = unresolvedAlerts.filter((a: any) => a.severity === 'warning');
-
-  if (!mounted) {
+  
+  // Calculate healthy apps: apps with no unresolved alerts
+  const appsWithAlerts = new Set(unresolvedAlerts.map((a: any) => a.appId));
+  const healthyCount = selectedAppIds.filter((appId) => !appsWithAlerts.has(appId)).length;
     return (
       <DashboardLayout>
         <div className="animate-pulse space-y-4">
