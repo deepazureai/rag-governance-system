@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:7-alpine
+    image: mongo:latest
     container_name: v0-mongodb
     restart: unless-stopped
     ports:
@@ -20,7 +20,7 @@ services:
       - v0-network
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:latest
     container_name: v0-postgres
     restart: unless-stopped
     ports:
