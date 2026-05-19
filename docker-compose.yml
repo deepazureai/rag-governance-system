@@ -19,26 +19,6 @@ services:
     networks:
       - v0-network
 
-  postgres:
-    image: postgres:latest
-    container_name: v0-postgres
-    restart: unless-stopped
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: v0_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - v0-network
-
   backend:
     build:
       context: .
@@ -51,15 +31,8 @@ services:
       NODE_ENV: production
       PORT: 5001
       MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: v0_db
     depends_on:
       mongodb:
-        condition: service_healthy
-      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api/health"]
@@ -199,7 +172,6 @@ services:
 
 volumes:
   mongo_data:
-  postgres_data:
 
 networks:
   v0-network:
