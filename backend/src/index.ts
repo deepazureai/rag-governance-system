@@ -53,7 +53,7 @@ try {
 }
 
 async function initializeMongoDB(): Promise<void> {
-  const mongoUrl = process.env.DATABASE_URL || 'mongodb://admin:password@localhost:27017/rag-evaluation';
+  const mongoUrl = process.env.DATABASE_URL || 'mongodb://admin:password@mongodb:27017/rag-evaluation';
   const mongoOptions = {
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 5001,
