@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { INDUSTRY_STANDARD_THRESHOLDS, AlertThresholdConfig } from '@/types';
+import { INDUSTRY_STANDARD_THRESHOLDS, AlertThresholdConfig } from '../types/index.js';
 import mongoose from 'mongoose';
 
 export const alertThresholdsRouter = Router();
