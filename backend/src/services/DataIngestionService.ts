@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { logger } from '../utils/logger';
-import { DataSourceConnectorFactory, DataSourceConfig, IDataSourceConnector, RawDataRecord } from '../connectors';
+import { logger } from '../utils/logger.js';
+import { DataSourceConnectorFactory, DataSourceConfig, IDataSourceConnector, RawDataRecord } from '../connectors/index.js';
 
 export class DataIngestionService {
   /**
