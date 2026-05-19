@@ -4,7 +4,7 @@
  * RAGAS = Retrieval Augmented Generation Assessment
  */
 
-import { BaseEvaluationFramework, EvaluationRequest, EvaluationResult, DetailedMetrics, BatchEvaluationRequest, BatchEvaluationProgress } from './types';
+import { BaseEvaluationFramework, EvaluationRequest, EvaluationResult, DetailedMetrics, BatchEvaluationRequest, BatchEvaluationProgress } from './types.js';
 
 export class RagasFramework extends BaseEvaluationFramework {
   private groundednessModel: any;

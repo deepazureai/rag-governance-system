@@ -3,7 +3,7 @@
  * Implements the IEvaluationFramework interface for Microsoft's Evaluation SDK
  */
 
-import { BaseEvaluationFramework, EvaluationRequest, EvaluationResult, DetailedMetrics, BatchEvaluationRequest, BatchEvaluationProgress } from './types';
+import { BaseEvaluationFramework, EvaluationRequest, EvaluationResult, DetailedMetrics, BatchEvaluationRequest, BatchEvaluationProgress } from './types.js';
 
 export class MicrosoftEvaluationFramework extends BaseEvaluationFramework {
   private evaluators: Map<string, any> = new Map();
