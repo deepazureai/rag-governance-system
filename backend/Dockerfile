@@ -6,8 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-RUN npm ci --only=production && \
-    npm ci --only=development
+RUN npm install
 
 COPY src ./src
 

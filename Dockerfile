@@ -6,7 +6,7 @@ COPY package*.json ./
 COPY next.config.mjs ./
 COPY tsconfig.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY src ./src
 COPY app ./app
