@@ -2,14 +2,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY services/template-creator/package*.json ./
+COPY services/template-creator/tsconfig.json ./
 
 RUN npm install
 
-COPY src ./src
+COPY services/template-creator/src ./src
 
-RUN npm run build && npm prune --production
+RUN npm run build
 
 FROM node:20-alpine
 

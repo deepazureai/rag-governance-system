@@ -3,15 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
 
 RUN npm install
 
-COPY src ./src
+COPY backend/src ./src
 
-RUN npm run build && \
-    npm prune --production
+RUN npm run build
 
 # Runtime stage
 FROM node:20-alpine

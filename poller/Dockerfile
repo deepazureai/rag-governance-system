@@ -2,14 +2,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY poller/package*.json ./
+COPY poller/tsconfig.json ./
 
 RUN npm install
 
-COPY src ./src
+COPY poller/src ./src
 
-RUN npm run build && npm prune --production
+RUN npm run build
 
 FROM node:20-alpine
 
