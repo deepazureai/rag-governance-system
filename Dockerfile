@@ -10,6 +10,7 @@ RUN npm install
 
 COPY src ./src
 COPY app ./app
+COPY components ./components
 COPY public ./public
 
 RUN npm run build
