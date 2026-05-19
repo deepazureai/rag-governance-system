@@ -32,8 +32,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Create logs directory
-RUN mkdir -p logs && chown -R nodejs:nodejs logs
+# Create logs and archives directories with proper permissions
+RUN mkdir -p logs archives && chown -R nodejs:nodejs logs archives
 
 USER nodejs
 
