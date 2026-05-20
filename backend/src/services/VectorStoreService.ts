@@ -84,18 +84,18 @@ export class VectorStoreService {
 
     try {
       const langchainDocs = documents.map(
-        (doc) =>
+        (doc): Document =>
           new Document({
             pageContent: doc.content,
             metadata: {
               ...doc.metadata,
-              namespace: namespace || 'default',
+              namespace: namespace ?? 'default',
               addedAt: new Date().toISOString(),
             },
           })
       );
 
-      const ids = await this.vectorStore!.addDocuments(langchainDocs);
+      const ids: string[] = await this.vectorStore!.addDocuments(langchainDocs);
       logger.info(`[VectorStoreService] Added ${ids.length} documents to collection`);
       return ids;
     } catch (error) {
@@ -113,17 +113,19 @@ export class VectorStoreService {
     }
 
     try {
-      const results = await this.vectorStore!.similaritySearchWithScore(query, options.k);
+      const results: Array<[Document, number]> = await this.vectorStore!.similaritySearchWithScore(query, options.k);
 
-      return results
-        .filter(([_, score]) => !options.scoreThreshold || score >= options.scoreThreshold)
-        .map(([doc, score]) => ({
+      const documentChunks: DocumentChunk[] = results
+        .filter(([_, score]: [Document, number]) => !options.scoreThreshold || score >= options.scoreThreshold)
+        .map(([doc, score]: [Document, number]): DocumentChunk => ({
           content: doc.pageContent,
           metadata: {
             ...doc.metadata,
             relevanceScore: score,
           },
         }));
+
+      return documentChunks;
     } catch (error) {
       logger.error('[VectorStoreService] Search failed:', error);
       throw error;
@@ -134,10 +136,10 @@ export class VectorStoreService {
    * Batch search for multiple queries
    */
   async batchSearch(queries: string[], options: SearchOptions = { k: 5 }): Promise<Map<string, DocumentChunk[]>> {
-    const results = new Map<string, DocumentChunk[]>();
+    const results: Map<string, DocumentChunk[]> = new Map<string, DocumentChunk[]>();
 
     for (const query of queries) {
-      const searchResults = await this.search(query, options);
+      const searchResults: DocumentChunk[] = await this.search(query, options);
       results.set(query, searchResults);
     }
 
@@ -157,6 +159,9 @@ export class VectorStoreService {
       logger.info(`[VectorStoreService] Deleted ${ids.length} documents from collection`);
     } catch (error) {
       logger.error('[VectorStoreService] Failed to delete documents:', error);
+      throw error;
+    }
+  }
       throw error;
     }
   }
@@ -213,16 +218,21 @@ export class VectorStoreService {
 
     try {
       // Perform similarity search
-      let results = await this.search(query, options);
+      let results: DocumentChunk[] = await this.search(query, options);
 
       // Apply metadata filters if provided
       if (filters) {
-        results = results.filter((doc) => {
+        results = results.filter((doc: DocumentChunk): boolean => {
           return Object.entries(filters).every(([key, value]) => doc.metadata[key] === value);
         });
       }
 
-      return results.sort((a, b) => (b.metadata.relevanceScore || 0) - (a.metadata.relevanceScore || 0));
+      const sortedResults: DocumentChunk[] = results.sort(
+        (a: DocumentChunk, b: DocumentChunk): number =>
+          (b.metadata.relevanceScore ?? 0) - (a.metadata.relevanceScore ?? 0)
+      );
+
+      return sortedResults;
     } catch (error) {
       logger.error('[VectorStoreService] Hybrid search failed:', error);
       throw error;
@@ -238,7 +248,7 @@ export class VectorStoreService {
     }
 
     try {
-      const embedding = await this.embeddings!.embedQuery(text);
+      const embedding: number[] = await this.embeddings!.embedQuery(text);
       return embedding;
     } catch (error) {
       logger.error('[VectorStoreService] Failed to get embedding:', error);

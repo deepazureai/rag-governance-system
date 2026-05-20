@@ -243,9 +243,6 @@ export class DocumentProcessorService {
     );
   }
 
-  /**
-   * Extract key terms from document (for metadata/tagging)
-   */
   static extractKeyTerms(text: string, count: number = 10): string[] {
     // Simple keyword extraction: split by words, filter stopwords, count frequency
     const stopwords = new Set<string>([
@@ -268,8 +265,8 @@ export class DocumentProcessorService {
       'being',
     ]);
 
-    const matches = text.toLowerCase().match(/\b\w+\b/g);
-    const words: string[] = matches ?? [];
+    const matchResult = text.toLowerCase().match(/\b\w+\b/g);
+    const words: string[] = matchResult ?? [];
     const frequency: Record<string, number> = {};
 
     for (const word of words) {
@@ -278,9 +275,12 @@ export class DocumentProcessorService {
       }
     }
 
-    return Object.entries(frequency)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, count)
-      .map(([word]) => word);
+    const sortedEntries: Array<[string, number]> = Object.entries(frequency).sort(
+      ([, scoreA], [, scoreB]) => scoreB - scoreA
+    );
+
+    const topTerms: string[] = sortedEntries.slice(0, count).map(([term]) => term);
+
+    return topTerms;
   }
 }
