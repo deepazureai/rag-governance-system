@@ -5,6 +5,7 @@ import { createEvaluationService } from './evaluation.js';
 import MultiFrameworkEvaluator, { FrameworkResult, EvaluationMetrics } from './MultiFrameworkEvaluator.js';
 import AIActivityGovernanceService from './AIActivityGovernanceService.js';
 import { AlertIntegrationLayerService } from './AlertIntegrationLayerService.js';
+import { DataSanitizer } from '../utils/dataSanitizer.js';
 import mongoose from 'mongoose';
 
 export class BatchProcessingService {
@@ -78,17 +79,25 @@ export class BatchProcessingService {
           totalTokenCount = (promptTokenCount as number) + (responseTokenCount as number);
         }
 
+        // Sanitize prompt, response, and context to remove special characters while preserving comma delimiters
+        const sanitizedQuery = DataSanitizer.sanitizePrompt(record.data.query || record.data.userPrompt || '');
+        const sanitizedResponse = DataSanitizer.sanitizeResponse(record.data.response || record.data.llmResponse || '');
+        const sanitizedContext = DataSanitizer.sanitizeContext(record.data.context || '');
+
+        // Also sanitize the entire recordData object
+        const sanitizedRecordData = DataSanitizer.sanitizeRecord(record.data);
+
         return {
           applicationId,
           connectionId,
           sourceType,
           batchId,
-          recordData: record.data,
+          recordData: sanitizedRecordData,
           lineNumber: record.lineNumber,
           fileName,
-          query: record.data.query || record.data.userPrompt || '',
-          response: record.data.response || record.data.llmResponse || '',
-          context: record.data.context || '',
+          query: sanitizedQuery,
+          response: sanitizedResponse,
+          context: sanitizedContext,
           promptTimestamp,
           contextRetrievalStartTime,
           contextRetrievalEndTime,

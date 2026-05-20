@@ -119,13 +119,16 @@ export function RawDataDetailModal({
               )}
             </button>
             {expandedSections['userPrompt'] && (
-              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800">
-                <div className="bg-black p-3 rounded font-mono text-sm text-green-400 whitespace-pre-wrap break-words">
+              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
+                <div className="bg-black p-4 rounded font-mono text-sm text-green-400 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
                   {record.userPrompt}
                 </div>
-                <div className="mt-3 text-xs text-gray-500 flex items-center gap-4">
+                <div className="text-xs text-gray-500 flex items-center gap-4">
                   <span>
                     Entered: <span className="text-blue-300">{formatDate(record.userPromptEnteredAt)}</span>
+                  </span>
+                  <span>
+                    Length: <span className="text-blue-300">{record.userPrompt?.length || 0} characters</span>
                   </span>
                   <button className="text-gray-400 hover:text-green-400 flex items-center gap-1">
                     <Copy className="w-3 h-3" /> Copy
@@ -152,27 +155,34 @@ export function RawDataDetailModal({
               </button>
               {expandedSections['context'] && (
                 <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
-                  {record.contextRetrieved.map((ctx, idx) => (
-                    <div key={idx} className="bg-black p-3 rounded border border-gray-800">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-xs text-blue-400">{ctx.source}</span>
-                        <Badge
-                          className={`text-xs ${
-                            ctx.relevanceScore > 0.8
-                              ? 'bg-green-900 text-green-200'
-                              : ctx.relevanceScore > 0.6
-                              ? 'bg-yellow-900 text-yellow-200'
-                              : 'bg-red-900 text-red-200'
-                          }`}
-                        >
-                          {(ctx.relevanceScore * 100).toFixed(0)}% relevance
-                        </Badge>
+                  {record.contextRetrieved && record.contextRetrieved.length > 0 ? (
+                    record.contextRetrieved.map((ctx, idx) => (
+                      <div key={idx} className="bg-black p-4 rounded border border-gray-800">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-mono text-xs text-blue-400">{ctx.source}</span>
+                          <Badge
+                            className={`text-xs ${
+                              ctx.relevanceScore > 0.8
+                                ? 'bg-green-900 text-green-200'
+                                : ctx.relevanceScore > 0.6
+                                  ? 'bg-yellow-900 text-yellow-200'
+                                  : 'bg-red-900 text-red-200'
+                            }`}
+                          >
+                            {(ctx.relevanceScore * 100).toFixed(0)}% relevance
+                          </Badge>
+                        </div>
+                        <p className="font-mono text-xs text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+                          {ctx.content}
+                        </p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          Length: {ctx.content.length} characters
+                        </div>
                       </div>
-                      <p className="font-mono text-xs text-gray-300 line-clamp-3">
-                        {ctx.content.substring(0, 200)}...
-                      </p>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">No context retrieved</p>
+                  )}
                 </div>
               )}
             </div>
@@ -192,13 +202,16 @@ export function RawDataDetailModal({
               )}
             </button>
             {expandedSections['response'] && (
-              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800">
-                <div className="bg-black p-3 rounded font-mono text-sm text-yellow-300 whitespace-pre-wrap break-words">
+              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
+                <div className="bg-black p-4 rounded font-mono text-sm text-yellow-300 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
                   {record.llmResponse}
                 </div>
-                <div className="mt-3 text-xs text-gray-500 flex items-center gap-4">
+                <div className="text-xs text-gray-500 flex items-center gap-4">
                   <span>
                     Generated: <span className="text-blue-300">{formatDate(record.llmResponseGeneratedAt)}</span>
+                  </span>
+                  <span>
+                    Length: <span className="text-blue-300">{record.llmResponse?.length || 0} characters</span>
                   </span>
                   <button className="text-gray-400 hover:text-yellow-400 flex items-center gap-1">
                     <Copy className="w-3 h-3" /> Copy
