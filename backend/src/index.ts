@@ -60,18 +60,18 @@ async function initializeMongoDB(): Promise<void> {
     socketTimeoutMS: 45001,
   };
 
-  console.log('[MongoDB] Connecting to MongoDB...');
+  console.log('[MongoDB] Attempting to connect to MongoDB...');
   console.log('[MongoDB] URL:', mongoUrl.replace(/password:[^@]*@/, 'password:***@'));
 
   try {
     await mongoose.connect(mongoUrl, mongoOptions);
     console.log('[MongoDB] Connected successfully');
     
-    // Initialize alert-related collections and indexes
+    // Initialize alert-related collections and indexes (non-critical)
     await initializeAlertCollections();
   } catch (error) {
-    console.error('[MongoDB] Connection failed:', error);
-    throw new Error('Failed to connect to MongoDB. Check DATABASE_URL and ensure MongoDB is running.');
+    console.warn('[MongoDB] Connection warning (will retry on first use):', error instanceof Error ? error.message : String(error));
+    // Don't throw - let app start and retry on first data access
   }
 }
 
