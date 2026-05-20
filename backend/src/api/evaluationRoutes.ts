@@ -6,8 +6,11 @@ import { BAReviewQueue } from '../models/BAReviewQueue.js';
 const router = Router();
 
 // Initialize DeepEval client
-const deepEvalServiceUrl = process.env.DEEPEVAL_SERVICE_URL || 'http://localhost:8000';
-const deepEvalApiKey = process.env.DEEPEVAL_API_KEY || 'deepeval-dev-key-12345678901234567890';
+const deepEvalServiceUrl = process.env.DEEPEVAL_SERVICE_URL || 'http://deepeval:8000';
+const deepEvalApiKey = process.env.DEEPEVAL_API_KEY;
+if (!deepEvalApiKey) {
+  throw new Error('DEEPEVAL_API_KEY environment variable is required');
+}
 const deepEvalClient = new DeepEvalClient(deepEvalServiceUrl, deepEvalApiKey);
 
 // POST /evaluate/:applicationId/:recordId - Evaluate a single record

@@ -4,12 +4,12 @@ import { PollingConfig } from './types';
 dotenv.config();
 
 export const config: PollingConfig = {
-  mongoDbUrl: process.env.MONGODB_URL || 'mongodb://localhost:27017/eval_platform',
+  mongoDbUrl: process.env.MONGODB_URI || process.env.MONGODB_URL || 'mongodb://admin:password@mongodb:27017/v0_db?authSource=admin',
   postgresHost: process.env.POSTGRES_HOST || 'localhost',
   postgresPort: parseInt(process.env.POSTGRES_PORT || '5432', 10),
   postgresUser: process.env.POSTGRES_USER || 'postgres',
   postgresPassword: process.env.POSTGRES_PASSWORD || '',
-  postgresDatabase: process.env.POSTGRES_DATABASE || 'postgres',
+  postgresDatabase: process.env.POSTGRES_DB || process.env.POSTGRES_DATABASE || 'postgres',
   pollIntervalMinutes: parseInt(process.env.POLL_INTERVAL_MINUTES || '5', 10),
   batchSize: parseInt(process.env.BATCH_SIZE || '1000', 10),
   maxRetries: parseInt(process.env.MAX_RETRIES || '3', 10),
