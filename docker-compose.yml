@@ -6,9 +6,9 @@ services:
     ports:
       - "27018:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: v0_db
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ADMIN_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ADMIN_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-v0_db}
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -60,12 +60,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5002
-      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: v0_db
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGODB_ADMIN_USER:-admin}:${MONGODB_ADMIN_PASSWORD:-password}@mongodb:27017/v0_db?authSource=admin}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       BACKEND_URL: http://backend:5001
     depends_on:
       backend:
@@ -84,7 +84,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8001
-      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGODB_ADMIN_USER:-admin}:${MONGODB_ADMIN_PASSWORD:-password}@mongodb:27017/v0_db?authSource=admin}
       BACKEND_URL: http://backend:5001
     depends_on:
       backend:
@@ -103,7 +103,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8002
-      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGODB_ADMIN_USER:-admin}:${MONGODB_ADMIN_PASSWORD:-password}@mongodb:27017/v0_db?authSource=admin}
       BACKEND_URL: http://backend:5001
     depends_on:
       backend:
@@ -122,7 +122,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8003
-      MONGODB_URI: mongodb://admin:password@mongodb:27017/v0_db?authSource=admin
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGODB_ADMIN_USER:-admin}:${MONGODB_ADMIN_PASSWORD:-password}@mongodb:27017/v0_db?authSource=admin}
       BACKEND_URL: http://backend:5001
     depends_on:
       backend:
@@ -139,7 +139,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-test-key}
+      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 30s
