@@ -29,6 +29,7 @@ import baReviewRouter from './api/baReviewRoutes.js';
 import promptTemplateRouter from './api/promptTemplateRoutes.js';
 import evaluationRouter from './api/evaluationRoutes.js';
 import { hallucinationDetectionRouter } from './api/hallucinationDetectionRoutes.js';
+import { knowledgeBaseRouter } from './api/knowledgeBaseRoutes.js';
 import { getFrameworkRegistry } from './frameworks/registry.js';
 import { createDatabase } from './services/database.js';
 import { createEvaluationService } from './services/evaluation.js';
@@ -181,8 +182,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/prompt-templates', promptTemplateRouter);
   app.use('/api/evaluation/deepeval', evaluationRouter);
   app.use('/api/evaluation', hallucinationDetectionRouter);
-  app.use('/api/prompt-templates', promptTemplateRouter);
-  app.use('/api/evaluations', evaluationRouter);
+  app.use('/api/knowledge-base', knowledgeBaseRouter);
 
   // 404 handler
   app.use((req: Request, res: Response) => {
