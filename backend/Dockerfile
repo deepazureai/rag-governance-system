@@ -6,7 +6,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 COPY backend/src ./src
 
