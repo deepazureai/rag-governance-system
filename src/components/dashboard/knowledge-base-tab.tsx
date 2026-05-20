@@ -27,15 +27,38 @@ interface SearchResult {
   tableName?: string;
 }
 
-interface ValidationResult {
-  groundednessScore: number;
-  interpretation: string;
-  matchedTerms: string[];
-  supportingDocuments: Array<{
-    preview: string;
-    relevance: number;
+interface ApiSearchResponse {
+  query: string;
+  applicationId: string;
+  namespace: string;
+  timestamp: string;
+  resultsCount: number;
+  results: Array<{
+    id: number;
+    content: string;
+    relevanceScore: number;
     source: string;
+    keyTerms?: string[];
+    chunkIndex?: number;
   }>;
+}
+
+interface ApiValidationResponse {
+  applicationId: string;
+  userPrompt: string;
+  validationResults: {
+    timestamp: string;
+    llmTerms: string[];
+    matchedTerms: string[];
+    groundednessScore: number;
+    supportingDocuments: Array<{
+      id: number;
+      preview: string;
+      relevance: number;
+      source: string;
+    }>;
+    interpretation: string;
+  };
 }
 
 export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
@@ -63,7 +86,7 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
 
-  const handleSearch = async () => {
+  const handleSearch = async (): Promise<void> => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
 
@@ -79,14 +102,14 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
       });
 
       if (!response.ok) throw new Error('Search failed');
-      const data = await response.json();
+      const data: ApiSearchResponse = await response.json();
 
       setSearchResults(
-        data.results.map((r: any) => ({
+        data.results.map((r) => ({
           id: r.id,
-          title: `${r.source} - Chunk ${r.chunkIndex}`,
+          title: `${r.source} - Chunk ${r.chunkIndex ?? 'unknown'}`,
           content: r.content,
-          source: 'document',
+          source: 'document' as const,
           relevanceScore: r.relevanceScore,
           fileName: r.source,
         }))
@@ -99,7 +122,7 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
     }
   };
 
-  const handleValidateResponse = async () => {
+  const handleValidateResponse = async (): Promise<void> => {
     if (!validationPrompt.trim() || !validationResponse.trim()) {
       alert('Please enter both prompt and response');
       return;
@@ -120,7 +143,7 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
       });
 
       if (!response.ok) throw new Error('Validation failed');
-      const data = await response.json();
+      const data: ApiValidationResponse = await response.json();
 
       setValidationResult(data.validationResults);
     } catch (error) {
@@ -131,16 +154,19 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const files = e.currentTarget.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
+      const file = files[i];
+      if (file) {
+        formData.append('files', file);
+      }
     }
     formData.append('applicationId', applicationId);
     formData.append('namespace', 'default');
@@ -162,9 +188,9 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
             {
               id: `${Date.now()}-${Math.random()}`,
               name: result.filename,
-              type: 'document',
-              status: 'active',
-              itemCount: result.chunksCreated || 0,
+              type: 'document' as const,
+              status: 'active' as const,
+              itemCount: result.chunksCreated ?? 0,
               lastSync: 'just now',
             },
           ]);
@@ -185,7 +211,7 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'search' | 'validate')}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />

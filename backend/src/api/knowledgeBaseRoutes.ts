@@ -14,6 +14,48 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+interface UploadRequest extends Request {
+  files?: Express.Multer.File[];
+  file?: Express.Multer.File;
+}
+
+interface UploadBody {
+  applicationId: string;
+  namespace?: string;
+}
+
+interface SearchBody {
+  applicationId: string;
+  query: string;
+  k?: number;
+  namespace?: string;
+  filters?: Record<string, string | number | boolean>;
+}
+
+interface ValidateResponseBody {
+  applicationId: string;
+  userPrompt: string;
+  llmResponse: string;
+  topK?: number;
+}
+
+interface SearchResult {
+  id: number;
+  content: string;
+  relevanceScore: number;
+  source: string;
+  keyTerms?: string[];
+  chunkIndex?: number;
+}
+
+interface UploadResult {
+  filename: string;
+  chunksCreated?: number;
+  keyTerms?: string[];
+  status: 'success' | 'error';
+  error?: string;
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
@@ -36,26 +78,23 @@ const upload = multer({
   },
 });
 
-interface UploadRequest extends Request {
-  files?: Express.Multer.File[];
-  file?: Express.Multer.File;
-}
-
 /**
  * Upload and vectorize documents
  * POST /api/knowledge-base/upload
  */
-router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res: Response) => {
+router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res: Response): Promise<void> => {
   try {
-    const files = req.files || [];
-    const { applicationId, namespace } = req.body;
+    const files = req.files ?? [];
+    const body = req.body as UploadBody;
+    const { applicationId, namespace } = body;
 
     if (files.length === 0) {
-      return res.status(400).json({ error: 'No files provided' });
+      res.status(400).json({ error: 'No files provided' });
+      return;
     }
 
     const vectorStore = await getVectorStore(`app-${applicationId}`);
-    const results = [];
+    const results: UploadResult[] = [];
 
     for (const file of files) {
       try {
@@ -86,7 +125,7 @@ router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res
           metadata: {
             ...chunk.metadata,
             applicationId,
-            namespace: namespace || 'default',
+            namespace: namespace ?? 'default',
             keyTerms: keyTerms.slice(0, 5),
             originalFilename: parsedDoc.filename,
             uploadedAt: parsedDoc.metadata.uploadedAt,
@@ -120,9 +159,9 @@ router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res
     res.json({
       uploadedAt: new Date().toISOString(),
       applicationId,
-      namespace: namespace || 'default',
+      namespace: namespace ?? 'default',
       results,
-      totalChunksCreated: results.reduce((sum, r) => sum + (r.chunksCreated || 0), 0),
+      totalChunksCreated: results.reduce((sum, r) => sum + (r.chunksCreated ?? 0), 0),
     });
   } catch (error) {
     logger.error('[KnowledgeBase] Upload failed:', error);
@@ -134,12 +173,16 @@ router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res
  * Search knowledge base
  * POST /api/knowledge-base/search
  */
-router.post('/search', async (req: Request, res: Response) => {
+router.post('/search', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId, query, k = 5, namespace, filters } = req.body;
+    const body = req.body as SearchBody;
+    const { applicationId, query, namespace } = body;
+    const k = body.k ?? 5;
+    const filters = body.filters;
 
     if (!query || !applicationId) {
-      return res.status(400).json({ error: 'Missing query or applicationId' });
+      res.status(400).json({ error: 'Missing query or applicationId' });
+      return;
     }
 
     const vectorStore = await getVectorStore(`app-${applicationId}`);
@@ -148,20 +191,22 @@ router.post('/search', async (req: Request, res: Response) => {
 
     logger.info(`[KnowledgeBase] Search completed: "${query}" (${results.length} results)`);
 
+    const searchResults: SearchResult[] = results.map((result, idx) => ({
+      id: idx,
+      content: result.content.substring(0, 500), // Limit preview length
+      relevanceScore: result.metadata.relevanceScore ?? 0,
+      source: result.metadata.source ?? 'unknown',
+      keyTerms: (result.metadata.keyTerms as string[] | undefined) ?? [],
+      chunkIndex: (result.metadata.chunkIndex as number | undefined),
+    }));
+
     res.json({
       query,
       applicationId,
-      namespace: namespace || 'default',
+      namespace: namespace ?? 'default',
       timestamp: new Date().toISOString(),
-      resultsCount: results.length,
-      results: results.map((result, idx) => ({
-        id: idx,
-        content: result.content.substring(0, 500), // Limit preview length
-        relevanceScore: result.metadata.relevanceScore || 0,
-        source: result.metadata.source,
-        keyTerms: result.metadata.keyTerms || [],
-        chunkIndex: result.metadata.chunkIndex,
-      })),
+      resultsCount: searchResults.length,
+      results: searchResults,
     });
   } catch (error) {
     logger.error('[KnowledgeBase] Search failed:', error);
@@ -173,12 +218,15 @@ router.post('/search', async (req: Request, res: Response) => {
  * Validate LLM response against knowledge base
  * POST /api/knowledge-base/validate-response
  */
-router.post('/validate-response', async (req: Request, res: Response) => {
+router.post('/validate-response', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId, userPrompt, llmResponse, topK = 3 } = req.body;
+    const body = req.body as ValidateResponseBody;
+    const { applicationId, userPrompt, llmResponse } = body;
+    const topK = body.topK ?? 3;
 
     if (!applicationId || !userPrompt || !llmResponse) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
     }
 
     const vectorStore = await getVectorStore(`app-${applicationId}`);
@@ -192,7 +240,7 @@ router.post('/validate-response', async (req: Request, res: Response) => {
     const kbTerms = DocumentProcessorService.extractKeyTerms(knowledgeBaseCombined, 10);
 
     const matchedTerms = llmTerms.filter((term) => kbTerms.includes(term));
-    const groundednessScore = (matchedTerms.length / llmTerms.length) * 100;
+    const groundednessScore = llmTerms.length > 0 ? (matchedTerms.length / llmTerms.length) * 100 : 0;
 
     res.json({
       applicationId,
@@ -205,8 +253,8 @@ router.post('/validate-response', async (req: Request, res: Response) => {
         supportingDocuments: relevantDocs.slice(0, 3).map((doc, idx) => ({
           id: idx,
           preview: doc.content.substring(0, 300),
-          relevance: Math.round((doc.metadata.relevanceScore || 0) * 100),
-          source: doc.metadata.source,
+          relevance: Math.round((doc.metadata.relevanceScore ?? 0) * 100),
+          source: doc.metadata.source ?? 'unknown',
         })),
         interpretation:
           groundednessScore >= 80
@@ -226,9 +274,14 @@ router.post('/validate-response', async (req: Request, res: Response) => {
  * Get knowledge base stats
  * GET /api/knowledge-base/stats/:applicationId
  */
-router.get('/stats/:applicationId', async (req: Request, res: Response) => {
+router.get('/stats/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
+    
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId' });
+      return;
+    }
 
     const vectorStore = await getVectorStore(`app-${applicationId}`);
     const stats = await vectorStore.getStats();

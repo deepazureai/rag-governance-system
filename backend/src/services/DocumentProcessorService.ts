@@ -248,7 +248,7 @@ export class DocumentProcessorService {
    */
   static extractKeyTerms(text: string, count: number = 10): string[] {
     // Simple keyword extraction: split by words, filter stopwords, count frequency
-    const stopwords = new Set([
+    const stopwords = new Set<string>([
       'the',
       'a',
       'an',
@@ -268,14 +268,13 @@ export class DocumentProcessorService {
       'being',
     ]);
 
-    const words = text
-      .toLowerCase()
-      .match(/\b\w+\b/g) || [];
+    const matches = text.toLowerCase().match(/\b\w+\b/g);
+    const words: string[] = matches ?? [];
     const frequency: Record<string, number> = {};
 
     for (const word of words) {
       if (word.length > 3 && !stopwords.has(word)) {
-        frequency[word] = (frequency[word] || 0) + 1;
+        frequency[word] = (frequency[word] ?? 0) + 1;
       }
     }
 

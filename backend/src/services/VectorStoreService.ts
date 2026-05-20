@@ -17,7 +17,7 @@ interface SearchOptions {
 
 interface DocumentChunk {
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, string | number | boolean | string[]>;
   embedding?: number[];
 }
 
@@ -204,7 +204,7 @@ export class VectorStoreService {
    */
   async hybridSearch(
     query: string,
-    filters?: Record<string, any>,
+    filters?: Record<string, string | number | boolean>,
     options: SearchOptions = { k: 5 }
   ): Promise<DocumentChunk[]> {
     if (!this.vectorStore) {
