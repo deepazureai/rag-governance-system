@@ -1,5 +1,5 @@
-import { Router, Request, Response } from 'express';
-import * as multer from 'multer';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer, { Multer, StorageEngine } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 import { VectorStoreService, getVectorStore } from '../services/VectorStoreService.js';
@@ -58,16 +58,28 @@ interface UploadResult {
 
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
+    destination: (
+      _req: Express.Request,
+      _file: Express.Multer.File,
+      cb: (error: Error | null, destination?: string) => void
+    ): void => {
       cb(null, uploadDir);
     },
-    filename: (_req, file, cb) => {
+    filename: (
+      _req: Express.Request,
+      file: Express.Multer.File,
+      cb: (error: Error | null, filename?: string) => void
+    ): void => {
       const uniqueName = `${Date.now()}-${file.originalname}`;
       cb(null, uniqueName);
     },
   }),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (
+    _req: Express.Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, acceptFile?: boolean) => void
+  ): void => {
     const allowedTypes = ['.pdf', '.txt', '.json', '.csv'];
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(fileExt)) {
@@ -194,10 +206,10 @@ router.post('/search', async (req: Request, res: Response): Promise<void> => {
     const searchResults: SearchResult[] = results.map((result, idx) => ({
       id: idx,
       content: result.content.substring(0, 500), // Limit preview length
-      relevanceScore: result.metadata.relevanceScore ?? 0,
-      source: result.metadata.source ?? 'unknown',
-      keyTerms: (result.metadata.keyTerms as string[] | undefined) ?? [],
-      chunkIndex: (result.metadata.chunkIndex as number | undefined),
+      relevanceScore: typeof result.metadata.relevanceScore === 'number' ? result.metadata.relevanceScore : 0,
+      source: String(result.metadata.source ?? 'unknown'),
+      keyTerms: Array.isArray(result.metadata.keyTerms) ? (result.metadata.keyTerms as string[]) : [],
+      chunkIndex: typeof result.metadata.chunkIndex === 'number' ? result.metadata.chunkIndex : undefined,
     }));
 
     res.json({
@@ -253,8 +265,8 @@ router.post('/validate-response', async (req: Request, res: Response): Promise<v
         supportingDocuments: relevantDocs.slice(0, 3).map((doc, idx) => ({
           id: idx,
           preview: doc.content.substring(0, 300),
-          relevance: Math.round((doc.metadata.relevanceScore ?? 0) * 100),
-          source: doc.metadata.source ?? 'unknown',
+          relevance: Math.round(((typeof doc.metadata.relevanceScore === 'number' ? doc.metadata.relevanceScore : 0) * 100)),
+          source: String(doc.metadata.source ?? 'unknown'),
         })),
         interpretation:
           groundednessScore >= 80

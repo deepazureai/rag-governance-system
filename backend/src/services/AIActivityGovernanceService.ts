@@ -360,12 +360,12 @@ export class AIActivityGovernanceService {
     const p99Index = Math.floor(sorted.length * 0.99);
 
     return {
-      min: sorted[0],
-      max: sorted[sorted.length - 1],
+      min: sorted[0] ?? 0,
+      max: sorted[sorted.length - 1] ?? 0,
       avg,
-      p50: sorted[p50Index],
-      p95: sorted[Math.min(p95Index, sorted.length - 1)],
-      p99: sorted[Math.min(p99Index, sorted.length - 1)],
+      p50: sorted[p50Index] ?? 0,
+      p95: sorted[Math.min(p95Index, sorted.length - 1)] ?? 0,
+      p99: sorted[Math.min(p99Index, sorted.length - 1)] ?? 0,
     };
   }
 

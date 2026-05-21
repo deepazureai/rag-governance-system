@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import pdf from 'pdf-parse';
 import { logger } from '../utils/logger.js';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 
 interface ParsedDocument {
   filename: string;
@@ -87,7 +89,7 @@ export class DocumentProcessorService {
    */
   private static async parsePDF(filePath: string): Promise<{ text: string; pageCount: number }> {
     const fileBuffer = fs.readFileSync(filePath);
-    const data = await pdf(fileBuffer);
+    const data = await pdfParse(fileBuffer);
     return {
       text: data.text,
       pageCount: data.numpages,
@@ -116,15 +118,18 @@ export class DocumentProcessorService {
     const csvContent = fs.readFileSync(filePath, 'utf-8');
     // Convert CSV to readable text format
     const lines = csvContent.split('\n');
-    const headers = lines[0].split(',');
+    const headers = lines[0]?.split(',') ?? [];
     let text = `CSV Document: ${path.basename(filePath)}\n\n`;
 
     for (let i = 1; i < Math.min(lines.length, 1000); i++) {
       // Limit to first 1000 rows for performance
-      const values = lines[i].split(',');
+      const lineData = lines[i];
+      if (!lineData) continue;
+      
+      const values = lineData.split(',');
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
-        row[header.trim()] = values[idx]?.trim() || '';
+        row[header.trim()] = values[idx]?.trim() ?? '';
       });
       text += `\nRow ${i}:\n${JSON.stringify(row, null, 2)}\n`;
     }

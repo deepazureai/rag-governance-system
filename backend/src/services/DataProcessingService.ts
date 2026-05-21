@@ -25,8 +25,15 @@ export class DataProcessingService {
       for (let i = 0; i < records.length; i++) {
         const record = records[i];
         
+        if (!record || typeof record !== 'object') {
+          logger.warn(`[v0] Skipping invalid record at index ${i}`);
+          continue;
+        }
+
+        const recordData = record as Record<string, unknown>;
+        
         // Create checksum for duplicate detection
-        const checksum = this.createChecksum(JSON.stringify(record));
+        const checksum = this.createChecksum(JSON.stringify(recordData));
         if (duplicateSet.has(checksum)) {
           logger.info(`[v0] Duplicate record detected at index ${i}`);
           continue;
@@ -34,18 +41,18 @@ export class DataProcessingService {
         duplicateSet.add(checksum);
 
         // Extract raw input data
-        const userPrompt = extractString(record, 'userPrompt', 'user_prompt') || extractString(record, 'query', 'query', '');
-        const context = extractString(record, 'context', 'context', '');
-        const llmResponse = extractString(record, 'llmResponse', 'llm_response') || extractString(record, 'response', 'response', '');
-        const userId = extractString(record, 'userId', 'user_id', 'unknown');
-        const sessionId = extractString(record, 'sessionId', 'session_id');
+        const userPrompt = extractString(recordData, 'userPrompt', 'user_prompt') || extractString(recordData, 'query', 'query', '');
+        const context = extractString(recordData, 'context', 'context', '');
+        const llmResponse = extractString(recordData, 'llmResponse', 'llm_response') || extractString(recordData, 'response', 'response', '');
+        const userId = extractString(recordData, 'userId', 'user_id', 'unknown');
+        const sessionId = extractString(recordData, 'sessionId', 'session_id');
 
         // Extract timestamps using safe helper
-        const promptTimestamp = extractDate(record, 'promptTimestamp', 'prompt_timestamp');
-        const contextRetrievalStartTime = extractDate(record, 'contextRetrievalStartTime', 'context_retrieval_start_time');
-        const contextRetrievalEndTime = extractDate(record, 'contextRetrievalEndTime', 'context_retrieval_end_time');
-        const llmRequestStartTime = extractDate(record, 'llmRequestStartTime', 'llm_request_start_time');
-        const llmResponseEndTime = extractDate(record, 'llmResponseEndTime', 'llm_response_end_time');
+        const promptTimestamp = extractDate(recordData, 'promptTimestamp', 'prompt_timestamp');
+        const contextRetrievalStartTime = extractDate(recordData, 'contextRetrievalStartTime', 'context_retrieval_start_time');
+        const contextRetrievalEndTime = extractDate(recordData, 'contextRetrievalEndTime', 'context_retrieval_end_time');
+        const llmRequestStartTime = extractDate(recordData, 'llmRequestStartTime', 'llm_request_start_time');
+        const llmResponseEndTime = extractDate(recordData, 'llmResponseEndTime', 'llm_response_end_time');
 
         // Calculate latency metrics - use safe helper for optional timestamps
         const latencyMetrics = this.calculateLatencyMetrics(

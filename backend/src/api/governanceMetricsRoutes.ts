@@ -611,7 +611,7 @@ function calculatePercentile(values: number[], percentile: number): number {
 
   const sorted = [...values].sort((a, b) => a - b);
   const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-  return sorted[Math.max(0, index)];
+  return sorted[Math.max(0, index)] ?? 0;
 }
 
 /**

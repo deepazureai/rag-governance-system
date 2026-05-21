@@ -78,11 +78,18 @@ export function createEvaluationRouter(evaluationService: EvaluationService): Ro
 
       const { appId, query, response, retrievedDocuments, framework } = validation.data;
 
+      // Normalize retrievedDocuments to ensure required fields
+      const normalizedDocs = (retrievedDocuments ?? []).map(doc => ({
+        content: doc.content ?? '',
+        source: doc.source ?? 'unknown',
+        relevance: doc.relevance,
+      }));
+
       const result = await evaluationService.evaluateQuery(
         appId,
         query,
         response,
-        retrievedDocuments,
+        normalizedDocs,
         framework as FrameworkType | undefined
       );
 
@@ -117,9 +124,20 @@ export function createEvaluationRouter(evaluationService: EvaluationService): Ro
 
       const { appId, evaluations, framework } = validation.data;
 
+      // Normalize evaluations to ensure required fields
+      const normalizedEvals = (evaluations ?? []).map(eval_obj => ({
+        query: eval_obj.query ?? '',
+        response: eval_obj.response ?? '',
+        retrievedDocuments: (eval_obj.retrievedDocuments ?? []).map(doc => ({
+          content: doc.content ?? '',
+          source: doc.source ?? 'unknown',
+          relevance: doc.relevance,
+        })),
+      }));
+
       const results = await evaluationService.evaluateBatch(
         appId,
-        evaluations,
+        normalizedEvals,
         framework as FrameworkType | undefined,
         (progress) => {
           // Progress tracking would be sent via WebSocket in real implementation

@@ -288,16 +288,21 @@ export class BAReviewQueueService {
 
       await RawDataCollection.updateOne(
         { _id: new mongoose.Types.ObjectId(rawDataRecordId) },
-        {
-          $push: {
-            'baReview.promptImprovements': improvement,
+        [
+          {
+            $set: {
+              'baReview.promptImprovements': {
+                $concatArrays: [
+                  { $ifNull: ['$baReview.promptImprovements', []] },
+                  [improvement],
+                ],
+              },
+              'baReview.reviewStatus': 'improved',
+              'baReview.reviewedAt': new Date(),
+              updatedAt: new Date(),
+            },
           },
-          $set: {
-            'baReview.reviewStatus': 'improved',
-            'baReview.reviewedAt': new Date(),
-            updatedAt: new Date(),
-          },
-        }
+        ]
       );
 
       // Update queue item status

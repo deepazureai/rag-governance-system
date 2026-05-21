@@ -1,13 +1,13 @@
-import { AzureOpenAI } from '@azure/openai';
+import { OpenAI } from 'openai';
 
 /**
  * Azure OpenAI Configuration Service
  * Initializes and manages Azure OpenAI client for LLM-as-Judge evaluations
  */
 
-let azureOpenAIClient: AzureOpenAI | null = null;
+let azureOpenAIClient: OpenAI | null = null;
 
-export function initializeAzureOpenAI(): AzureOpenAI {
+export function initializeAzureOpenAI(): OpenAI {
   if (azureOpenAIClient) {
     return azureOpenAIClient;
   }
@@ -15,7 +15,6 @@ export function initializeAzureOpenAI(): AzureOpenAI {
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
-  const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID || 'gpt-4';
 
   if (!apiKey || !endpoint) {
     throw new Error(
@@ -23,10 +22,12 @@ export function initializeAzureOpenAI(): AzureOpenAI {
     );
   }
 
-  azureOpenAIClient = new AzureOpenAI({
+  azureOpenAIClient = new OpenAI({
     apiKey,
-    endpoint,
-    apiVersion,
+    baseURL: `${endpoint}/openai/deployments`,
+    defaultHeaders: {
+      'api-key': apiKey,
+    },
     defaultQuery: { 'api-version': apiVersion },
   });
 
@@ -34,7 +35,7 @@ export function initializeAzureOpenAI(): AzureOpenAI {
   return azureOpenAIClient;
 }
 
-export function getAzureOpenAIClient(): AzureOpenAI {
+export function getAzureOpenAIClient(): OpenAI {
   if (!azureOpenAIClient) {
     throw new Error('Azure OpenAI client not initialized. Call initializeAzureOpenAI() first.');
   }

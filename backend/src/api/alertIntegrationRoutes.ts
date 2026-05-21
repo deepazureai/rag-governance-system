@@ -8,9 +8,15 @@ export const alertIntegrationRouter = Router();
  * GET /api/alert-integration/app/:appId/thresholds
  * Fetch thresholds for application (custom or defaults)
  */
-alertIntegrationRouter.get('/app/:appId/thresholds', async (req: Request, res: Response) => {
+alertIntegrationRouter.get('/app/:appId/thresholds', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
+    
+    if (!appId) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
     logger.info(`[API] GET alert-integration thresholds for app: ${appId}`);
 
     const thresholds = await AlertIntegrationLayerService.getApplicationThresholds(appId);
@@ -38,18 +44,24 @@ alertIntegrationRouter.get('/app/:appId/thresholds', async (req: Request, res: R
  * POST /api/alert-integration/app/:appId/thresholds
  * Save custom thresholds for application
  */
-alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: Response) => {
+alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     const { thresholds } = req.body;
 
+    if (!appId) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
     logger.info(`[API] POST alert-integration thresholds for app: ${appId}`);
 
     if (!thresholds || typeof thresholds !== 'object') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Invalid thresholds configuration',
       });
+      return;
     }
 
     await AlertIntegrationLayerService.saveApplicationThresholds(appId, thresholds);
@@ -59,6 +71,7 @@ alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: 
       message: 'Thresholds saved successfully',
       data: { applicationId: appId, thresholds },
     });
+    return;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(`[API] Save thresholds error: ${errorMessage}`);
@@ -74,9 +87,14 @@ alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: 
  * GET /api/alert-integration/app/:appId/sla-compliance
  * Get SLA compliance score for application
  */
-alertIntegrationRouter.get('/app/:appId/sla-compliance', async (req: Request, res: Response) => {
+alertIntegrationRouter.get('/app/:appId/sla-compliance', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
+
+    if (!appId) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
     logger.info(`[API] GET SLA compliance for app: ${appId}`);
 
     const compliance = await AlertIntegrationLayerService.getApplicationSLACompliance(appId);
