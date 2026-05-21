@@ -598,15 +598,23 @@ export class MultiFrameworkEvaluator {
     
     for (let i = 1; i <= m; i++) {
       for (let j = 1; j <= n; j++) {
-        if (arr1[i - 1] === arr2[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1] + 1;
+        const val1 = arr1[i - 1];
+        const val2 = arr2[j - 1];
+        
+        if (val1 === val2) {
+          const dpVal = dp[i - 1]?.[j - 1];
+          dp[i][j] = (typeof dpVal === 'number' ? dpVal : 0) + 1;
         } else {
-          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+          const dpLeft = dp[i - 1]?.[j];
+          const dpUp = dp[i]?.[j - 1];
+          const left = typeof dpLeft === 'number' ? dpLeft : 0;
+          const up = typeof dpUp === 'number' ? dpUp : 0;
+          dp[i][j] = Math.max(left, up);
         }
       }
     }
     
-    return dp[m][n];
+    return dp[m]?.[n] ?? 0;
   }
   
   private static calculateLlamaCorrectness(

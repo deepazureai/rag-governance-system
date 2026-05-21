@@ -33,30 +33,27 @@ export class VectorStoreService {
     this.persistDir = config.persistDir;
   }
 
-  /**
-   * Initialize embeddings and vector store
-   */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      // Initialize Azure OpenAI embeddings
       const apiKey = process.env.AZURE_OPENAI_API_KEY;
       const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-      const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID || 'text-embedding-ada-002';
+      const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID ?? 'text-embedding-ada-002';
 
       if (!apiKey || !endpoint) {
         throw new Error('Azure OpenAI credentials not configured for embeddings');
       }
 
+      const instanceName: string = new URL(endpoint).hostname.split('.')[0];
+
       this.embeddings = new OpenAIEmbeddings({
         azureOpenAIApiKey: apiKey,
-        azureOpenAIApiInstanceName: new URL(endpoint).hostname.split('.')[0],
+        azureOpenAIApiInstanceName: instanceName,
         azureOpenAIApiDeploymentName: deploymentId,
         azureOpenAIApiVersion: '2024-02-15-preview',
       });
 
-      // Initialize Chromadb vector store with persistent storage
       if (!fs.existsSync(this.persistDir)) {
         fs.mkdirSync(this.persistDir, { recursive: true });
       }
@@ -162,9 +159,6 @@ export class VectorStoreService {
       throw error;
     }
   }
-      throw error;
-    }
-  }
 
   /**
    * Clear entire collection
@@ -228,8 +222,11 @@ export class VectorStoreService {
       }
 
       const sortedResults: DocumentChunk[] = results.sort(
-        (a: DocumentChunk, b: DocumentChunk): number =>
-          (b.metadata.relevanceScore ?? 0) - (a.metadata.relevanceScore ?? 0)
+        (a: DocumentChunk, b: DocumentChunk): number => {
+          const scoreA: number = typeof a.metadata.relevanceScore === 'number' ? a.metadata.relevanceScore : 0;
+          const scoreB: number = typeof b.metadata.relevanceScore === 'number' ? b.metadata.relevanceScore : 0;
+          return scoreB - scoreA;
+        }
       );
 
       return sortedResults;

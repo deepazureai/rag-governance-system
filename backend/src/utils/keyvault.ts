@@ -76,11 +76,26 @@ class KeyVaultManager {
       }
 
       // Decrypt the credential
-      const [encrypted, authTagHex] = storedValue.split(':');
-      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.encryptionKey.padEnd(32, '\0')), Buffer.from(encrypted.slice(0, 32), 'hex'));
+      const parts: string[] = storedValue.split(':');
+      if (parts.length !== 2) {
+        console.error('[KeyVault] Invalid encrypted credential format');
+        return null;
+      }
+
+      const encrypted: string = parts[0] ?? '';
+      const authTagHex: string = parts[1] ?? '';
+
+      if (!encrypted || !authTagHex) {
+        console.error('[KeyVault] Missing encrypted data or auth tag');
+        return null;
+      }
+
+      const iv: Buffer = Buffer.from(encrypted.slice(0, 32), 'hex');
+      const encryptedData: string = encrypted.slice(32);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.encryptionKey.padEnd(32, '\0')), iv);
       decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
 
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      let decrypted: string = decipher.update(encryptedData, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
 
       return decrypted;
