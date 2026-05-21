@@ -146,7 +146,7 @@ Identify:
   }));
 
   return {
-    hallucinationScore: analysisData.hallucinationScore || 50,
+    halluccinationScore: analysisData.halluccinationScore || 50,
     groundednessScore: analysisData.groundednessScore || 50,
     detectedHallucinations: analysisData.hallucinations || [],
     missingContexts: analysisData.missingContexts || [],
