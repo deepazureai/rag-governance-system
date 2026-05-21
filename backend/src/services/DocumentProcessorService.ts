@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as pdf from 'pdf-parse';
+import pdf from 'pdf-parse';
 import { logger } from '../utils/logger.js';
 
 interface ParsedDocument {

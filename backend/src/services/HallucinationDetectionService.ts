@@ -6,7 +6,7 @@ import { getAzureOpenAIClient, getDeploymentId } from './AzureOpenAIConfig.js';
  */
 
 export interface HallucinationAnalysis {
-  hallucginationScore: number; // 0-100: 0=no hallucination, 100=severe hallucination
+  hallucinationScore: number; // 0-100: 0=no hallucination, 100=severe hallucination
   groundednessScore: number; // 0-100: how well grounded in source material
   detectedHallucinations: string[];
   missingContexts: string[]; // What's missing from the prompt
@@ -146,7 +146,7 @@ Identify:
   }));
 
   return {
-    halluccinationScore: analysisData.halluccinationScore || 50,
+    hallucinationScore: analysisData.hallucinationScore || 50,
     groundednessScore: analysisData.groundednessScore || 50,
     detectedHallucinations: analysisData.hallucinations || [],
     missingContexts: analysisData.missingContexts || [],

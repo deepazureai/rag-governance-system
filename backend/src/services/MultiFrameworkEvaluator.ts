@@ -602,14 +602,15 @@ export class MultiFrameworkEvaluator {
         const val2 = arr2[j - 1];
         
         if (val1 === val2) {
-          const dpVal = dp[i - 1]?.[j - 1];
+          const dpPrev = dp[i - 1];
+          const dpVal = dpPrev ? dpPrev[j - 1] : 0;
           dp[i][j] = (typeof dpVal === 'number' ? dpVal : 0) + 1;
         } else {
-          const dpLeft = dp[i - 1]?.[j];
-          const dpUp = dp[i]?.[j - 1];
-          const left = typeof dpLeft === 'number' ? dpLeft : 0;
-          const up = typeof dpUp === 'number' ? dpUp : 0;
-          dp[i][j] = Math.max(left, up);
+          const dpRow1 = dp[i - 1];
+          const dpRow2 = dp[i];
+          const left = dpRow1 ? dpRow1[j]! : 0;
+          const up = dpRow2 ? dpRow2[j - 1]! : 0;
+          dp[i][j] = Math.max(left ?? 0, up ?? 0);
         }
       }
     }

@@ -39,19 +39,15 @@ export class VectorStoreService {
     try {
       const apiKey = process.env.AZURE_OPENAI_API_KEY;
       const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-      const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID ?? 'text-embedding-ada-002';
 
       if (!apiKey || !endpoint) {
         throw new Error('Azure OpenAI credentials not configured for embeddings');
       }
 
-      const instanceName: string = new URL(endpoint).hostname.split('.')[0];
-
       this.embeddings = new OpenAIEmbeddings({
-        azureOpenAIApiKey: apiKey,
-        azureOpenAIApiInstanceName: instanceName,
-        azureOpenAIApiDeploymentName: deploymentId,
-        azureOpenAIApiVersion: '2024-02-15-preview',
+        openAIApiKey: apiKey,
+        apiKey: apiKey,
+        model: 'text-embedding-ada-002',
       });
 
       if (!fs.existsSync(this.persistDir)) {

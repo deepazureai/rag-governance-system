@@ -112,7 +112,7 @@ export class WebhookService {
 
         // Exponential backoff before retry
         if (attempt < this.MAX_RETRIES - 1) {
-          const delay = this.RETRY_DELAYS[attempt];
+          const delay = this.RETRY_DELAYS[attempt] ?? 1000;
           logger.info(
             `[WebhookService] Retrying in ${delay}ms...`,
             { nextAttempt: attempt + 2 }
