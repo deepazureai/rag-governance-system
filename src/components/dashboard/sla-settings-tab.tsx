@@ -13,18 +13,30 @@ interface SLASettingsTabProps {
   applicationName: string;
 }
 
-export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTabProps) {
+interface LLMConfig {
+  provider: 'azure-openai' | 'openai' | 'anthropic';
+  apiKey: string;
+  endpoint: string;
+  deploymentId: string;
+}
+
+export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTabProps): JSX.Element {
   const { slaConfig, industryDefaults, isLoading, updateSLA, resetToDefaults } = useApplicationSLA(applicationId);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [llmProvider, setLlmProvider] = useState<'azure-openai' | 'openai' | 'anthropic'>('azure-openai');
+  const [llmApiKey, setLlmApiKey] = useState<string>('');
+  const [llmEndpoint, setLlmEndpoint] = useState<string>('');
+  const [llmDeploymentId, setLlmDeploymentId] = useState<string>('');
+  const [isTestingLlm, setIsTestingLlm] = useState<boolean>(false);
 
   const [thresholds, setThresholds] = useState(slaConfig?.metrics || industryDefaults?.metrics);
   const [overallThresholds, setOverallThresholds] = useState(
     slaConfig?.overallScoreThresholds || industryDefaults?.overallScoreThresholds
   );
 
-  const handleMetricThresholdChange = (metricName: string, level: 'excellent' | 'good', value: number) => {
-    setThresholds((prev: any) => ({
+  const handleMetricThresholdChange = (metricName: string, level: 'excellent' | 'good', value: number): void => {
+    setThresholds((prev: Record<string, Record<string, number>> | undefined) => ({
       ...prev,
       [metricName]: {
         ...prev?.[metricName],
@@ -33,14 +45,45 @@ export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTa
     }));
   };
 
-  const handleOverallThresholdChange = (level: 'excellent' | 'good', value: number) => {
-    setOverallThresholds((prev: any) => ({
+  const handleOverallThresholdChange = (level: 'excellent' | 'good', value: number): void => {
+    setOverallThresholds((prev: Record<string, number> | undefined) => ({
       ...prev,
       [level]: value,
     }));
   };
 
-  const handleSave = async () => {
+  const handleTestLlmConnection = async (): Promise<void> => {
+    if (!llmApiKey || !llmEndpoint) {
+      alert('Please enter API Key and Endpoint');
+      return;
+    }
+
+    setIsTestingLlm(true);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/evaluation/test-llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: llmProvider,
+          apiKey: llmApiKey,
+          endpoint: llmEndpoint,
+          deploymentId: llmDeploymentId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('LLM connection test failed');
+
+      setSaveMessage({ type: 'success', text: 'LLM connection successful!' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'LLM connection test failed';
+      setSaveMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setIsTestingLlm(false);
+    }
+  };
+
+  const handleSave = async (): Promise<void> => {
     setIsSaving(true);
     setSaveMessage(null);
 
@@ -50,16 +93,17 @@ export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTa
       if (result.success) {
         setSaveMessage({ type: 'success', text: 'SLA settings saved successfully!' });
       } else {
-        setSaveMessage({ type: 'error', text: result.error || 'Failed to save SLA settings' });
+        setSaveMessage({ type: 'error', text: result.error ?? 'Failed to save SLA settings' });
       }
-    } catch (error: any) {
-      setSaveMessage({ type: 'error', text: error.message || 'An error occurred while saving' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while saving';
+      setSaveMessage({ type: 'error', text: errorMessage });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = async (): Promise<void> => {
     if (!confirm('Reset all SLA settings to industry defaults?')) return;
 
     setIsSaving(true);
@@ -73,10 +117,11 @@ export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTa
         setOverallThresholds(result.data?.overallScoreThresholds);
         setSaveMessage({ type: 'success', text: 'SLA settings reset to industry defaults' });
       } else {
-        setSaveMessage({ type: 'error', text: result.error || 'Failed to reset SLA settings' });
+        setSaveMessage({ type: 'error', text: result.error ?? 'Failed to reset SLA settings' });
       }
-    } catch (error: any) {
-      setSaveMessage({ type: 'error', text: error.message || 'An error occurred while resetting' });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while resetting';
+      setSaveMessage({ type: 'error', text: errorMessage });
     } finally {
       setIsSaving(false);
     }
@@ -96,13 +141,91 @@ export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTa
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-semibold text-blue-900 mb-2">Application Settings</h3>
+        <p className="text-sm text-blue-800">
+          Configure LLM for recommendations and customize SLA thresholds for <strong>{applicationName}</strong>.
+        </p>
+      </div>
+
+      {/* LLM Configuration Section */}
+      <Card className="p-6 border-2 border-purple-200 bg-purple-50">
+        <h3 className="font-semibold text-lg mb-4 text-purple-900">LLM Configuration for Recommendations</h3>
+        <p className="text-sm text-purple-800 mb-4">
+          Configure the LLM used for generating prompt recommendations and analysis. Azure OpenAI is recommended.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">LLM Provider</label>
+            <select
+              value={llmProvider}
+              onChange={(e) => setLlmProvider(e.target.value as 'azure-openai' | 'openai' | 'anthropic')}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="azure-openai">Azure OpenAI (Recommended)</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+
+          {llmProvider === 'azure-openai' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Azure OpenAI Endpoint</label>
+                <Input
+                  type="text"
+                  placeholder="https://your-resource.openai.azure.com/"
+                  value={llmEndpoint}
+                  onChange={(e) => setLlmEndpoint(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Deployment ID</label>
+                <Input
+                  type="text"
+                  placeholder="gpt-4"
+                  value={llmDeploymentId}
+                  onChange={(e) => setLlmDeploymentId(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+            <Input
+              type="password"
+              placeholder="Enter your API key"
+              value={llmApiKey}
+              onChange={(e) => setLlmApiKey(e.target.value)}
+            />
+          </div>
+
+          <Button
+            onClick={handleTestLlmConnection}
+            disabled={isTestingLlm || !llmApiKey}
+            className="w-full bg-purple-600 hover:bg-purple-700"
+          >
+            {isTestingLlm ? (
+              <>
+                <Spinner className="w-4 h-4 mr-2" />
+                Testing Connection...
+              </>
+            ) : (
+              'Test LLM Connection'
+            )}
+          </Button>
+        </div>
+      </Card>
+
+      {/* SLA Configuration Section */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Per-Application SLA Configuration</h3>
         <p className="text-sm text-blue-800">
           Customize SLA thresholds for <strong>{applicationName}</strong>. These thresholds determine the health status (Excellent/Good/Needs Improvement) of each metric for this application. Leave empty to use industry defaults.
         </p>
       </div>
-
-      {saveMessage && (
         <div
           className={`flex gap-2 p-4 rounded-lg border ${
             saveMessage.type === 'success'

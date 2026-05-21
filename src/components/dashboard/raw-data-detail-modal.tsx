@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import { X, ThumbsUp, ThumbsDown, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { RawDataRecordDetail, BAPromptImprovement } from '@/types/index';
 import { EvaluationPanel } from './evaluation-panel';
@@ -28,10 +29,20 @@ export function RawDataDetailModal({
     metrics: true,
     userFeedback: true,
     baReview: true,
+    recommendations: false,
   });
   const [improvementMode, setImprovementMode] = useState(false);
   const [improvedPrompt, setImprovedPrompt] = useState('');
   const [improvementReason, setImprovementReason] = useState('');
+  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
+  const [llmRecommendations, setLlmRecommendations] = useState<{
+    reasoning: string;
+    suggestions: Array<{
+      issue: string;
+      suggestion: string;
+      expectedImprovement: string;
+    }>;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -42,7 +53,53 @@ export function RawDataDetailModal({
     }));
   };
 
-  const handleAddImprovement = () => {
+  const handleGetRecommendations = async (): Promise<void> => {
+    setIsGeneratingRecommendations(true);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/evaluation/end-to-end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceDocuments: record.contextRetrieved?.map((ctx) => ctx.content) ?? [],
+          userPrompt: record.userPrompt,
+          llmResponse: record.llmResponse,
+          recordId: record._id,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get recommendations');
+      const data = await response.json();
+
+      setLlmRecommendations({
+        reasoning: data.result?.analysis?.reasoning ?? 'Analysis completed',
+        suggestions: (data.result?.improvedPrompt?.suggestions ?? []).map(
+          (
+            suggestion: {
+              issue?: string;
+              suggestion?: string;
+              expectedImprovement?: string;
+            }
+          ) => ({
+            issue: suggestion.issue ?? 'N/A',
+            suggestion: suggestion.suggestion ?? 'N/A',
+            expectedImprovement: suggestion.expectedImprovement ?? 'N/A',
+          })
+        ),
+      });
+
+      setExpandedSections((prev) => ({
+        ...prev,
+        recommendations: true,
+      }));
+    } catch (error) {
+      console.error('[v0] Recommendation error:', error);
+      alert('Failed to generate recommendations. Please try again.');
+    } finally {
+      setIsGeneratingRecommendations(false);
+    }
+  };
     if (!improvedPrompt.trim() || !improvementReason.trim()) {
       alert('Please fill in both improved prompt and reason');
       return;
@@ -345,7 +402,66 @@ export function RawDataDetailModal({
             }}
           />
 
-          {/* BA Review Section */}
+          {/* LLM Recommendations Section */}
+          <div className="border border-gray-800 rounded overflow-hidden">
+            <button
+              onClick={() => toggleSection('recommendations')}
+              className="w-full bg-gray-900 hover:bg-gray-800 px-4 py-3 flex items-center justify-between font-mono text-sm"
+            >
+              <span className="text-purple-400">LLM_RECOMMENDATIONS</span>
+              {expandedSections['recommendations'] ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+            {expandedSections['recommendations'] && (
+              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
+                {llmRecommendations ? (
+                  <>
+                    <div className="bg-black p-4 rounded border border-purple-800">
+                      <p className="text-xs font-mono text-purple-400 mb-2">Analysis Reasoning:</p>
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap break-words">
+                        {llmRecommendations.reasoning}
+                      </p>
+                    </div>
+
+                    {llmRecommendations.suggestions.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-mono text-purple-400">Suggestions:</p>
+                        {llmRecommendations.suggestions.map((sug, idx) => (
+                          <div key={idx} className="bg-black p-3 rounded border border-gray-800">
+                            <p className="text-xs text-gray-400 mb-1">Issue: {sug.issue}</p>
+                            <p className="text-xs text-gray-300 mb-2">Suggestion: {sug.suggestion}</p>
+                            <p className="text-xs text-green-400">
+                              Expected Improvement: {sug.expectedImprovement}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <Button
+                      onClick={handleGetRecommendations}
+                      disabled={isGeneratingRecommendations}
+                      className="bg-purple-900 hover:bg-purple-800 text-purple-100"
+                    >
+                      {isGeneratingRecommendations ? (
+                        <>
+                          <Spinner className="w-4 h-4 mr-2" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        'Get LLM Recommendations'
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <div className="border border-gray-800 rounded overflow-hidden">
             <button
               onClick={() => toggleSection('baReview')}
