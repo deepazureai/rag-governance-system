@@ -27,13 +27,14 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy only necessary files from builder
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+# Copy package files first
+COPY backend/package*.json ./
 
-# Ensure production dependencies are installed
-RUN npm ci --only=production --legacy-peer-deps || npm install --only=production --legacy-peer-deps || true
+# Install all dependencies (including dev if needed for runtime)
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+# Copy built application and node_modules from builder
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Create logs and archives directories with proper permissions
 RUN mkdir -p logs archives && chown -R nodejs:nodejs logs archives
