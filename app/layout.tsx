@@ -36,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="en" className={`${_geist.className} bg-background`}>
       <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
           {children}
