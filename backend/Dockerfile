@@ -6,7 +6,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+RUN npm ci || npm install
 
 COPY backend/src ./src
 
@@ -30,8 +30,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files first
 COPY backend/package*.json ./
 
-# Install all dependencies (including dev if needed for runtime)
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+# Install all dependencies
+RUN npm ci || npm install
 
 # Copy built application and node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
