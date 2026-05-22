@@ -100,6 +100,8 @@ export function RawDataDetailModal({
       setIsGeneratingRecommendations(false);
     }
   };
+
+  const handleSubmitImprovement = (): void => {
     if (!improvedPrompt.trim() || !improvementReason.trim()) {
       alert('Please fill in both improved prompt and reason');
       return;
@@ -549,7 +551,7 @@ export function RawDataDetailModal({
                     </div>
                     <div className="flex gap-2">
                       <Button
-                        onClick={handleAddImprovement}
+                        onClick={handleSubmitImprovement}
                         className="flex-1 bg-green-900 hover:bg-green-800 text-green-100 text-xs"
                       >
                         Save Improvement

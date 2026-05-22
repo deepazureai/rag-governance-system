@@ -20,7 +20,7 @@ interface LLMConfig {
   deploymentId: string;
 }
 
-export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTabProps): JSX.Element {
+export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTabProps) {
   const { slaConfig, industryDefaults, isLoading, updateSLA, resetToDefaults } = useApplicationSLA(applicationId);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -226,6 +226,7 @@ export function SLASettingsTab({ applicationId, applicationName }: SLASettingsTa
           Customize SLA thresholds for <strong>{applicationName}</strong>. These thresholds determine the health status (Excellent/Good/Needs Improvement) of each metric for this application. Leave empty to use industry defaults.
         </p>
       </div>
+      {saveMessage && (
         <div
           className={`flex gap-2 p-4 rounded-lg border ${
             saveMessage.type === 'success'

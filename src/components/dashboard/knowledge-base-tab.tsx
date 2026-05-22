@@ -18,7 +18,7 @@ interface DocumentSource {
 }
 
 interface SearchResult {
-  id: string;
+  id: number;
   title: string;
   content: string;
   source: 'document' | 'postgresql' | 'external';
@@ -57,8 +57,21 @@ interface ApiValidationResponse {
       relevance: number;
       source: string;
     }>;
-    interpretation: string;
   };
+}
+
+interface ValidationResult {
+  timestamp: string;
+  llmTerms: string[];
+  matchedTerms: string[];
+  groundednessScore: number;
+  interpretation?: string;
+  supportingDocuments: Array<{
+    id: number;
+    preview: string;
+    relevance: number;
+    source: string;
+  }>;
 }
 
 export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
