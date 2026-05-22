@@ -30,9 +30,9 @@ export function createDebugRoutes(
    * Middleware: Validate request body with Zod
    */
   const validateRequest = <T extends z.ZodType>(schema: T) => {
-    return (req: ValidatedRequest<z.infer<T>>, res: Response, next: NextFunction): void => {
+    return (req: any, res: Response, next: NextFunction): void => {
       try {
-        const parsed = schema.parse(req.body);
+        const parsed = schema.parse((req as any).body);
         req.validatedBody = parsed;
         next();
       } catch (error) {

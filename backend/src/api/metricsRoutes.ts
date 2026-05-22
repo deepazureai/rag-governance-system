@@ -15,6 +15,11 @@ const metricsService = new ApplicationMetricsService();
 metricsRouter.get('/:applicationId', async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
+    
+    if (!applicationId) {
+      return res.status(400).json({ success: false, error: 'applicationId is required' });
+    }
+    
     logger.info(`[v0] Fetching metrics for app: ${applicationId}`);
 
     const metrics = await metricsService.fetchMetricsForApp(applicationId);
@@ -74,9 +79,9 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
         success: true,
         data: {
           type: 'single',
-          metrics: metricsArray[0],
-          frameworksUsed: metricsArray[0].frameworksUsed,
-          slaCompliance: metricsArray[0].slaCompliance,
+          metrics: metricsArray[0]!,
+          frameworksUsed: metricsArray[0]!.frameworksUsed,
+          slaCompliance: metricsArray[0]!.slaCompliance,
         },
       });
     }
@@ -89,8 +94,8 @@ metricsRouter.post('/refresh', async (req: Request, res: Response) => {
       data: {
         type: 'aggregated',
         metrics: aggregatedMetrics,
-        frameworksUsed: aggregatedMetrics.frameworksUsed,
-        slaCompliance: aggregatedMetrics.slaCompliance,
+        frameworksUsed: aggregatedMetrics!.frameworksUsed,
+        slaCompliance: aggregatedMetrics!.slaCompliance,
         individualMetrics: metricsArray,
       },
     });
@@ -136,9 +141,9 @@ metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
         success: true,
         data: {
           type: 'single',
-          metrics: metricsArray[0],
-          frameworksUsed: metricsArray[0].frameworksUsed,
-          slaCompliance: metricsArray[0].slaCompliance,
+          metrics: metricsArray[0]!,
+          frameworksUsed: metricsArray[0]!.frameworksUsed,
+          slaCompliance: metricsArray[0]!.slaCompliance,
         },
       });
     }
@@ -151,8 +156,8 @@ metricsRouter.post('/fetch-multiple', async (req: Request, res: Response) => {
       data: {
         type: 'aggregated',
         metrics: aggregatedMetrics,
-        frameworksUsed: aggregatedMetrics.frameworksUsed,
-        slaCompliance: aggregatedMetrics.slaCompliance,
+        frameworksUsed: aggregatedMetrics!.frameworksUsed,
+        slaCompliance: aggregatedMetrics!.slaCompliance,
         individualMetrics: metricsArray,
       },
     });

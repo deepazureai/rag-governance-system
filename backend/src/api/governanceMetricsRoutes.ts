@@ -729,13 +729,14 @@ governanceMetricsRouter.get('/raw-data/:appId', async (req: Request, res: Respon
     } else if (groupBy === 'date') {
       groupedData = {};
       for (const metric of metrics) {
-        const date = new Date(metric.timestamp).toISOString().split('T')[0];
+        const dateStr = new Date(metric.timestamp).toISOString().split('T')[0];
+        const date = dateStr ?? 'unknown-date';
         if (!groupedData[date]) {
           groupedData[date] = [];
         }
         // Include value and status from SLA compliance for each SLA metric
         for (const sla of metric.slaCompliance) {
-          groupedData[date].push({
+          groupedData[date]!.push({
             query: metric.rawData.query.substring(0, 100),
             response: metric.rawData.response.substring(0, 100),
             metric: sla.metricName,

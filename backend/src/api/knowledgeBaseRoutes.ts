@@ -58,37 +58,25 @@ interface UploadResult {
 
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (
-      _req: Express.Request,
-      _file: Express.Multer.File,
-      cb: (error: Error | null, destination?: string) => void
-    ): void => {
+    destination: (_req: any, _file: any, cb: any): void => {
       cb(null, uploadDir);
     },
-    filename: (
-      _req: Express.Request,
-      file: Express.Multer.File,
-      cb: (error: Error | null, filename?: string) => void
-    ): void => {
-      const uniqueName = `${Date.now()}-${file.originalname}`;
+    filename: (_req: any, file: any, cb: any): void => {
+      const uniqueName = `${Date.now()}-${file.originalname as string}`;
       cb(null, uniqueName);
     },
-  }),
+  }) as any,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
-  fileFilter: (
-    _req: Express.Request,
-    file: Express.Multer.File,
-    cb: (error: Error | null, acceptFile?: boolean) => void
-  ): void => {
+  fileFilter: (_req: any, file: any, cb: any): void => {
     const allowedTypes = ['.pdf', '.txt', '.json', '.csv'];
-    const fileExt = path.extname(file.originalname).toLowerCase();
+    const fileExt = path.extname((file.originalname as string) ?? '').toLowerCase();
     if (allowedTypes.includes(fileExt)) {
       cb(null, true);
     } else {
       cb(new Error(`Unsupported file type: ${fileExt}`));
     }
   },
-});
+}) as any;
 
 /**
  * Upload and vectorize documents
