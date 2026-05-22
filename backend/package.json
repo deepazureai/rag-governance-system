@@ -38,6 +38,7 @@
     "langchain": "^0.2.11",
     "mongoose": "^9.5.0",
     "mssql": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
     "mysql2": "^3.22.2",
     "node-cron": "^3.0.3",
     "pdf-parse": "^2.4.5",

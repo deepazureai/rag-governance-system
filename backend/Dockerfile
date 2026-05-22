@@ -6,7 +6,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 COPY backend/src ./src
 
@@ -31,6 +31,9 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+
+# Ensure production dependencies are installed
+RUN npm ci --only=production --legacy-peer-deps || npm install --only=production --legacy-peer-deps || true
 
 # Create logs and archives directories with proper permissions
 RUN mkdir -p logs archives && chown -R nodejs:nodejs logs archives
