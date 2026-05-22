@@ -1,6 +1,6 @@
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { Document } from '@langchain/core/documents';
+import { Document as LangChainDocument } from '@langchain/core/documents';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
@@ -77,8 +77,8 @@ export class VectorStoreService {
 
     try {
       const langchainDocs = documents.map(
-        (doc): Document =>
-          new Document({
+        (doc): LangChainDocument =>
+          new LangChainDocument({
             pageContent: doc.content,
             metadata: {
               ...doc.metadata,
@@ -106,11 +106,11 @@ export class VectorStoreService {
     }
 
     try {
-      const results: Array<[Document, number]> = await this.vectorStore!.similaritySearchWithScore(query, options.k);
+      const results: Array<[LangChainDocument, number]> = await this.vectorStore!.similaritySearchWithScore(query, options.k);
 
       const documentChunks: DocumentChunk[] = results
-        .filter(([_, score]: [Document, number]) => !options.scoreThreshold || score >= options.scoreThreshold)
-        .map(([doc, score]: [Document, number]): DocumentChunk => ({
+        .filter(([_, score]: [LangChainDocument, number]) => !options.scoreThreshold || score >= options.scoreThreshold)
+        .map(([doc, score]: [LangChainDocument, number]): DocumentChunk => ({
           content: doc.pageContent,
           metadata: {
             ...doc.metadata,
