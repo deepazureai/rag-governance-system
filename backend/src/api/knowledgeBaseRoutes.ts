@@ -82,9 +82,9 @@ const upload = multer({
  * Upload and vectorize documents
  * POST /api/knowledge-base/upload
  */
-router.post('/upload', upload.array('files', 10), async (req: UploadRequest, res: Response): Promise<void> => {
+router.post('/upload', upload.array('files', 10), async (req: any, res: Response): Promise<void> => {
   try {
-    const files = req.files ?? [];
+    const files = (req.files ?? []) as Express.Multer.File[];
     const body = req.body as UploadBody;
     const { applicationId, namespace } = body;
 
