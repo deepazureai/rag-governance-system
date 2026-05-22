@@ -64,6 +64,7 @@
     "geist": "^1.0.0",
     "input-otp": "^1.2.4",
     "jspdf": "^4.2.1",
+    "langchain": "^1.4.2",
     "lucide-react": "^0.468.0",
     "mongodb": "^7.2.0",
     "mongoose": "^9.5.0",
