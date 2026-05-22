@@ -1,9 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+import pdfParse from 'pdf-parse';
 
 interface ParsedDocument {
   filename: string;
