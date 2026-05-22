@@ -36,8 +36,9 @@ RUN npm ci || npm install
 # Copy built application and node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Create logs and archives directories with proper permissions
-RUN mkdir -p logs archives && chown -R nodejs:nodejs logs archives
+# Create all required directories with proper permissions BEFORE switching to nodejs user
+RUN mkdir -p logs archives uploads/knowledge-base && \
+    chown -R nodejs:nodejs logs archives uploads
 
 USER nodejs
 
