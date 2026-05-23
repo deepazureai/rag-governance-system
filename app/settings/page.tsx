@@ -22,6 +22,8 @@ import { BatchProcessingTab } from '@/src/components/settings/batch-processing-t
 import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
 import { AlertThresholdsTab } from '@/src/components/settings/alert-thresholds-tab';
 import { NotificationsTab } from '@/src/components/settings/notifications-tab';
+import { LLMConfigTab } from '@/src/components/settings/llm-config-tab';
+import { KnowledgeBaseConfigTab } from '@/src/components/settings/knowledge-base-config-tab';
 
 interface Application {
   id: string;
@@ -104,7 +106,7 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-8">
+          <TabsList className="bg-white border-b border-gray-200 rounded-none grid w-full grid-cols-10">
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -132,6 +134,14 @@ export default function SettingsPage() {
             <TabsTrigger value="scheduled" className="gap-2">
               <Clock className="w-4 h-4" />
               <span className="hidden sm:inline">Scheduled</span>
+            </TabsTrigger>
+            <TabsTrigger value="llm" className="gap-2" title="LLM Provider">
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">LLM</span>
+            </TabsTrigger>
+            <TabsTrigger value="knowledge-base" className="gap-2" title="Knowledge Base">
+              <Database className="w-4 h-4" />
+              <span className="hidden sm:inline">KB</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="gap-2">
               <Lock className="w-4 h-4" />
@@ -302,6 +312,28 @@ export default function SettingsPage() {
           {/* Scheduled Jobs Tab */}
           <TabsContent value="scheduled" className="space-y-6 mt-6">
             <ScheduledJobsTab />
+          </TabsContent>
+
+          {/* LLM Configuration Tab */}
+          <TabsContent value="llm" className="space-y-6 mt-6">
+            {selectedAppId ? (
+              <LLMConfigTab applicationId={selectedAppId} />
+            ) : (
+              <Card className="p-6 bg-yellow-50 border border-yellow-200">
+                <p className="text-yellow-900">Please select an application from the Alert Thresholds tab first</p>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Knowledge Base Configuration Tab */}
+          <TabsContent value="knowledge-base" className="space-y-6 mt-6">
+            {selectedAppId ? (
+              <KnowledgeBaseConfigTab applicationId={selectedAppId} />
+            ) : (
+              <Card className="p-6 bg-yellow-50 border border-yellow-200">
+                <p className="text-yellow-900">Please select an application from the Alert Thresholds tab first</p>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Security Tab */}

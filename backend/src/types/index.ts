@@ -25,6 +25,45 @@ export interface AlertThresholdConfig {
   isCustom: boolean;
 }
 
+// LLM Provider Configuration Types
+export type LLMProvider = 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
+
+export interface LLMConfig {
+  _id?: string;
+  applicationId: string;
+  provider: LLMProvider;
+  model: string;
+  apiKey: string;
+  apiUrl?: string; // For Azure or custom endpoints
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  isDefault?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeBaseConfig {
+  _id?: string;
+  applicationId: string;
+  embeddingProvider: LLMProvider;
+  embeddingModel: string;
+  embeddingApiKey?: string;
+  llmProvider: LLMProvider;
+  llmModel: string;
+  llmApiKey?: string;
+  chunkSize: number;
+  overlapSize: number;
+  vectorStoreType: 'chroma' | 'pinecone' | 'weaviate';
+  vectorStoreUrl?: string;
+  temperature?: number;
+  maxTokens?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const INDUSTRY_STANDARD_THRESHOLDS: AlertThresholdConfig = {
   id: 'industry-default',
   appId: 'global-default',
