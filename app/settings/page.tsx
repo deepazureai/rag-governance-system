@@ -37,6 +37,39 @@ export default function SettingsPage() {
   const [selectedAppId, setSelectedAppId] = useState<string>('');
   const [appsLoading, setAppsLoading] = useState(true);
 
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+  }, []);
+
+  // Apply theme changes
+  const applyTheme = (selectedTheme: string) => {
+    const html = document.documentElement;
+    
+    if (selectedTheme === 'dark') {
+      html.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else if (selectedTheme === 'light') {
+      html.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      // System preference
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
+      localStorage.setItem('theme', 'system');
+    }
+  };
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+  };
+
   // Fetch applications on mount
   useEffect(() => {
     const fetchApplications = async () => {
@@ -184,7 +217,7 @@ export default function SettingsPage() {
                   <Label htmlFor="theme" className="block text-sm font-medium text-gray-700 mb-2">
                     Theme
                   </Label>
-                  <Select value={theme} onValueChange={setTheme}>
+                  <Select value={theme} onValueChange={handleThemeChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

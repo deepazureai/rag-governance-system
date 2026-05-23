@@ -29,7 +29,7 @@ export function RawDataDetailModal({
     metrics: true,
     userFeedback: true,
     baReview: true,
-    recommendations: false,
+    recommendations: true,  // Changed: Show recommendations section by default
   });
   const [improvementMode, setImprovementMode] = useState(false);
   const [improvedPrompt, setImprovedPrompt] = useState('');

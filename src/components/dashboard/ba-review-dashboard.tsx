@@ -42,17 +42,28 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
       const response = await fetch(`${apiUrl}/api/ba-review/queue/${applicationId}?limit=10`);
       
       if (!response.ok) {
+        // Return empty queue if endpoint not found (404)
+        if (response.status === 404) {
+          console.log('[v0] BA Review endpoint not yet implemented');
+          setQueueItems([]);
+          return;
+        }
         throw new Error('Failed to fetch review queue');
       }
       
       const data = await response.json();
-      if (data.success && data.data) {
-        setQueueItems(data.data);
+      // Defensive: ensure data.data is an array
+      const items = Array.isArray(data.data) ? data.data : [];
+      
+      if (data.success && items.length >= 0) {
+        setQueueItems(items);
         
-        // Calculate stats
-        const criticalCount = data.data.filter((item: BAReviewQueueItem) => item.priority === 'critical').length;
-        const totalPending = data.data.filter((item: BAReviewQueueItem) => item.status === 'pending').length;
-        const avgPriority = data.data.reduce((sum: number, item: BAReviewQueueItem) => sum + item.priorityScore, 0) / data.data.length || 0;
+        // Calculate stats from array items
+        const criticalCount = items.filter((item: BAReviewQueueItem) => item.priority === 'critical').length;
+        const totalPending = items.filter((item: BAReviewQueueItem) => item.status === 'pending').length;
+        const avgPriority = items.length > 0 
+          ? items.reduce((sum: number, item: BAReviewQueueItem) => sum + (item.priorityScore || 0), 0) / items.length 
+          : 0;
         
         setStats({
           totalPending,
@@ -63,6 +74,7 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
     } catch (err: any) {
       console.error('[v0] Error fetching queue:', err);
       setError(err.message || 'Failed to load review queue');
+      setQueueItems([]); // Ensure queueItems is always an array
     } finally {
       setIsLoading(false);
     }
