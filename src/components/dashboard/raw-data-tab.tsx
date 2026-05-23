@@ -132,13 +132,18 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
         {selectedMetric && rawData[selectedMetric] && (
           <div className="space-y-2">
             {(rawData[selectedMetric] as RawDataItem[]).map((item: RawDataItem, idx: number) => (
-              <Card key={idx} className="p-3 border-l-4 border-l-blue-400">
+              <Card 
+                key={idx} 
+                className="p-3 border-l-4 border-l-blue-400 hover:shadow-md cursor-pointer transition-all"
+                onClick={() => handleRecordClick(item)}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
                   <span className="text-sm font-semibold text-gray-700">{item.value != null ? item.value.toFixed(2) : 'N/A'}</span>
                 </div>
-                <p className="text-sm text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
-                <p className="text-sm text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
+                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">Q:</span> {item.query}</p>
+                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">A:</span> {item.response}</p>
+                <p className="text-xs text-blue-500 mt-2">Click to view full details</p>
               </Card>
             ))}
           </div>
@@ -170,13 +175,18 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
         {selectedStatus && rawData[selectedStatus] && (
           <div className="space-y-2">
             {(rawData[selectedStatus] as RawDataItem[]).map((item: RawDataItem, idx: number) => (
-              <Card key={idx} className={`p-3 border-l-4 ${item.status === 'critical' ? 'border-l-red-400' : item.status === 'warning' ? 'border-l-yellow-400' : 'border-l-green-400'}`}>
+              <Card 
+                key={idx} 
+                className={`p-3 border-l-4 hover:shadow-md cursor-pointer transition-all ${item.status === 'critical' ? 'border-l-red-400' : item.status === 'warning' ? 'border-l-yellow-400' : 'border-l-green-400'}`}
+                onClick={() => handleRecordClick(item)}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-700">{item.metric}</span>
                   <span className="text-sm font-semibold text-gray-700">{item.value != null ? item.value.toFixed(2) : 'N/A'}</span>
                 </div>
-                <p className="text-sm text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
-                <p className="text-sm text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
+                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">Q:</span> {item.query}</p>
+                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">A:</span> {item.response}</p>
+                <p className="text-xs text-blue-500 mt-2">Click to view full details</p>
               </Card>
             ))}
           </div>
@@ -199,11 +209,12 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               {(rawData[framework] as RawDataItem[]).slice(0, 5).map((item: RawDataItem, idx: number) => (
                 <Card 
                   key={idx} 
-                  className="p-3 bg-white text-sm border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                  className="p-3 bg-white text-sm border border-slate-200 hover:shadow-md hover:bg-slate-50 cursor-pointer transition-all"
                   onClick={() => handleRecordClick(item)}
                 >
-                  <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
-                  <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
+                  <p className="text-gray-600 line-clamp-2"><span className="font-medium">Q:</span> {item.query}</p>
+                  <p className="text-gray-600 line-clamp-2"><span className="font-medium">A:</span> {item.response}</p>
+                  <p className="text-xs text-blue-500 mt-2">Click for full details</p>
                 </Card>
               ))}
             </div>
