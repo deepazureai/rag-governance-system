@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY next.config.mjs ./
 COPY tsconfig.json ./
+COPY tailwind.config.ts ./
+COPY postcss.config.mjs ./
 
 RUN npm install
 
@@ -13,6 +15,7 @@ COPY app ./app
 COPY components ./components
 COPY lib ./lib
 COPY public ./public
+COPY styles ./styles
 
 RUN npm run build
 
