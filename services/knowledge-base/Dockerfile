@@ -5,7 +5,7 @@ WORKDIR /app
 COPY services/knowledge-base/package*.json ./
 COPY services/knowledge-base/tsconfig.json ./
 
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 COPY services/knowledge-base/src ./src
 
