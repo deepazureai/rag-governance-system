@@ -15,7 +15,6 @@ COPY app ./app
 COPY components ./components
 COPY lib ./lib
 COPY public ./public
-COPY styles ./styles
 
 RUN npm run build
 
