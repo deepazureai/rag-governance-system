@@ -38,9 +38,9 @@ const kbConfigSchema = z.object({
  * GET /api/llm-config/models
  * Get available LLM models by provider
  */
-router.get('/models', async (req: Request, res: Response) => {
+router.get('/models', async (req: Request, res: Response): Promise<void> => {
   try {
-    const models: Record<string, string[]> = {
+    const models: Record<string, readonly string[]> = {
       openai: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo', 'text-davinci-003'],
       'azure-openai': ['gpt-4', 'gpt-35-turbo'],
       claude: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
@@ -48,13 +48,13 @@ router.get('/models', async (req: Request, res: Response) => {
       grok: ['grok-1', 'grok-beta'],
     };
 
-    return res.json({
+    res.json({
       success: true,
       data: models,
     });
-  } catch (error: any) {
-    console.error('[llmConfigRoutes] Error fetching models:', error);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    console.error('[llmConfigRoutes] Error fetching models:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch available models',
     });
@@ -65,28 +65,37 @@ router.get('/models', async (req: Request, res: Response) => {
  * GET /api/llm-config/app/:applicationId
  * Get LLM configuration for an application
  */
-router.get('/app/:applicationId', async (req: Request, res: Response) => {
+router.get('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
+    
+    if (!applicationId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Application ID is required',
+      });
+      return;
+    }
 
     const collection = mongoose.connection.collection('llmconfigs');
-    const config = await collection.findOne({ applicationId });
+    const config = await collection.findOne({ applicationId }) as (LLMConfig & { _id?: unknown }) | null;
 
     if (!config) {
-      return res.json({
+      res.json({
         success: true,
         data: null,
         message: 'No LLM configuration found for this application',
       });
+      return;
     }
 
-    return res.json({
+    res.json({
       success: true,
       data: config,
     });
-  } catch (error: any) {
-    console.error('[llmConfigRoutes] Error fetching LLM config:', error);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    console.error('[llmConfigRoutes] Error fetching LLM config:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch LLM configuration',
     });
@@ -97,17 +106,27 @@ router.get('/app/:applicationId', async (req: Request, res: Response) => {
  * POST /api/llm-config/app/:applicationId
  * Save or update LLM configuration for an application
  */
-router.post('/app/:applicationId', async (req: Request, res: Response) => {
+router.post('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
+    
+    if (!applicationId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Application ID is required',
+      });
+      return;
+    }
+
     const validation = llmConfigSchema.safeParse({ ...req.body, applicationId });
 
     if (!validation.success) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Validation failed',
         details: validation.error.errors,
       });
+      return;
     }
 
     const config: LLMConfig = {
@@ -123,14 +142,14 @@ router.post('/app/:applicationId', async (req: Request, res: Response) => {
       { upsert: true }
     );
 
-    return res.json({
+    res.json({
       success: true,
       data: config,
       message: result.upsertedId ? 'LLM config created' : 'LLM config updated',
     });
-  } catch (error: any) {
-    console.error('[llmConfigRoutes] Error saving LLM config:', error);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    console.error('[llmConfigRoutes] Error saving LLM config:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({
       success: false,
       error: 'Failed to save LLM configuration',
     });
@@ -141,28 +160,37 @@ router.post('/app/:applicationId', async (req: Request, res: Response) => {
  * GET /api/llm-config/knowledge-base/:applicationId
  * Get Knowledge Base configuration for an application
  */
-router.get('/knowledge-base/:applicationId', async (req: Request, res: Response) => {
+router.get('/knowledge-base/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
 
+    if (!applicationId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Application ID is required',
+      });
+      return;
+    }
+
     const collection = mongoose.connection.collection('knowledgebaseconfigs');
-    const config = await collection.findOne({ applicationId });
+    const config = await collection.findOne({ applicationId }) as (KnowledgeBaseConfig & { _id?: unknown }) | null;
 
     if (!config) {
-      return res.json({
+      res.json({
         success: true,
         data: null,
         message: 'No Knowledge Base configuration found for this application',
       });
+      return;
     }
 
-    return res.json({
+    res.json({
       success: true,
       data: config,
     });
-  } catch (error: any) {
-    console.error('[llmConfigRoutes] Error fetching KB config:', error);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    console.error('[llmConfigRoutes] Error fetching KB config:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch Knowledge Base configuration',
     });
@@ -173,17 +201,27 @@ router.get('/knowledge-base/:applicationId', async (req: Request, res: Response)
  * POST /api/llm-config/knowledge-base/:applicationId
  * Save or update Knowledge Base configuration
  */
-router.post('/knowledge-base/:applicationId', async (req: Request, res: Response) => {
+router.post('/knowledge-base/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
+    
+    if (!applicationId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Application ID is required',
+      });
+      return;
+    }
+
     const validation = kbConfigSchema.safeParse({ ...req.body, applicationId });
 
     if (!validation.success) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Validation failed',
         details: validation.error.errors,
       });
+      return;
     }
 
     const config: KnowledgeBaseConfig = {
@@ -199,14 +237,14 @@ router.post('/knowledge-base/:applicationId', async (req: Request, res: Response
       { upsert: true }
     );
 
-    return res.json({
+    res.json({
       success: true,
       data: config,
       message: result.upsertedId ? 'KB config created' : 'KB config updated',
     });
-  } catch (error: any) {
-    console.error('[llmConfigRoutes] Error saving KB config:', error);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    console.error('[llmConfigRoutes] Error saving KB config:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({
       success: false,
       error: 'Failed to save Knowledge Base configuration',
     });

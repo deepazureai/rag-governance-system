@@ -51,27 +51,33 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
     fetchKBConfig();
   }, [applicationId]);
 
-  const fetchKBConfig = async () => {
+  const fetchKBConfig = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${applicationId}`);
 
-      if (!response.ok) throw new Error('Failed to fetch configuration');
+      if (!response.ok) {
+        setError('Failed to fetch configuration');
+        setIsLoading(false);
+        return;
+      }
 
-      const data = await response.json();
+      const data = await response.json() as { success: boolean; data?: KBConfig };
       if (data.success && data.data) {
         setConfig(data.data);
       }
-    } catch (err: any) {
-      console.error('[v0] Error fetching KB config:', err);
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('[v0] Error fetching KB config:', message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = async (): Promise<void> => {
     try {
       setIsSaving(true);
       setError(null);
@@ -84,14 +90,21 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
         body: JSON.stringify(config),
       });
 
-      if (!response.ok) throw new Error('Failed to save configuration');
+      if (!response.ok) {
+        setError('Failed to save configuration');
+        setIsSaving(false);
+        return;
+      }
 
-      const data = await response.json();
-      setSuccess(data.message);
-      setConfig(data.data);
-    } catch (err: any) {
-      console.error('[v0] Error saving KB config:', err);
-      setError(err.message);
+      const data = await response.json() as { success: boolean; data?: KBConfig; message?: string };
+      if (data.success && data.data && data.message) {
+        setSuccess(data.message);
+        setConfig(data.data);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('[v0] Error saving KB config:', message);
+      setError(message);
     } finally {
       setIsSaving(false);
     }

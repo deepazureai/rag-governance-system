@@ -50,27 +50,33 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
     fetchLLMConfig();
   }, [applicationId]);
 
-  const fetchLLMConfig = async () => {
+  const fetchLLMConfig = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/llm-config/app/${applicationId}`);
 
-      if (!response.ok) throw new Error('Failed to fetch configuration');
+      if (!response.ok) {
+        setError('Failed to fetch configuration');
+        setIsLoading(false);
+        return;
+      }
 
-      const data = await response.json();
+      const data = await response.json() as { success: boolean; data?: LLMConfig };
       if (data.success && data.data) {
         setConfig(data.data);
       }
-    } catch (err: any) {
-      console.error('[v0] Error fetching LLM config:', err);
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('[v0] Error fetching LLM config:', message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = async (): Promise<void> => {
     try {
       setIsSaving(true);
       setError(null);
@@ -78,6 +84,7 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
 
       if (!config.apiKey.trim()) {
         setError('API Key is required');
+        setIsSaving(false);
         return;
       }
 
@@ -88,14 +95,21 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
         body: JSON.stringify(config),
       });
 
-      if (!response.ok) throw new Error('Failed to save configuration');
+      if (!response.ok) {
+        setError('Failed to save configuration');
+        setIsSaving(false);
+        return;
+      }
 
-      const data = await response.json();
-      setSuccess(data.message);
-      setConfig(data.data);
-    } catch (err: any) {
-      console.error('[v0] Error saving LLM config:', err);
-      setError(err.message);
+      const data = await response.json() as { success: boolean; data?: LLMConfig; message?: string };
+      if (data.success && data.data && data.message) {
+        setSuccess(data.message);
+        setConfig(data.data);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('[v0] Error saving LLM config:', message);
+      setError(message);
     } finally {
       setIsSaving(false);
     }
