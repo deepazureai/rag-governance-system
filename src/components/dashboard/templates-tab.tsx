@@ -57,67 +57,85 @@ export function TemplatesTab({ applicationId }: TemplatesTabProps) {
     fetchTemplates();
   }, [applicationId]);
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/templates/app/${applicationId}/list`);
-      const data = await response.json();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/prompt-templates/${applicationId}?pageSize=50`);
+      
+      if (!response.ok) {
+        setError('Failed to load templates');
+        setLoading(false);
+        return;
+      }
 
-      if (data.status === 'success') {
+      const data = await response.json() as { success: boolean; data?: { templates: Template[] } };
+
+      if (data.success && data.data) {
         setTemplates(data.data.templates || []);
       } else {
-        setError(data.error?.message || 'Failed to load templates');
+        setError('No templates available');
       }
-    } catch (err) {
-      setError('Error loading templates. Please try again.');
-      console.error('[v0] Error fetching templates:', err);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error loading templates. Please try again.';
+      setError(message);
+      console.error('[v0] Error fetching templates:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCloneTemplate = async (templateId: string) => {
+  const handleCloneTemplate = async (templateId: string): Promise<void> => {
     try {
-      const name = prompt('Enter a name for the cloned template:');
-      if (!name) return;
-
-      const response = await fetch(`/api/templates/${templateId}/clone`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newName: name, appId: applicationId }),
-      });
-
-      const data = await response.json();
-      if (data.status === 'success') {
-        setFeedback({ type: 'success', message: 'Template cloned successfully' });
-        await fetchTemplates();
-      } else {
-        setFeedback({ type: 'error', message: data.error?.message || 'Clone failed' });
-      }
-    } catch (err) {
-      setFeedback({ type: 'error', message: 'Error cloning template' });
+      setFeedback({ type: 'error', message: 'Clone feature coming soon' });
+      // TODO: Implement template cloning once backend endpoint is ready
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error cloning template';
+      setFeedback({ type: 'error', message });
+      console.error('[v0] Error cloning template:', error);
     }
   };
 
-  const handleForkTemplate = async (templateId: string) => {
+  const handleForkTemplate = async (templateId: string): Promise<void> => {
     try {
-      const name = prompt('Enter a name for the forked template:');
-      if (!name) return;
+      setFeedback({ type: 'error', message: 'Fork feature coming soon' });
+      // TODO: Implement template forking once backend endpoint is ready
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error forking template';
+      setFeedback({ type: 'error', message });
+      console.error('[v0] Error forking template:', error);
+    }
+  };
 
-      const response = await fetch(`/api/templates/${templateId}/fork`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newName: name, appId: applicationId }),
+  const handleDeleteTemplate = async (templateId: string): Promise<void> => {
+    try {
+      if (!window.confirm('Are you sure you want to delete this template?')) return;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/prompt-templates/${templateId}`, {
+        method: 'DELETE',
       });
 
-      const data = await response.json();
-      if (data.status === 'success') {
-        setFeedback({ type: 'success', message: 'Template forked successfully' });
+      if (!response.ok) {
+        setFeedback({ type: 'error', message: 'Failed to delete template' });
+        return;
+      }
+
+      const data = await response.json() as { success: boolean };
+      if (data.success) {
+        setFeedback({ type: 'success', message: 'Template deleted successfully' });
         await fetchTemplates();
       } else {
-        setFeedback({ type: 'error', message: data.error?.message || 'Fork failed' });
+        setFeedback({ type: 'error', message: 'Delete failed' });
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error deleting template';
+      setFeedback({ type: 'error', message });
+      console.error('[v0] Error deleting template:', error);
+    }
+  };
       }
     } catch (err) {
       setFeedback({ type: 'error', message: 'Error forking template' });
