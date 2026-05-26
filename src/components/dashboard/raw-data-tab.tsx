@@ -12,12 +12,13 @@ import { getStatusColor } from '@/src/utils/format';
 
 interface RawDataItem {
   metric?: string;
-  value?: number;  // Make value optional since it may not always be present
+  value?: number;
   status: string;
   query: string;
   response: string;
+  context?: string;  // Add context field
   slaStatus?: string;
-  slaCompliance?: any[];
+  slaCompliance?: unknown[];  // Use unknown instead of any
 }
 
 interface RawDataTabProps {
@@ -26,7 +27,7 @@ interface RawDataTabProps {
 
 export function RawDataTab({ applicationId }: RawDataTabProps) {
   const [groupBy, setGroupBy] = useState<'metric' | 'status' | 'framework' | 'date'>('metric');
-  const [rawData, setRawData] = useState<any>(null);
+  const [rawData, setRawData] = useState<Record<string, RawDataItem[]> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     fetchRawData();
   }, [applicationId, groupBy]);
 
-  const fetchRawData = async () => {
+  const fetchRawData = async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
@@ -51,22 +52,22 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
         throw new Error(`Failed to fetch raw data: ${response.statusText}`);
       }
       
-      const result = await response.json();
-      if (result.success) {
+      const result = await response.json() as { success: boolean; data?: Record<string, RawDataItem[]>; message?: string };
+      if (result.success && result.data) {
         setRawData(result.data);
       } else {
-        throw new Error(result.message || 'Failed to fetch raw data');
+        throw new Error(result.message ?? 'Failed to fetch raw data');
       }
-    } catch (err) {
-      console.error('[v0] Error fetching raw data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch raw data');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch raw data';
+      console.error('[v0] Error fetching raw data:', message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRecordClick = (item: RawDataItem) => {
-    // Convert grid item to detail record (would fetch full record from API in production)
+  const handleRecordClick = (item: RawDataItem): void => {
     const detailRecord: RawDataRecordDetail = {
       _id: `record_${Math.random().toString(36).substr(2, 9)}`,
       applicationId,
@@ -79,18 +80,18 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
       totalLatency: Math.random() * 2500 + 1500,
       tokensUsed: Math.floor(Math.random() * 500 + 100),
       userFeedback: item.status === 'poor' ? {
-        sentiment: 'negative',
+        sentiment: 'negative' as const,
         comment: 'Response was not helpful',
         feedbackAt: new Date().toISOString(),
       } : undefined,
-      contextRetrieved: item.slaCompliance?.[0]?.metrics ? [
+      contextRetrieved: item.context ? [
         {
           source: 'knowledge_base.md',
           relevanceScore: 0.85,
-          content: 'Sample context from retrieval...',
+          content: item.context,  // Use actual context from item
         },
       ] : undefined,
-      evaluationScores: item.slaCompliance ? [
+      evaluationScores: item.slaCompliance && Array.isArray(item.slaCompliance) ? [
         {
           framework: 'RAGAS',
           scores: { faithfulness: 0.8, relevance: 0.85, coherence: 0.82 },
@@ -99,7 +100,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
       ] : undefined,
       baReview: {
         promptImprovements: [],
-        reviewStatus: 'pending',
+        reviewStatus: 'pending' as const,
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -109,10 +110,10 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     setDetailModalOpen(true);
   };
 
-  const renderMetricView = () => {
+  const renderMetricView = (): React.ReactNode => {
     if (!rawData || typeof rawData !== 'object') return null;
 
-    const metrics = Object.keys(rawData).filter(key => Array.isArray(rawData[key]));
+    const metrics = Object.keys(rawData).filter(key => Array.isArray(rawData?.[key]));
     
     return (
       <div className="space-y-4">
@@ -129,21 +130,39 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
           ))}
         </div>
 
-        {selectedMetric && rawData[selectedMetric] && (
-          <div className="space-y-2">
-            {(rawData[selectedMetric] as RawDataItem[]).map((item: RawDataItem, idx: number) => (
+        {selectedMetric && rawData[selectedMetric] && Array.isArray(rawData[selectedMetric]) && (
+          <div className="space-y-3">
+            {(rawData[selectedMetric] as ReadonlyArray<RawDataItem>).map((item: RawDataItem, idx: number) => (
               <Card 
                 key={idx} 
-                className="p-3 border-l-4 border-l-blue-400 hover:shadow-md cursor-pointer transition-all"
+                className="p-4 border-l-4 border-l-blue-400 hover:shadow-md cursor-pointer transition-all"
                 onClick={() => handleRecordClick(item)}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
                   <span className="text-sm font-semibold text-gray-700">{item.value != null ? item.value.toFixed(2) : 'N/A'}</span>
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">Q:</span> {item.query}</p>
-                <p className="text-sm text-gray-600 line-clamp-2"><span className="font-medium">A:</span> {item.response}</p>
-                <p className="text-xs text-blue-500 mt-2">Click to view full details</p>
+                
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Prompt:</p>
+                    <p className="text-sm text-gray-700 break-words whitespace-normal">{item.query}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Response:</p>
+                    <p className="text-sm text-gray-700 break-words whitespace-normal">{item.response}</p>
+                  </div>
+                  
+                  {item.context && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">Context:</p>
+                      <p className="text-sm text-gray-600 break-words whitespace-normal bg-gray-50 p-2 rounded">{item.context}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-xs text-blue-500 mt-3">Click to view recommendations</p>
               </Card>
             ))}
           </div>

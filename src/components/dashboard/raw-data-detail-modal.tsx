@@ -58,44 +58,47 @@ export function RawDataDetailModal({
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const contextContent = record.contextRetrieved?.map((ctx) => ctx.content) ?? [];
+      
       const response = await fetch(`${apiUrl}/api/evaluation/end-to-end`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sourceDocuments: record.contextRetrieved?.map((ctx) => ctx.content) ?? [],
+          sourceDocuments: contextContent,
           userPrompt: record.userPrompt,
           llmResponse: record.llmResponse,
           recordId: record._id,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get recommendations');
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to get recommendations');
+      }
+
+      const data = await response.json() as {
+        result?: {
+          analysis?: { reasoning?: string };
+          improvedPrompt?: { suggestions?: Array<{ issue?: string; suggestion?: string; expectedImprovement?: string }> };
+        };
+      };
 
       setLlmRecommendations({
         reasoning: data.result?.analysis?.reasoning ?? 'Analysis completed',
-        suggestions: (data.result?.improvedPrompt?.suggestions ?? []).map(
-          (
-            suggestion: {
-              issue?: string;
-              suggestion?: string;
-              expectedImprovement?: string;
-            }
-          ) => ({
-            issue: suggestion.issue ?? 'N/A',
-            suggestion: suggestion.suggestion ?? 'N/A',
-            expectedImprovement: suggestion.expectedImprovement ?? 'N/A',
-          })
-        ),
+        suggestions: (data.result?.improvedPrompt?.suggestions ?? []).map((suggestion: { issue?: string; suggestion?: string; expectedImprovement?: string }) => ({
+          issue: suggestion.issue ?? 'N/A',
+          suggestion: suggestion.suggestion ?? 'N/A',
+          expectedImprovement: suggestion.expectedImprovement ?? 'N/A',
+        })),
       });
 
-      setExpandedSections((prev) => ({
+      setExpandedSections((prev: Record<string, boolean>) => ({
         ...prev,
         recommendations: true,
       }));
-    } catch (error) {
-      console.error('[v0] Recommendation error:', error);
-      alert('Failed to generate recommendations. Please try again.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to generate recommendations';
+      console.error('[v0] Recommendation error:', message);
+      alert(message);
     } finally {
       setIsGeneratingRecommendations(false);
     }
@@ -123,15 +126,21 @@ export function RawDataDetailModal({
     setImprovementMode(false);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      return date.toLocaleString();
+    } catch {
+      return 'Invalid date';
+    }
   };
 
-  const formatTime = (ms?: number) => {
-    if (!ms) return 'N/A';
-    if (ms < 1000) return `${ms.toFixed(0)}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
+  const formatTime = (ms: number | undefined): string => {
+    if (ms === undefined || ms === null) return 'N/A';
+    const numMs = Number(ms);
+    if (numMs < 1000) return `${numMs.toFixed(0)}ms`;
+    return `${(numMs / 1000).toFixed(2)}s`;
   };
 
   return (
@@ -339,11 +348,11 @@ export function RawDataDetailModal({
                       <span className="text-gray-500 text-xs">{formatDate(eval_score.generatedAt)}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(eval_score.scores).map(([key, value]: [string, any]) => (
+                      {Object.entries(eval_score.scores).map(([key, value]: [string, unknown]) => (
                         <div key={key} className="text-xs">
                           <span className="text-gray-400">{key}: </span>
                           <span className="text-orange-300 font-mono">
-                            {typeof value === 'number' ? value.toFixed(3) : value}
+                            {typeof value === 'number' ? value.toFixed(3) : String(value)}
                           </span>
                         </div>
                       ))}
