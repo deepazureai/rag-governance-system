@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
-import { KnowledgeBaseConfig, KnowledgeBaseConfigInput } from '../../src/types/models';
-import { KnowledgeBaseConfigSchema } from '../../src/schemas/index';
+import { KnowledgeBaseConfig, KnowledgeBaseConfigInput } from '../types/models.js';
+import { KnowledgeBaseConfigSchema } from '../schemas/index.js';
 
 /**
  * Knowledge Base Config Service

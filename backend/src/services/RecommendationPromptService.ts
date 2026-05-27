@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
-import { RecommendationPrompt, RecommendationPromptInput, SaveRecommendationInput } from '../../src/types/models';
-import { RecommendationPromptSchema } from '../../src/schemas/index';
+import { RecommendationPrompt, RecommendationPromptInput, SaveRecommendationInput } from '../types/models.js';
+import { RecommendationPromptSchema } from '../schemas/index.js';
 
 /**
  * Recommendation Prompt Service

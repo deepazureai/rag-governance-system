@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
-import { LLMConfig, LLMConfigInput, ApiResponse } from '../../src/types/models';
-import { LLMConfigSchema } from '../../src/schemas/index';
+import { LLMConfig, LLMConfigInput, ApiResponse } from '../types/models.js';
+import { LLMConfigSchema } from '../schemas/index.js';
 
 /**
  * LLM Config Service

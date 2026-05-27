@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
-import { KBPrompt, KBPromptInput, SaveKBPromptInput } from '../../src/types/models';
-import { KBPromptSchema } from '../../src/schemas/index';
+import { KBPrompt, KBPromptInput, SaveKBPromptInput } from '../types/models.js';
+import { KBPromptSchema } from '../schemas/index.js';
 
 /**
  * KB Prompt Service

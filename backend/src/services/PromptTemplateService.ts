@@ -1,6 +1,6 @@
 import mongoose, { Types } from 'mongoose';
-import { PromptTemplate, PromptTemplateInput } from '../../src/types/models';
-import { PromptTemplateSchema } from '../../src/schemas/index';
+import { PromptTemplate, PromptTemplateInput } from '../types/models.js';
+import { PromptTemplateSchema } from '../schemas/index.js';
 
 /**
  * Prompt Template Service
