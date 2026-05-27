@@ -1,0 +1,50 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LLMProviderSettings } from '@/src/components/settings/LLMProviderSettings';
+import { KBLLMSettings } from '@/src/components/settings/KBLLMSettings';
+
+interface SettingsPageProps {
+  applicationId: string;
+}
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => {
+  const [activeTab, setActiveTab] = useState('llm-provider');
+
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+          <p className="text-gray-600">Configure your AI application providers and models</p>
+        </div>
+
+        {/* Settings Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="llm-provider">LLM Provider</TabsTrigger>
+            <TabsTrigger value="kb-settings">Knowledge Base</TabsTrigger>
+          </TabsList>
+
+          {/* LLM Provider Tab */}
+          <TabsContent value="llm-provider" className="mt-6">
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+              <LLMProviderSettings applicationId={applicationId} />
+            </div>
+          </TabsContent>
+
+          {/* Knowledge Base Tab */}
+          <TabsContent value="kb-settings" className="mt-6">
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+              <KBLLMSettings applicationId={applicationId} />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </main>
+  );
+};
+
+export default SettingsPage;

@@ -1,252 +1,250 @@
 import { Router, Request, Response } from 'express';
-import mongoose from 'mongoose';
-import { LLMConfig, KnowledgeBaseConfig } from '../types/index.js';
-import { z } from 'zod';
+import { llmConfigService } from '../services/LLMConfigService';
+import { kbConfigService } from '../services/KnowledgeBaseConfigService';
+import { llmProviderService } from '../services/LLMProviderService';
+import { LLMClientFactory } from '../services/LLMClientFactory';
+import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index';
+import { LLMConfig, KnowledgeBaseConfig, ApiResponse } from '../../src/types/models';
 
 const router = Router();
 
-// Validation schemas
-const llmConfigSchema = z.object({
-  applicationId: z.string().min(1),
-  provider: z.enum(['openai', 'azure-openai', 'claude', 'deepinfra', 'grok']),
-  model: z.string().min(1),
-  apiKey: z.string().min(1),
-  apiUrl: z.string().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).optional(),
-  topP: z.number().min(0).max(1).optional(),
-  isDefault: z.boolean().optional(),
-});
-
-const kbConfigSchema = z.object({
-  applicationId: z.string().min(1),
-  embeddingProvider: z.enum(['openai', 'azure-openai', 'claude', 'deepinfra', 'grok']),
-  embeddingModel: z.string().min(1),
-  embeddingApiKey: z.string().optional(),
-  llmProvider: z.enum(['openai', 'azure-openai', 'claude', 'deepinfra', 'grok']),
-  llmModel: z.string().min(1),
-  llmApiKey: z.string().optional(),
-  chunkSize: z.number().min(100).max(4000),
-  overlapSize: z.number().min(0).max(500),
-  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate']),
-  vectorStoreUrl: z.string().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).optional(),
-});
-
 /**
- * GET /api/llm-config/models
- * Get available LLM models by provider
- */
-router.get('/models', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const models: Record<string, readonly string[]> = {
-      openai: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo', 'text-davinci-003'],
-      'azure-openai': ['gpt-4', 'gpt-35-turbo'],
-      claude: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-      deepinfra: ['meta-llama/Llama-2-70b-chat-hf', 'mistralai/Mistral-7B-Instruct-v0.1'],
-      grok: ['grok-1', 'grok-beta'],
-    };
-
-    res.json({
-      success: true,
-      data: models,
-    });
-  } catch (error: unknown) {
-    console.error('[llmConfigRoutes] Error fetching models:', error instanceof Error ? error.message : String(error));
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch available models',
-    });
-  }
-});
-
-/**
- * GET /api/llm-config/app/:applicationId
+ * GET /api/llm-config/app/:appId
  * Get LLM configuration for an application
  */
-router.get('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
+router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    
-    if (!applicationId?.trim()) {
-      res.status(400).json({
-        success: false,
-        error: 'Application ID is required',
-      });
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
 
-    const collection = mongoose.connection.collection('llmconfigs');
-    const config = await collection.findOne({ applicationId }) as (LLMConfig & { _id?: unknown }) | null;
+    const config = await llmConfigService.getConfig(appId);
 
     if (!config) {
-      res.json({
-        success: true,
-        data: null,
-        message: 'No LLM configuration found for this application',
-      });
+      res.status(404).json({
+        success: false,
+        error: 'LLM configuration not found',
+      } as ApiResponse<LLMConfig>);
       return;
     }
 
     res.json({
       success: true,
       data: config,
-    });
+    } as ApiResponse<LLMConfig>);
   } catch (error: unknown) {
-    console.error('[llmConfigRoutes] Error fetching LLM config:', error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] GET /api/llm-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch LLM configuration',
-    });
+      error: message,
+    } as ApiResponse<LLMConfig>);
   }
 });
 
 /**
- * POST /api/llm-config/app/:applicationId
- * Save or update LLM configuration for an application
+ * POST /api/llm-config/app/:appId
+ * Save or update LLM configuration
  */
-router.post('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
+router.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    
-    if (!applicationId?.trim()) {
-      res.status(400).json({
-        success: false,
-        error: 'Application ID is required',
-      });
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
 
-    const validation = llmConfigSchema.safeParse({ ...req.body, applicationId });
+    const body = req.body as unknown;
 
+    // Validate request body
+    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId });
     if (!validation.success) {
       res.status(400).json({
         success: false,
-        error: 'Validation failed',
-        details: validation.error.errors,
-      });
+        error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
+      } as ApiResponse<LLMConfig>);
       return;
     }
 
-    const config: LLMConfig = {
-      ...validation.data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const collection = mongoose.connection.collection('llmconfigs');
-    const result = await collection.updateOne(
-      { applicationId },
-      { $set: config },
-      { upsert: true }
-    );
-
-    res.json({
-      success: true,
-      data: config,
-      message: result.upsertedId ? 'LLM config created' : 'LLM config updated',
-    });
-  } catch (error: unknown) {
-    console.error('[llmConfigRoutes] Error saving LLM config:', error instanceof Error ? error.message : String(error));
-    res.status(500).json({
-      success: false,
-      error: 'Failed to save LLM configuration',
-    });
-  }
-});
-
-/**
- * GET /api/llm-config/knowledge-base/:applicationId
- * Get Knowledge Base configuration for an application
- */
-router.get('/knowledge-base/:applicationId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { applicationId } = req.params;
-
-    if (!applicationId?.trim()) {
+    // Validate provider configuration
+    const configValidation = llmConfigService['validateConfig'](validation.data);
+    if (!configValidation.valid) {
       res.status(400).json({
         success: false,
-        error: 'Application ID is required',
-      });
+        error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
+      } as ApiResponse<LLMConfig>);
       return;
     }
 
-    const collection = mongoose.connection.collection('knowledgebaseconfigs');
-    const config = await collection.findOne({ applicationId }) as (KnowledgeBaseConfig & { _id?: unknown }) | null;
+    const config = await llmConfigService.upsertConfig(validation.data);
+
+    res.json({
+      success: true,
+      data: config,
+    } as ApiResponse<LLMConfig>);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] POST /api/llm-config/app/:appId Error:', message);
+    res.status(500).json({
+      success: false,
+      error: message,
+    } as ApiResponse<LLMConfig>);
+  }
+});
+
+/**
+ * POST /api/llm-config/validate/:appId
+ * Test LLM connection
+ */
+router.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    const result = await llmProviderService.validateLLMConnection(appId);
+    res.json(result);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] POST /api/llm-config/validate/:appId Error:', message);
+    res.status(500).json({
+      valid: false,
+      error: message,
+    });
+  }
+});
+
+/**
+ * GET /api/llm-config/providers
+ * Get list of supported providers and their required fields
+ */
+router.get('/providers', (_req: Request, res: Response): void => {
+  try {
+    const providers = LLMClientFactory.getSupportedProviders();
+    res.json({
+      success: true,
+      data: providers,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] GET /api/llm-config/providers Error:', message);
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
+/**
+ * GET /api/kb-config/app/:appId
+ * Get Knowledge Base configuration
+ */
+router.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    const config = await kbConfigService.getConfig(appId);
 
     if (!config) {
-      res.json({
-        success: true,
-        data: null,
-        message: 'No Knowledge Base configuration found for this application',
-      });
+      res.status(404).json({
+        success: false,
+        error: 'KB configuration not found',
+      } as ApiResponse<KnowledgeBaseConfig>);
       return;
     }
 
     res.json({
       success: true,
       data: config,
-    });
+    } as ApiResponse<KnowledgeBaseConfig>);
   } catch (error: unknown) {
-    console.error('[llmConfigRoutes] Error fetching KB config:', error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] GET /api/kb-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch Knowledge Base configuration',
-    });
+      error: message,
+    } as ApiResponse<KnowledgeBaseConfig>);
   }
 });
 
 /**
- * POST /api/llm-config/knowledge-base/:applicationId
+ * POST /api/kb-config/app/:appId
  * Save or update Knowledge Base configuration
  */
-router.post('/knowledge-base/:applicationId', async (req: Request, res: Response): Promise<void> => {
+router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    
-    if (!applicationId?.trim()) {
-      res.status(400).json({
-        success: false,
-        error: 'Application ID is required',
-      });
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
 
-    const validation = kbConfigSchema.safeParse({ ...req.body, applicationId });
+    const body = req.body as unknown;
 
+    // Validate request body
+    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId });
     if (!validation.success) {
       res.status(400).json({
         success: false,
-        error: 'Validation failed',
-        details: validation.error.errors,
-      });
+        error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
+      } as ApiResponse<KnowledgeBaseConfig>);
       return;
     }
 
-    const config: KnowledgeBaseConfig = {
-      ...validation.data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Validate KB configuration
+    const configValidation = kbConfigService['validateConfig'](validation.data);
+    if (!configValidation.valid) {
+      res.status(400).json({
+        success: false,
+        error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
+      } as ApiResponse<KnowledgeBaseConfig>);
+      return;
+    }
 
-    const collection = mongoose.connection.collection('knowledgebaseconfigs');
-    const result = await collection.updateOne(
-      { applicationId },
-      { $set: config },
-      { upsert: true }
-    );
+    const config = await kbConfigService.upsertConfig(validation.data);
 
     res.json({
       success: true,
       data: config,
-      message: result.upsertedId ? 'KB config created' : 'KB config updated',
-    });
+    } as ApiResponse<KnowledgeBaseConfig>);
   } catch (error: unknown) {
-    console.error('[llmConfigRoutes] Error saving KB config:', error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] POST /api/kb-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
-      error: 'Failed to save Knowledge Base configuration',
+      error: message,
+    } as ApiResponse<KnowledgeBaseConfig>);
+  }
+});
+
+/**
+ * POST /api/kb-config/validate/:appId
+ * Test KB NLP LLM connection
+ */
+router.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { appId } = req.params;
+    if (!appId?.trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    const result = await llmProviderService.validateKBLLMConnection(appId);
+    res.json(result);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] POST /api/kb-config/validate/:appId Error:', message);
+    res.status(500).json({
+      valid: false,
+      error: message,
     });
   }
 });
