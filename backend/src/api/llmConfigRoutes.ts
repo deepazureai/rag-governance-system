@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
+import { Types } from 'mongoose';
 import { llmConfigService } from '../services/LLMConfigService';
 import { kbConfigService } from '../services/KnowledgeBaseConfigService';
 import { llmProviderService } from '../services/LLMProviderService';
 import { LLMClientFactory } from '../services/LLMClientFactory';
 import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index';
-import { LLMConfig, KnowledgeBaseConfig, ApiResponse } from '../../src/types/models';
+import { logger } from '../utils/logger.js';
+import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models';
 
 const router = Router();
 
@@ -26,7 +28,7 @@ router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({
         success: false,
         error: 'LLM configuration not found',
-      } as ApiResponse<LLMConfig>);
+      } as ApiResponse<ILLMConfig>);
       return;
     }
 
@@ -64,7 +66,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({
         success: false,
         error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
-      } as ApiResponse<LLMConfig>);
+      } as ApiResponse<ILLMConfig>);
       return;
     }
 
@@ -74,7 +76,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({
         success: false,
         error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
-      } as ApiResponse<LLMConfig>);
+      } as ApiResponse<ILLMConfig>);
       return;
     }
 
@@ -157,7 +159,7 @@ router.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise
       res.status(404).json({
         success: false,
         error: 'KB configuration not found',
-      } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
       return;
     }
 
@@ -195,7 +197,7 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
       res.status(400).json({
         success: false,
         error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
-      } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
       return;
     }
 
@@ -205,7 +207,7 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
       res.status(400).json({
         success: false,
         error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
-      } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
       return;
     }
 

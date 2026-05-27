@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { kbPromptService } from '../services/KBPromptService';
 import { KBPromptSchema } from '../schemas/index';
-import { KBPrompt, ApiResponse } from '../../src/types/models';
+import type { IKBPrompt, ApiResponse } from '../types/models';
 
 const router = Router();
 
@@ -19,7 +19,7 @@ router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({
         success: false,
         error: 'Application ID is required',
-      } as ApiResponse<KBPrompt[]>);
+      } as ApiResponse<IKBPrompt[]>);
       return;
     }
 
@@ -58,7 +58,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({
         success: false,
         error: 'Valid KB prompt ID is required',
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
@@ -68,7 +68,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({
         success: false,
         error: 'KB prompt not found',
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
@@ -99,7 +99,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({
         success: false,
         error: 'Application ID is required',
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
@@ -113,7 +113,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({
         success: false,
         error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
@@ -146,7 +146,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({
         success: false,
         error: 'Valid KB prompt ID is required',
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
@@ -156,7 +156,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({
         success: false,
         error: 'KB prompt not found',
-      } as ApiResponse<KBPrompt>);
+      } as ApiResponse<IKBPrompt>);
       return;
     }
 
