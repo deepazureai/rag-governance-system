@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import type { RecommendationPrompt, KBPrompt } from '@/types/models';
 
-interface SourceItem {
+export interface SourceItem {
   id: string;
   type: 'recommendation' | 'kb-prompt';
   title: string;
@@ -120,16 +120,16 @@ export function SourceSelector({ applicationId, onSourcesSelected }: SourceSelec
                     toggleSource({
                       id: rec._id?.toString() ?? '',
                       type: 'recommendation',
-                      title: rec.title,
-                      snippet: rec.suggestedPrompt.substring(0, 100),
-                      fullContent: rec.suggestedPrompt,
+                      title: rec.originalPrompt.substring(0, 50),
+                      snippet: rec.originalResponse.substring(0, 100),
+                      fullContent: rec.originalResponse,
                     })
                   }
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{rec.title}</p>
-                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{rec.suggestedPrompt}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{rec.originalPrompt}</p>
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{rec.originalResponse}</p>
                     </div>
                     <div
                       className={`ml-2 h-5 w-5 rounded border flex-shrink-0 flex items-center justify-center ${
@@ -172,17 +172,17 @@ export function SourceSelector({ applicationId, onSourcesSelected }: SourceSelec
                     toggleSource({
                       id: prompt._id?.toString() ?? '',
                       type: 'kb-prompt',
-                      title: prompt.title,
-                      snippet: prompt.refinedPrompt?.substring(0, 100) ?? prompt.kbResponse?.substring(0, 100) ?? '',
-                      fullContent: prompt.refinedPrompt ?? prompt.kbResponse ?? '',
+                      title: prompt.userQuery.substring(0, 50),
+                      snippet: prompt.llmGeneratedResponse.substring(0, 100),
+                      fullContent: prompt.llmGeneratedResponse,
                     })
                   }
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{prompt.title}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{prompt.userQuery}</p>
                       <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                        {prompt.refinedPrompt ?? prompt.kbResponse}
+                        {prompt.llmGeneratedResponse}
                       </p>
                     </div>
                     <div

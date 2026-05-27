@@ -178,7 +178,7 @@ export function TemplateEditor({
             className="font-mono text-sm"
           />
           <p className="text-xs text-gray-500 mt-2">
-            Tip: Use double curly braces like {{'{context}'}} for dynamic placeholders
+            {`Tip: Use double curly braces like {{context}} for dynamic placeholders`}
           </p>
         </div>
 
