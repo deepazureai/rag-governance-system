@@ -139,7 +139,8 @@ export class RecommendationPromptService {
         throw new Error('Recommendation not found');
       }
 
-      return result.value as RecommendationPrompt;
+      const recPrompt: RecommendationPrompt = (result as any).value as RecommendationPrompt;
+      return recPrompt;
     } catch (error: unknown) {
       throw this.handleError('updateRecommendation', error);
     }

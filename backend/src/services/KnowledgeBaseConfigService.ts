@@ -32,7 +32,8 @@ export class KnowledgeBaseConfigService {
         throw new Error('Failed to upsert configuration');
       }
 
-      return result.value as KnowledgeBaseConfig;
+      const kbConfig: KnowledgeBaseConfig = result.value as KnowledgeBaseConfig;
+      return kbConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
@@ -79,7 +80,8 @@ export class KnowledgeBaseConfigService {
         throw new Error('Configuration not found');
       }
 
-      return result.value as KnowledgeBaseConfig;
+      const kbConfig: KnowledgeBaseConfig = result.value as KnowledgeBaseConfig;
+      return kbConfig;
     } catch (error: unknown) {
       throw this.handleError('updateConfig', error);
     }

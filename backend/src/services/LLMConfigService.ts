@@ -23,8 +23,8 @@ export class LLMConfigService {
       const collection = db.collection(this.collection);
 
       const result = await collection.findOneAndUpdate(
-        { applicationId: input.applicationId },
-        { $set: { ...validation.data, updatedAt: new Date() } },
+        { applicationId: config.applicationId },
+        { $set: config },
         { upsert: true, returnDocument: 'after' }
       );
 
@@ -32,7 +32,8 @@ export class LLMConfigService {
         throw new Error('Failed to upsert configuration');
       }
 
-      return result.value as LLMConfig;
+      const llmConfig: LLMConfig = result.value as LLMConfig;
+      return llmConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
@@ -100,8 +101,8 @@ export class LLMConfigService {
       );
 
       // Set this one as default
-      const result = await collection.findByIdAndUpdate(
-        objectId,
+      const result = await collection.findOneAndUpdate(
+        { _id: objectId },
         { $set: { isDefault: true, updatedAt: new Date() } },
         { returnDocument: 'after' }
       );

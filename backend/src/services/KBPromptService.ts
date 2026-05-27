@@ -175,7 +175,8 @@ export class KBPromptService {
         throw new Error('KB Prompt not found');
       }
 
-      return result.value as KBPrompt;
+      const kbPrompt: KBPrompt = result.value as KBPrompt;
+      return kbPrompt;
     } catch (error: unknown) {
       throw this.handleError('updateKBPrompt', error);
     }

@@ -35,14 +35,14 @@ router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => 
     res.json({
       success: true,
       data: config,
-    } as ApiResponse<LLMConfig>);
+    } as ApiResponse<ILLMConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] GET /api/llm-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
       error: message,
-    } as ApiResponse<LLMConfig>);
+    } as ApiResponse<ILLMConfig>);
   }
 });
 
@@ -61,7 +61,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
     const body = req.body as unknown;
 
     // Validate request body
-    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId });
+    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId } as unknown);
     if (!validation.success) {
       res.status(400).json({
         success: false,
@@ -85,7 +85,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
     res.json({
       success: true,
       data: config,
-    } as ApiResponse<LLMConfig>);
+    } as ApiResponse<ILLMConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] POST /api/llm-config/app/:appId Error:', message);
@@ -166,14 +166,14 @@ router.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise
     res.json({
       success: true,
       data: config,
-    } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] GET /api/kb-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
       error: message,
-    } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
   }
 });
 
@@ -192,7 +192,7 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
     const body = req.body as unknown;
 
     // Validate request body
-    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId });
+    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId } as unknown);
     if (!validation.success) {
       res.status(400).json({
         success: false,
@@ -216,14 +216,14 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
     res.json({
       success: true,
       data: config,
-    } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] POST /api/kb-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
       error: message,
-    } as ApiResponse<KnowledgeBaseConfig>);
+      } as ApiResponse<IKnowledgeBaseConfig>);
   }
 });
 

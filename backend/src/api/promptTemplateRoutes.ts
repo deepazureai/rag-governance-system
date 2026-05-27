@@ -23,17 +23,17 @@ promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Pr
       return;
     }
 
-    const templateData = body && typeof body === 'object' ? body : {};
+    const templateData = (body && typeof body === 'object' ? (body as Record<string, unknown>) : {}) as Record<string, unknown>;
 
     const newTemplate = new PromptTemplate({
       applicationId: appId.toString(),
-      name: templateData && 'name' in templateData ? templateData.name : 'Untitled Template',
-      description: templateData && 'description' in templateData ? templateData.description : '',
-      templateText: templateData && 'templateText' in templateData ? templateData.templateText : '',
-      category: templateData && 'category' in templateData ? templateData.category : '',
-      tags: Array.isArray(templateData && 'tags' in templateData ? templateData.tags : []) ? templateData.tags : [],
-      sourceRecommendationIds: Array.isArray(templateData && 'sourceRecommendationIds' in templateData ? templateData.sourceRecommendationIds : []) ? templateData.sourceRecommendationIds : [],
-      sourceKBPromptIds: Array.isArray(templateData && 'sourceKBPromptIds' in templateData ? templateData.sourceKBPromptIds : []) ? templateData.sourceKBPromptIds : [],
+      name: (templateData.name as string) || 'Untitled Template',
+      description: (templateData.description as string) || '',
+      templateText: (templateData.templateText as string) || '',
+      category: (templateData.category as string) || '',
+      tags: Array.isArray(templateData.tags) ? templateData.tags : [],
+      sourceRecommendationIds: Array.isArray(templateData.sourceRecommendationIds) ? (templateData.sourceRecommendationIds as Types.ObjectId[]) : [],
+      sourceKBPromptIds: Array.isArray(templateData.sourceKBPromptIds) ? (templateData.sourceKBPromptIds as Types.ObjectId[]) : [],
       sources: [],
       status: 'draft',
       version: 1,
@@ -76,16 +76,16 @@ promptTemplateRouter.get('/app/:appId', async (req: Request, res: Response): Pro
 
     const templates = await PromptTemplate.find({
       applicationId: appId.toString(),
-      status: status as string,
-    })
+      status: (status as string) || 'published',
+    } as Record<string, unknown>)
       .sort({ createdAt: -1 })
       .skip(numSkip)
       .limit(numLimit);
 
     const total = await PromptTemplate.countDocuments({
       applicationId: appId.toString(),
-      status: status as string,
-    });
+      status: (status as string) || 'published',
+    } as Record<string, unknown>);
 
     logger.info(`[promptTemplateRoutes] Retrieved ${templates.length} templates for app ${appId}`);
 
@@ -154,11 +154,12 @@ promptTemplateRouter.post('/refine/:appId', async (req: Request, res: Response):
     }
 
     // Get LLM provider
-    const provider = await llmProviderService.getRecommendationLLMProvider(appId.toString());
+    const providerResult = await llmProviderService.getRecommendationLLMProvider(appId.toString());
+    const provider = providerResult.provider;
 
     // Extract source content
     const sourceContent = sources
-      .map((s: { content?: string }) => s.content ?? '')
+      .map((s: Record<string, unknown>) => (s.content as string) ?? '')
       .join('\n\n---\n\n');
 
     const systemPrompt = `You are an expert at creating reusable prompt templates. 
@@ -176,15 +177,14 @@ Respond with JSON:
   "suggestions": ["suggestion1", "suggestion2"]
 }`;
 
-    const refinement = await provider.generateRecommendation(userPrompt, {
+    const refinement = await provider.generate(userPrompt, {
       systemPrompt,
-      format: 'json',
     });
 
     // Parse response
     let result = { refinedTemplate: '', rationale: '', suggestions: [] as readonly string[] };
     try {
-      const parsed = JSON.parse(refinement.text);
+      const parsed = JSON.parse(refinement);
       result = {
         refinedTemplate: typeof parsed.refinedTemplate === 'string' ? parsed.refinedTemplate : '',
         rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
@@ -192,7 +192,7 @@ Respond with JSON:
       };
     } catch {
       result = {
-        refinedTemplate: refinement.text,
+        refinedTemplate: refinement,
         rationale: 'Template generated successfully',
         suggestions: [],
       };
@@ -220,7 +220,7 @@ promptTemplateRouter.put('/:id', async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const template = await PromptTemplate.findByIdAndUpdate(id, body, { new: true });
+    const template = await PromptTemplate.findByIdAndUpdate(id, body as Record<string, unknown>, { new: true });
 
     if (!template) {
       res.status(404).json({ success: false, message: 'Template not found' });
