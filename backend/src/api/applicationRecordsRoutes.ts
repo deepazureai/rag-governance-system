@@ -1,15 +1,15 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
 import { getStringParam } from '../utils/paramParser.js';
 import mongoose from 'mongoose';
 
-const router = Router();
+const applicationRecordsRouter: ExpressRouter = Router();
 
 /**
  * GET /api/applications/:applicationId/records
  * Get evaluation records for an application
  */
-router.get('/:applicationId/records', async (req: Request, res: Response) => {
+applicationRecordsRouter.get('/:applicationId/records', async (req: Request, res: Response) => {
   try {
     const applicationId = getStringParam(req.params.applicationId);
 
@@ -69,7 +69,7 @@ router.get('/:applicationId/records', async (req: Request, res: Response) => {
  * GET /api/applications/:applicationId
  * Get a specific application by ID
  */
-router.get('/:applicationId', async (req: Request, res: Response) => {
+applicationRecordsRouter.get('/:applicationId', async (req: Request, res: Response) => {
   try {
     const applicationId = getStringParam(req.params.applicationId);
 
@@ -106,4 +106,4 @@ router.get('/:applicationId', async (req: Request, res: Response) => {
   }
 });
 
-export const applicationRecordsRouter = router;
+export default applicationRecordsRouter;

@@ -218,4 +218,4 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
   }
 });
 
-export const hallucinationDetectionRouter = router;
+export default hallucinationDetectionRouter;

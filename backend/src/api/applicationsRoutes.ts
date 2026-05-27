@@ -3,14 +3,14 @@
  * CRUD operations for RAG applications
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { z } from 'zod';
 import { batchProcessingService } from '../services/BatchProcessingService.js';
 import { getStringParam } from '../utils/paramParser.js';
 import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks.js';
 import mongoose from 'mongoose';
 
-const applicationsRouter = Router();
+const applicationsRouter: ExpressRouter = Router();
 
 // Validation schemas
 const createApplicationSchema = z.object({

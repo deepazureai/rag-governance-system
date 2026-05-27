@@ -1,8 +1,8 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { baReviewQueueService } from '../services/BAReviewQueueService.js';
 import { logger } from '../utils/logger.js';
 
-const baReviewRouter = Router();
+const baReviewRouter: ExpressRouter = Router();
 
 /**
  * Populate BA review queue from raw data records

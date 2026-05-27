@@ -1,9 +1,9 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import DeepEvalClient, { EvaluationRequest, EvaluationResponse } from '../services/DeepEvalClient.js';
 import { RawDataRecord } from '../models/RawDataRecord.js';
 import { BAReviewQueue } from '../models/BAReviewQueue.js';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Initialize DeepEval client
 const deepEvalServiceUrl = process.env.DEEPEVAL_SERVICE_URL || 'http://deepeval:8000';

@@ -3,10 +3,10 @@
  * CRUD operations for data source connections
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { z } from 'zod';
 
-const connectionsRouter = Router();
+const connectionsRouter: ExpressRouter = Router();
 
 // Validation schemas
 const createConnectionSchema = z.object({
