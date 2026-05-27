@@ -1,7 +1,7 @@
-import { LLMConfig, KnowledgeBaseConfig } from '../../src/types/models';
-import { llmConfigService } from './LLMConfigService';
-import { kbConfigService } from './KnowledgeBaseConfigService';
-import { LLMClientFactory, ILLMProvider } from './LLMClientFactory';
+import { LLMConfig, KnowledgeBaseConfig } from '../../src/types/models.js';
+import { llmConfigService } from './LLMConfigService.js';
+import { kbConfigService } from './KnowledgeBaseConfigService.js';
+import { LLMClientFactory, ILLMProvider } from './LLMClientFactory.js';
 
 /**
  * LLM Provider Service
