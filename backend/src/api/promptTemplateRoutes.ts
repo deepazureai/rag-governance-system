@@ -1,368 +1,362 @@
 import { Router, Request, Response } from 'express';
+import { Types } from 'mongoose';
 import { PromptTemplate } from '../models/PromptTemplate.js';
-import { RawDataRecord } from '../models/RawDataRecord.js';
+import { promptTemplateService } from '../services/PromptTemplateService';
+import { llmProviderService } from '../services/LLMProviderService';
 import { logger } from '../utils/logger.js';
+import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate';
+import type { ApiResponse } from '../../src/types/models';
 
 const promptTemplateRouter = Router();
 
 /**
- * Create a new prompt template from similar BA-reviewed prompts
- * POST /api/prompt-templates/create
+ * POST /api/prompt-templates/app/:appId
+ * Create a new prompt template with source tracking
  */
-promptTemplateRouter.post('/create', async (req: Request, res: Response) => {
+promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId, templateName, description, promptTemplate, qualityGuidelines, category, tags, baEmail, matchingPatterns, autoApply } = req.body;
+    const { appId } = req.params;
+    const body = req.body as unknown;
 
-    if (!applicationId || !templateName || !promptTemplate || !qualityGuidelines) {
-      return res.status(400).json({ success: false, message: 'Required fields missing' });
+    if (!appId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
     }
 
-    logger.info(`[promptTemplateRoutes] Creating template "${templateName}" for app ${applicationId}`);
+    const templateData = body && typeof body === 'object' ? body : {};
 
     const newTemplate = new PromptTemplate({
-      applicationId,
-      templateName,
-      description,
-      promptTemplate,
-      qualityGuidelines,
-      category,
-      tags: tags || [],
-      matchingPatterns: matchingPatterns || [],
-      autoApply: autoApply || false,
+      applicationId: appId.toString(),
+      name: templateData && 'name' in templateData ? templateData.name : 'Untitled Template',
+      description: templateData && 'description' in templateData ? templateData.description : '',
+      templateText: templateData && 'templateText' in templateData ? templateData.templateText : '',
+      category: templateData && 'category' in templateData ? templateData.category : '',
+      tags: Array.isArray(templateData && 'tags' in templateData ? templateData.tags : []) ? templateData.tags : [],
+      sourceRecommendationIds: Array.isArray(templateData && 'sourceRecommendationIds' in templateData ? templateData.sourceRecommendationIds : []) ? templateData.sourceRecommendationIds : [],
+      sourceKBPromptIds: Array.isArray(templateData && 'sourceKBPromptIds' in templateData ? templateData.sourceKBPromptIds : []) ? templateData.sourceKBPromptIds : [],
+      sources: [],
       status: 'draft',
-      versions: [
-        {
-          version: 1,
-          promptTemplate,
-          qualityGuidelines,
-          createdBy: baEmail,
-          description,
-        },
-      ],
-      currentVersion: 1,
-      usageMetrics: {
-        totalUsageCount: 0,
-      },
-      createdBy: baEmail,
+      version: 1,
+      isPublic: false,
+      usageMetrics: { totalUsageCount: 0 },
+      createdBy: 'system',
     });
 
     await newTemplate.save();
+    logger.info(`[promptTemplateRoutes] Template created: ${newTemplate._id}`);
 
-    logger.info(`[promptTemplateRoutes] Template created successfully: ${newTemplate._id}`);
-
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: 'Prompt template created successfully',
+      message: 'Template created successfully',
       data: newTemplate,
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error creating template:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create prompt template',
-      error: error.message,
-    });
+    } as ApiResponse<IPromptTemplate>);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error creating template: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
- * Get all templates for an application
- * GET /api/prompt-templates/:applicationId?status=published&category=customer-support&page=1&pageSize=10
+ * GET /api/prompt-templates/app/:appId
+ * List templates for an application with filters
  */
-promptTemplateRouter.get('/:applicationId', async (req: Request, res: Response) => {
+promptTemplateRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    const status = req.query.status as string | undefined;
-    const category = req.query.category as string | undefined;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const { appId } = req.params;
+    const { status = 'published', limit = 50, skip = 0 } = req.query;
 
-    if (!applicationId) {
-      return res.status(400).json({ success: false, message: 'applicationId is required' });
+    if (!appId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
     }
 
-    const query: any = { applicationId };
-    if (status) query.status = status;
-    if (category) query.category = category;
+    const numLimit = Math.min(parseInt(limit as string) || 50, 100);
+    const numSkip = parseInt(skip as string) || 0;
 
-    const skip = (page - 1) * pageSize;
+    const templates = await PromptTemplate.find({
+      applicationId: appId.toString(),
+      status: status as string,
+    })
+      .sort({ createdAt: -1 })
+      .skip(numSkip)
+      .limit(numLimit);
 
-    const templates = await PromptTemplate.find(query)
-      .sort({ 'usageMetrics.lastUsedAt': -1, createdAt: -1 })
-      .skip(skip)
-      .limit(pageSize)
-      .lean();
+    const total = await PromptTemplate.countDocuments({
+      applicationId: appId.toString(),
+      status: status as string,
+    });
 
-    const total = await PromptTemplate.countDocuments(query);
+    logger.info(`[promptTemplateRoutes] Retrieved ${templates.length} templates for app ${appId}`);
 
-    logger.info(`[promptTemplateRoutes] Retrieved ${templates.length} templates for app ${applicationId}`);
-
-    return res.status(200).json({
+    res.json({
       success: true,
       data: templates,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      pagination: { page: Math.floor(numSkip / numLimit) + 1, pageSize: numLimit, total },
     });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error fetching templates:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch prompt templates',
-      error: error.message,
-    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error fetching templates: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
+ * GET /api/prompt-templates/:id
  * Get single template by ID
- * GET /api/prompt-templates/detail/:templateId
  */
-promptTemplateRouter.get('/detail/:templateId', async (req: Request, res: Response) => {
+promptTemplateRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { templateId } = req.params;
+    const { id } = req.params;
 
-    const template = await PromptTemplate.findById(templateId);
-
-    if (!template) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
+    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+      res.status(404).json({ success: false, message: 'Template not found' });
+      return;
     }
 
-    return res.status(200).json({
-      success: true,
-      data: template,
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error fetching template:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch template',
-      error: error.message,
-    });
+    const template = await PromptTemplate.findById(id);
+
+    if (!template) {
+      res.status(404).json({ success: false, message: 'Template not found' });
+      return;
+    }
+
+    res.json({ success: true, data: template });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error fetching template: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
- * Publish a template (change status from draft to published)
- * POST /api/prompt-templates/:templateId/publish
+ * POST /api/prompt-templates/refine/:appId
+ * Refine template using LLM based on sources
  */
-promptTemplateRouter.post('/:templateId/publish', async (req: Request, res: Response) => {
+promptTemplateRouter.post('/refine/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { templateId } = req.params;
-    const { baEmail } = req.body;
+    const { appId } = req.params;
+    const body = req.body as unknown;
+    const sources = body && typeof body === 'object' && 'sources' in body
+      ? Array.isArray(body.sources)
+        ? body.sources
+        : []
+      : [];
 
-    if (!baEmail) {
-      return res.status(400).json({ success: false, message: 'baEmail is required' });
+    if (!appId?.toString().trim()) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    if (!Array.isArray(sources) || sources.length === 0) {
+      res.status(400).json({ success: false, error: 'Sources are required for refinement' });
+      return;
+    }
+
+    // Get LLM provider
+    const provider = await llmProviderService.getRecommendationLLMProvider(appId.toString());
+
+    // Extract source content
+    const sourceContent = sources
+      .map((s: { content?: string }) => s.content ?? '')
+      .join('\n\n---\n\n');
+
+    const systemPrompt = `You are an expert at creating reusable prompt templates. 
+Analyze the provided examples and create a generalized template that captures the best practices.
+Include placeholders for variable content like {{context}}, {{query}}, {{response}}, etc.`;
+
+    const userPrompt = `Based on these examples, create a reusable prompt template:
+
+${sourceContent}
+
+Respond with JSON:
+{
+  "refinedTemplate": "The template text with {{placeholders}}",
+  "rationale": "Why this template works",
+  "suggestions": ["suggestion1", "suggestion2"]
+}`;
+
+    const refinement = await provider.generateRecommendation(userPrompt, {
+      systemPrompt,
+      format: 'json',
+    });
+
+    // Parse response
+    let result = { refinedTemplate: '', rationale: '', suggestions: [] as readonly string[] };
+    try {
+      const parsed = JSON.parse(refinement.text);
+      result = {
+        refinedTemplate: typeof parsed.refinedTemplate === 'string' ? parsed.refinedTemplate : '',
+        rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+      };
+    } catch {
+      result = {
+        refinedTemplate: refinement.text,
+        rationale: 'Template generated successfully',
+        suggestions: [],
+      };
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error refining template: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * PUT /api/prompt-templates/:id
+ * Update template (including publish/archive)
+ */
+promptTemplateRouter.put('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const body = req.body as unknown;
+
+    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid template ID' });
+      return;
+    }
+
+    const template = await PromptTemplate.findByIdAndUpdate(id, body, { new: true });
+
+    if (!template) {
+      res.status(404).json({ success: false, message: 'Template not found' });
+      return;
+    }
+
+    logger.info(`[promptTemplateRoutes] Template updated: ${id}`);
+    res.json({ success: true, data: template });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error updating template: ${message}`);
+    res.status(500).json({ success: false, message });
+  }
+});
+
+/**
+ * POST /api/prompt-templates/:id/publish
+ * Publish a template (draft -> published)
+ */
+promptTemplateRouter.post('/:id/publish', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid template ID' });
+      return;
     }
 
     const template = await PromptTemplate.findByIdAndUpdate(
-      templateId,
+      id,
       {
         status: 'published',
         publishedAt: new Date(),
-        publishedBy: baEmail,
       },
       { new: true }
     );
 
     if (!template) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
+      res.status(404).json({ success: false, message: 'Template not found' });
+      return;
     }
 
-    logger.info(`[promptTemplateRoutes] Template published: ${templateId}`);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Template published successfully',
-      data: template,
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error publishing template:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to publish template',
-      error: error.message,
-    });
+    logger.info(`[promptTemplateRoutes] Template published: ${id}`);
+    res.json({ success: true, message: 'Template published', data: template });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error publishing template: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
- * Archive a template
- * POST /api/prompt-templates/:templateId/archive
+ * DELETE /api/prompt-templates/:id
+ * Archive/delete a template
  */
-promptTemplateRouter.post('/:templateId/archive', async (req: Request, res: Response) => {
+promptTemplateRouter.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { templateId } = req.params;
+    const { id } = req.params;
 
-    const template = await PromptTemplate.findByIdAndUpdate(
-      templateId,
-      {
-        status: 'archived',
-        archivedAt: new Date(),
-      },
-      { new: true }
-    );
-
-    if (!template) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
+    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, message: 'Invalid template ID' });
+      return;
     }
 
-    logger.info(`[promptTemplateRoutes] Template archived: ${templateId}`);
+    await PromptTemplate.findByIdAndUpdate(id, {
+      status: 'archived',
+      archivedAt: new Date(),
+    });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Template archived successfully',
-      data: template,
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error archiving template:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to archive template',
-      error: error.message,
-    });
+    logger.info(`[promptTemplateRoutes] Template archived: ${id}`);
+    res.json({ success: true, message: 'Template archived' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error archiving template: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
- * Export templates as JSON
- * GET /api/prompt-templates/:applicationId/export?format=json&status=published
+ * GET /api/prompt-templates/app/:appId/export
+ * Export templates as JSON or CSV
  */
-promptTemplateRouter.get('/:applicationId/export', async (req: Request, res: Response) => {
+promptTemplateRouter.get('/app/:appId/export', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    const format = req.query.format as string || 'json';
-    const status = req.query.status as string | undefined;
+    const { appId } = req.params;
+    const format = (req.query.format as string) || 'json';
 
-    const query: any = { applicationId };
-    if (status) query.status = status;
+    if (!appId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
 
-    const templates = await PromptTemplate.find(query).lean();
+    const templates = await PromptTemplate.find({
+      applicationId: appId.toString(),
+      status: 'published',
+    });
 
     if (format === 'json') {
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="templates_${applicationId}_${new Date().toISOString().split('T')[0]}.json"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="templates_${appId}_${new Date().toISOString().split('T')[0]}.json"`
+      );
       res.send(JSON.stringify(templates, null, 2));
     } else if (format === 'csv') {
-      // Convert to CSV
       const csv = convertTemplatesToCSV(templates);
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="templates_${applicationId}_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="templates_${appId}_${new Date().toISOString().split('T')[0]}.csv"`
+      );
       res.send(csv);
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid format. Use json or csv' });
+      res.status(400).json({ success: false, message: 'Invalid format. Use json or csv' });
     }
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error exporting templates:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to export templates',
-      error: error.message,
-    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error exporting templates: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
 /**
- * Update template version (non-destructive versioning)
- * POST /api/prompt-templates/:templateId/new-version
+ * Helper: Convert templates to CSV
  */
-promptTemplateRouter.post('/:templateId/new-version', async (req: Request, res: Response) => {
-  try {
-    const { templateId } = req.params;
-    const { promptTemplate, qualityGuidelines, description, baEmail } = req.body;
-
-    if (!promptTemplate || !qualityGuidelines || !baEmail) {
-      return res.status(400).json({ success: false, message: 'Required fields missing' });
-    }
-
-    const template = await PromptTemplate.findById(templateId);
-
-    if (!template) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
-    }
-
-    const newVersion = template.currentVersion + 1;
-
-    template.versions.push({
-      version: newVersion,
-      promptTemplate,
-      qualityGuidelines,
-      createdBy: baEmail,
-      description,
-      createdAt: new Date(),
-    });
-
-    template.currentVersion = newVersion;
-    template.promptTemplate = promptTemplate;
-    template.qualityGuidelines = qualityGuidelines;
-
-    await template.save();
-
-    logger.info(`[promptTemplateRoutes] New version created for template ${templateId}: v${newVersion}`);
-
-    return res.status(200).json({
-      success: true,
-      message: 'New template version created',
-      data: template,
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error creating version:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create new template version',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * Delete a template
- * DELETE /api/prompt-templates/:templateId
- */
-promptTemplateRouter.delete('/:templateId', async (req: Request, res: Response) => {
-  try {
-    const { templateId } = req.params;
-
-    const result = await PromptTemplate.findByIdAndDelete(templateId);
-
-    if (!result) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
-    }
-
-    logger.info(`[promptTemplateRoutes] Template deleted: ${templateId}`);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Template deleted successfully',
-    });
-  } catch (error: any) {
-    logger.error(`[promptTemplateRoutes] Error deleting template:`, error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to delete template',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * Helper function to convert templates to CSV
- */
-function convertTemplatesToCSV(templates: any[]): string {
-  const headers = ['Template ID', 'Name', 'Description', 'Status', 'Category', 'Tags', 'Total Usage', 'Created By', 'Created At'];
+function convertTemplatesToCSV(templates: IPromptTemplate[]): string {
+  const headers = ['ID', 'Name', 'Category', 'Tags', 'Status', 'Sources', 'Usage', 'Created At'];
   const rows = templates.map((t) => [
-    t._id,
-    t.templateName,
-    t.description,
+    t._id?.toString() ?? '',
+    t.name,
+    t.category ?? '',
+    Array.isArray(t.tags) ? t.tags.join(';') : '',
     t.status,
-    t.category || '',
-    (t.tags || []).join(';'),
-    t.usageMetrics?.totalUsageCount || 0,
-    t.createdBy,
-    t.createdAt,
+    `${(t.sourceRecommendationIds?.length ?? 0) + (t.sourceKBPromptIds?.length ?? 0)} sources`,
+    t.usageMetrics?.totalUsageCount ?? 0,
+    new Date(t.createdAt).toISOString(),
   ]);
 
   const csvContent = [
