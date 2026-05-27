@@ -6,7 +6,7 @@ import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
 import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
-import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models';
+import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models.js';
 
 const llmConfigRouter: ExpressRouter = Router();
 

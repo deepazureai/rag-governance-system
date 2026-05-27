@@ -1,4 +1,4 @@
-import { LLMConfig } from '../../src/types/models';
+import { LLMConfig } from '../types/models.js';
 
 /**
  * LLM Provider Interface

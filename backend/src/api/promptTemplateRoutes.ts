@@ -4,8 +4,8 @@ import { PromptTemplate } from '../models/PromptTemplate.js';
 import { promptTemplateService } from '../services/PromptTemplateService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { logger } from '../utils/logger.js';
-import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate';
-import type { ApiResponse } from '../types/models';
+import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate.js';
+import type { ApiResponse } from '../types/models.js';
 
 const promptTemplateRouter: ExpressRouter = Router();
 
