@@ -297,4 +297,4 @@ knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Respo
   }
 });
 
-export const knowledgeBaseRouter = router;
+export default knowledgeBaseRouter;

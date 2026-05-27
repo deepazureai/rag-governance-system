@@ -251,4 +251,4 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
   }
 });
 
-export const llmConfigRouter = router;
+export default llmConfigRouter;
