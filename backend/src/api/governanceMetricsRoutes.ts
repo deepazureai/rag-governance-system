@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 import GovernanceMetricsService from '../services/GovernanceMetricsService.js';
 import AIActivityGovernanceService from '../services/AIActivityGovernanceService.js';
 
-export const governanceMetricsRouter = Router();
+export const governanceMetricsRouter: ExpressRouter = Router();
 
 /**
  * GET /api/governance-metrics/ai-activity/:applicationId

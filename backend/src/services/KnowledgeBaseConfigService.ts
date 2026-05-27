@@ -28,12 +28,11 @@ export class KnowledgeBaseConfigService {
         { upsert: true, returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Failed to upsert configuration');
       }
 
-      const kbConfig: KnowledgeBaseConfig = result.value as KnowledgeBaseConfig;
-      return kbConfig;
+      return result.value as KnowledgeBaseConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
@@ -76,12 +75,11 @@ export class KnowledgeBaseConfigService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Configuration not found');
       }
 
-      const kbConfig: KnowledgeBaseConfig = result.value as KnowledgeBaseConfig;
-      return kbConfig;
+      return result.value as KnowledgeBaseConfig;
     } catch (error: unknown) {
       throw this.handleError('updateConfig', error);
     }

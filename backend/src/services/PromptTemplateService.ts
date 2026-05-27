@@ -124,12 +124,11 @@ export class PromptTemplateService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Template not found');
       }
 
-      const template: PromptTemplate = result.value! as PromptTemplate;
-      return template;
+      return result.value as PromptTemplate;
     } catch (error: unknown) {
       throw this.handleError('updateTemplate', error);
     }
@@ -161,12 +160,11 @@ export class PromptTemplateService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Template not found');
       }
 
-      const publishedTemplate: PromptTemplate = result.value! as PromptTemplate;
-      return publishedTemplate;
+      return result.value as PromptTemplate;
     } catch (error: unknown) {
       throw this.handleError('publishTemplate', error);
     }
@@ -197,12 +195,11 @@ export class PromptTemplateService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Template not found');
       }
 
-      const archivedTemplate: PromptTemplate = (result as any).value as PromptTemplate;
-      return archivedTemplate;
+      return result.value as PromptTemplate;
     } catch (error: unknown) {
       throw this.handleError('archiveTemplate', error);
     }

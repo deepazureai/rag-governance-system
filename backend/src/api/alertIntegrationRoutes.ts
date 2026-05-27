@@ -1,8 +1,8 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { AlertIntegrationLayerService } from '../services/AlertIntegrationLayerService.js';
 import { logger } from '../utils/logger.js';
 
-export const alertIntegrationRouter = Router();
+export const alertIntegrationRouter: ExpressRouter = Router();
 
 /**
  * GET /api/alert-integration/app/:appId/thresholds

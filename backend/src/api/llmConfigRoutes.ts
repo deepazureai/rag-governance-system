@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { llmConfigService } from '../services/LLMConfigService';
 import { kbConfigService } from '../services/KnowledgeBaseConfigService';
@@ -8,13 +8,13 @@ import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index';
 import { logger } from '../utils/logger.js';
 import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models';
 
-const router = Router();
+const llmConfigRouter: ExpressRouter = Router();
 
 /**
  * GET /api/llm-config/app/:appId
  * Get LLM configuration for an application
  */
-router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {
@@ -50,7 +50,7 @@ router.get('/app/:appId', async (req: Request, res: Response): Promise<void> => 
  * POST /api/llm-config/app/:appId
  * Save or update LLM configuration
  */
-router.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {
@@ -58,10 +58,10 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const body = req.body as unknown;
+    const body = req.body as Record<string, unknown>;
 
     // Validate request body
-    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId } as unknown);
+    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId });
     if (!validation.success) {
       res.status(400).json({
         success: false,
@@ -92,7 +92,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({
       success: false,
       error: message,
-    } as ApiResponse<LLMConfig>);
+    } as ApiResponse<ILLMConfig>);
   }
 });
 
@@ -100,7 +100,7 @@ router.post('/app/:appId', async (req: Request, res: Response): Promise<void> =>
  * POST /api/llm-config/validate/:appId
  * Test LLM connection
  */
-router.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {
@@ -124,7 +124,7 @@ router.post('/validate/:appId', async (req: Request, res: Response): Promise<voi
  * GET /api/llm-config/providers
  * Get list of supported providers and their required fields
  */
-router.get('/providers', (_req: Request, res: Response): void => {
+llmConfigRouter.get('/providers', (_req: Request, res: Response): void => {
   try {
     const providers = LLMClientFactory.getSupportedProviders();
     res.json({
@@ -145,7 +145,7 @@ router.get('/providers', (_req: Request, res: Response): void => {
  * GET /api/kb-config/app/:appId
  * Get Knowledge Base configuration
  */
-router.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {
@@ -181,7 +181,7 @@ router.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise
  * POST /api/kb-config/app/:appId
  * Save or update Knowledge Base configuration
  */
-router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {
@@ -189,10 +189,10 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
       return;
     }
 
-    const body = req.body as unknown;
+    const body = req.body as Record<string, unknown>;
 
     // Validate request body
-    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId } as unknown);
+    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId });
     if (!validation.success) {
       res.status(400).json({
         success: false,
@@ -231,7 +231,7 @@ router.post('/kb-config/app/:appId', async (req: Request, res: Response): Promis
  * POST /api/kb-config/validate/:appId
  * Test KB NLP LLM connection
  */
-router.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
     if (!appId?.trim()) {

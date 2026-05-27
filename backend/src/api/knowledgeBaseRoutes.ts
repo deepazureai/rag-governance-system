@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response, NextFunction } from 'express';
 import multer, { Multer, StorageEngine } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -6,7 +6,7 @@ import { VectorStoreService, getVectorStore } from '../services/VectorStoreServi
 import { DocumentProcessorService } from '../services/DocumentProcessorService.js';
 import { logger } from '../utils/logger.js';
 
-const router = Router();
+const knowledgeBaseRouter: ExpressRouter = Router();
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads', 'knowledge-base');
@@ -82,7 +82,7 @@ const upload = multer({
  * Upload and vectorize documents
  * POST /api/knowledge-base/upload
  */
-router.post('/upload', upload.array('files', 10), async (req: any, res: Response): Promise<void> => {
+knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, res: Response): Promise<void> => {
   try {
     const files = (req.files ?? []) as Express.Multer.File[];
     const body = req.body as UploadBody;
@@ -173,7 +173,7 @@ router.post('/upload', upload.array('files', 10), async (req: any, res: Response
  * Search knowledge base
  * POST /api/knowledge-base/search
  */
-router.post('/search', async (req: Request, res: Response): Promise<void> => {
+knowledgeBaseRouter.post('/search', async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body as SearchBody;
     const { applicationId, query, namespace } = body;
@@ -218,7 +218,7 @@ router.post('/search', async (req: Request, res: Response): Promise<void> => {
  * Validate LLM response against knowledge base
  * POST /api/knowledge-base/validate-response
  */
-router.post('/validate-response', async (req: Request, res: Response): Promise<void> => {
+knowledgeBaseRouter.post('/validate-response', async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body as ValidateResponseBody;
     const { applicationId, userPrompt, llmResponse } = body;
@@ -274,7 +274,7 @@ router.post('/validate-response', async (req: Request, res: Response): Promise<v
  * Get knowledge base stats
  * GET /api/knowledge-base/stats/:applicationId
  */
-router.get('/stats/:applicationId', async (req: Request, res: Response): Promise<void> => {
+knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
     

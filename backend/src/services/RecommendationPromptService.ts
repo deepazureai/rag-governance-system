@@ -135,12 +135,11 @@ export class RecommendationPromptService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Recommendation not found');
       }
 
-      const recPrompt: RecommendationPrompt = (result as any).value as RecommendationPrompt;
-      return recPrompt;
+      return result.value as RecommendationPrompt;
     } catch (error: unknown) {
       throw this.handleError('updateRecommendation', error);
     }

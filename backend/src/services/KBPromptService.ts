@@ -171,12 +171,11 @@ export class KBPromptService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('KB Prompt not found');
       }
 
-      const kbPrompt: KBPrompt = result.value as KBPrompt;
-      return kbPrompt;
+      return result.value as KBPrompt;
     } catch (error: unknown) {
       throw this.handleError('updateKBPrompt', error);
     }

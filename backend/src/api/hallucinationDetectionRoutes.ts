@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import {
   detectHallucinations,
   analyzePromptQuality,
@@ -7,13 +7,13 @@ import {
 } from '../services/HallucinationDetectionService.js';
 import { logger } from '../utils/logger.js';
 
-const router = Router();
+const hallucinationDetectionRouter: ExpressRouter = Router();
 
 /**
  * POST /api/evaluation/hallucination-detection
  * Detect hallucinations in LLM responses using Azure OpenAI as judge
  */
-router.post('/hallucination-detection', async (req: Request, res: Response) => {
+hallucinationDetectionRouter.post('/hallucination-detection', async (req: Request, res: Response) => {
   try {
     const {
       sourceDocuments,
@@ -66,7 +66,7 @@ router.post('/hallucination-detection', async (req: Request, res: Response) => {
  * POST /api/evaluation/prompt-quality
  * Analyze prompt quality for clarity and best practices
  */
-router.post('/prompt-quality', async (req: Request, res: Response) => {
+hallucinationDetectionRouter.post('/prompt-quality', async (req: Request, res: Response) => {
   try {
     const { prompt, recordId } = req.body;
 
@@ -97,7 +97,7 @@ router.post('/prompt-quality', async (req: Request, res: Response) => {
  * POST /api/evaluation/generate-improved-prompt
  * Generate an improved version of a prompt with specific suggestions
  */
-router.post('/generate-improved-prompt', async (req: Request, res: Response) => {
+hallucinationDetectionRouter.post('/generate-improved-prompt', async (req: Request, res: Response) => {
   try {
     const { originalPrompt, issues, targetGroundedness = 80, recordId } = req.body;
 
@@ -140,7 +140,7 @@ router.post('/generate-improved-prompt', async (req: Request, res: Response) => 
  * POST /api/evaluation/end-to-end
  * Complete evaluation pipeline: detect hallucinations, analyze prompt quality, generate improvements
  */
-router.post('/end-to-end', async (req: Request, res: Response) => {
+hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Response) => {
   try {
     const {
       sourceDocuments,

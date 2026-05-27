@@ -1,7 +1,7 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { ragSessionManager, CreateSessionRequest } from '../services/RAGSessionManager.js';
 
-export const ragSessionRouter = Router();
+export const ragSessionRouter: ExpressRouter = Router();
 
 /**
  * POST /api/rag-sessions/create

@@ -1,9 +1,9 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import { getStringParam } from '../utils/paramParser.js';
 
-export const schemaMappingRouter = Router();
+export const schemaMappingRouter: ExpressRouter = Router();
 
 /**
  * POST /save-schema-mapping

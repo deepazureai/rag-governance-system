@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { DataIngestionService } from '../services/DataIngestionService.js';
 import { DataProcessingService } from '../services/DataProcessingService.js';
 import { AlertIntegrationLayerService } from '../services/AlertIntegrationLayerService.js';
 import { DataSourceConnectorFactory, DataSourceConfig } from '../connectors/index.js';
 import { logger } from '../utils/logger.js';
 
-export const dataIngestionRouter = Router();
+export const dataIngestionRouter: ExpressRouter = Router();
 
 const dataIngestionService = new DataIngestionService();
 const dataProcessingService = new DataProcessingService();

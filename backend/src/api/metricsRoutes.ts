@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index.js';
 import { ApplicationMetricsService } from '../services/ApplicationMetricsService.js';
 import { AlertCalculationEngine } from '../services/AlertCalculationEngine.js';
 
-const metricsRouter = Router();
+const metricsRouter: ExpressRouter = Router();
 const metricsService = new ApplicationMetricsService();
 
 /**

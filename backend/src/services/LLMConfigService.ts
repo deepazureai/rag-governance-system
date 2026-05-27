@@ -22,18 +22,18 @@ export class LLMConfigService {
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
 
+      const config = validation.data;
       const result = await collection.findOneAndUpdate(
         { applicationId: config.applicationId },
         { $set: config },
         { upsert: true, returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Failed to upsert configuration');
       }
 
-      const llmConfig: LLMConfig = result.value as LLMConfig;
-      return llmConfig;
+      return result.value as LLMConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
@@ -107,7 +107,7 @@ export class LLMConfigService {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result || !result.value) {
         throw new Error('Configuration not found');
       }
     } catch (error: unknown) {

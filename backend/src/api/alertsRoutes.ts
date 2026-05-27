@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 
-export const alertsRouter = Router();
+export const alertsRouter: ExpressRouter = Router();
 
 /**
  * POST /api/alerts/batch-create

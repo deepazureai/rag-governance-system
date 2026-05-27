@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks.js';
 import mongoose from 'mongoose';
 
-export const slaConfigRouter = Router();
+export const slaConfigRouter: ExpressRouter = Router();
 
 /**
  * POST /api/applications/:applicationId/sla

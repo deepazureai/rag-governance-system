@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import { getStringParam } from '../utils/paramParser.js';
 import { keyVaultManager } from '../utils/keyvault.js';
 import { Pool } from 'pg';
 
-export const connectionsManagementRouter = Router();
+export const connectionsManagementRouter: ExpressRouter = Router();
 
 /**
  * POST /test-connection

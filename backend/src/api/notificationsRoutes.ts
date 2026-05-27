@@ -1,9 +1,9 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { NotificationService } from '../services/NotificationService.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose'; // Added for future DB integration
 
-const notificationsRouter = Router();
+const notificationsRouter: ExpressRouter = Router();
 const notificationService = new NotificationService();
 
 /**
