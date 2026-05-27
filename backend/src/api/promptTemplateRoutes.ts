@@ -1,8 +1,8 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { PromptTemplate } from '../models/PromptTemplate.js';
-import { promptTemplateService } from '../services/PromptTemplateService';
-import { llmProviderService } from '../services/LLMProviderService';
+import { promptTemplateService } from '../services/PromptTemplateService.js';
+import { llmProviderService } from '../services/LLMProviderService.js';
 import { logger } from '../utils/logger.js';
 import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate';
 import type { ApiResponse } from '../types/models';

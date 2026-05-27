@@ -1,10 +1,10 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { Types } from 'mongoose';
-import { llmConfigService } from '../services/LLMConfigService';
-import { kbConfigService } from '../services/KnowledgeBaseConfigService';
-import { llmProviderService } from '../services/LLMProviderService';
-import { LLMClientFactory } from '../services/LLMClientFactory';
-import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index';
+import { llmConfigService } from '../services/LLMConfigService.js';
+import { kbConfigService } from '../services/KnowledgeBaseConfigService.js';
+import { llmProviderService } from '../services/LLMProviderService.js';
+import { LLMClientFactory } from '../services/LLMClientFactory.js';
+import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models';
 
