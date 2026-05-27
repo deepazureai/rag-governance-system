@@ -113,7 +113,7 @@ export class EmbeddingService {
       const batch = texts.slice(i, i + this.config.batchSize);
 
       const batchEmbeddings = await this.embedder.embedDocuments(batch);
-      const normalized = batchEmbeddings.map((emb) => this.normalizeDimension(emb));
+      const normalized = batchEmbeddings.map((emb: number[]) => this.normalizeDimension(emb));
 
       embeddings.push(...normalized);
     }

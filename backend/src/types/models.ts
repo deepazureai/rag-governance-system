@@ -190,6 +190,11 @@ export interface PromptTemplate {
   updatedAt: Date;
 }
 
+// Input types for validation
+export type IPromptTemplate = PromptTemplate;
+export type PromptTemplateInput = Omit<PromptTemplate, '_id' | 'createdAt' | 'updatedAt' | 'version'>;
+export type SaveRecommendationInput = RecommendationPromptInput;
+
 // ============================================================
 // API Response Types
 // ============================================================
