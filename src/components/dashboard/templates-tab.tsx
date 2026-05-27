@@ -136,19 +136,18 @@ export function TemplatesTab({ applicationId }: TemplatesTabProps) {
       console.error('[v0] Error deleting template:', error);
     }
   };
-      }
-    } catch (err) {
-      setFeedback({ type: 'error', message: 'Error forking template' });
-    }
-  };
 
-  const handleDownload = async (templateId: string, format: 'json' | 'yaml' | 'csv') => {
+  const handleDownloadTemplate = async (templateId: string, format: 'json' | 'yaml' | 'csv'): Promise<void> => {
     try {
       const response = await fetch('/api/templates/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateIds: [templateId], format }),
       });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -157,8 +156,12 @@ export function TemplatesTab({ applicationId }: TemplatesTabProps) {
       a.download = `template.${format}`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setFeedback({ type: 'error', message: 'Error downloading template' });
+      
+      setFeedback({ type: 'success', message: 'Template downloaded' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error downloading template';
+      setFeedback({ type: 'error', message });
+      console.error('[v0] Error downloading template:', error);
     }
   };
 
@@ -371,19 +374,19 @@ export function TemplatesTab({ applicationId }: TemplatesTabProps) {
                     </Button>
                     <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                       <button
-                        onClick={() => handleDownload(template.id, 'json')}
+                        onClick={() => handleDownloadTemplate(template.id, 'json')}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         JSON
                       </button>
                       <button
-                        onClick={() => handleDownload(template.id, 'yaml')}
+                        onClick={() => handleDownloadTemplate(template.id, 'yaml')}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         YAML
                       </button>
                       <button
-                        onClick={() => handleDownload(template.id, 'csv')}
+                        onClick={() => handleDownloadTemplate(template.id, 'csv')}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         CSV

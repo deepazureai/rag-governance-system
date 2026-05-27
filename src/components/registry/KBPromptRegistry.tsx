@@ -62,13 +62,6 @@ export function KBPromptRegistry({ applicationId }: KBPromptRegistryProps): Reac
     void fetchPrompts();
   }, [fetchPrompts]);
 
-  const getRelevanceColor = (score: number | undefined): string => {
-    const scoreValue = score ?? 0;
-    if (scoreValue >= 0.8) return 'bg-green-100 text-green-800';
-    if (scoreValue >= 0.6) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -114,12 +107,14 @@ export function KBPromptRegistry({ applicationId }: KBPromptRegistryProps): Reac
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{prompt.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{prompt.category || 'Uncategorized'}</p>
+                  <h3 className="font-semibold text-gray-900">{prompt.userQuery.substring(0, 60)}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{prompt.rating ? `Rating: ${prompt.rating}/5` : 'Not rated'}</p>
                 </div>
-                <Badge className={getRelevanceColor(prompt.relevanceScore)}>
-                  {((prompt.relevanceScore ?? 0) * 100).toFixed(0)}%
-                </Badge>
+                {prompt.rating && (
+                  <Badge className="bg-green-100 text-green-800">
+                    {prompt.rating}/5
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -130,20 +125,12 @@ export function KBPromptRegistry({ applicationId }: KBPromptRegistryProps): Reac
 
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-1">KB Response:</p>
-                  <p className="text-sm text-gray-600 line-clamp-2">{prompt.kbResponse}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">{prompt.llmGeneratedResponse}</p>
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-3">
-                {prompt.tags && prompt.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {prompt.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+              <div className="flex gap-2 mt-3 text-xs text-gray-500">
+                <span>Embedding Model: {prompt.embeddingModelUsed}</span>
               </div>
             </Card>
           ))
@@ -171,23 +158,27 @@ export function KBPromptRegistry({ applicationId }: KBPromptRegistryProps): Reac
 
             <div>
               <p className="font-medium text-gray-700">Retrieved Context:</p>
-              <p className="text-gray-600 bg-white p-2 rounded">{selectedPrompt.retrievedContext}</p>
+              <p className="text-gray-600 bg-white p-2 rounded">
+                {selectedPrompt.contextRetrieved && selectedPrompt.contextRetrieved.length > 0
+                  ? selectedPrompt.contextRetrieved.map((ctx) => `${ctx.source}: ${ctx.content}`).join('\n\n')
+                  : 'No context retrieved'}
+              </p>
             </div>
 
             <div>
               <p className="font-medium text-gray-700">KB Response:</p>
-              <p className="text-gray-600 bg-white p-2 rounded">{selectedPrompt.kbResponse}</p>
+              <p className="text-gray-600 bg-white p-2 rounded">{selectedPrompt.llmGeneratedResponse}</p>
             </div>
 
             <div>
-              <p className="font-medium text-gray-700">Refined Prompt:</p>
-              <p className="text-gray-600 bg-white p-2 rounded">{selectedPrompt.refinedPrompt}</p>
+              <p className="font-medium text-gray-700">User Notes:</p>
+              <p className="text-gray-600 bg-white p-2 rounded">{selectedPrompt.userNotes || 'No notes'}</p>
             </div>
 
-            {selectedPrompt.notes && (
+            {selectedPrompt.rating && (
               <div>
-                <p className="font-medium text-gray-700">Notes:</p>
-                <p className="text-gray-600">{selectedPrompt.notes}</p>
+                <p className="font-medium text-gray-700">Rating:</p>
+                <p className="text-gray-600">{selectedPrompt.rating}/5</p>
               </div>
             )}
           </div>

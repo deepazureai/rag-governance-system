@@ -62,12 +62,6 @@ export function RecommendationRegistry({ applicationId }: RecommendationRegistry
     void fetchRecommendations();
   }, [fetchRecommendations]);
 
-  const getScoreColor = (score: number): string => {
-    if (score >= 0.8) return 'bg-green-100 text-green-800';
-    if (score >= 0.6) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -113,29 +107,34 @@ export function RecommendationRegistry({ applicationId }: RecommendationRegistry
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{rec.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{rec.category}</p>
+                  <h3 className="font-semibold text-gray-900">{rec.originalPrompt.substring(0, 60)}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{rec.rating ? `Rating: ${rec.rating}/5` : 'Not rated'}</p>
                 </div>
-                <Badge className={getScoreColor(rec.qualityScore ?? 0)}>
-                  {((rec.qualityScore ?? 0) * 100).toFixed(0)}%
-                </Badge>
+                {rec.rating && (
+                  <Badge className="bg-blue-100 text-blue-800">
+                    {rec.rating}/5
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">Suggested Prompt:</p>
-                  <p className="text-sm text-gray-700 line-clamp-2">{rec.suggestedPrompt}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Original Prompt:</p>
+                  <p className="text-sm text-gray-700 line-clamp-2">{rec.originalPrompt}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">From Query:</p>
-                  <p className="text-sm text-gray-600 line-clamp-1">{rec.originalQuery}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Suggestions:</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {rec.suggestions && rec.suggestions.length > 0
+                      ? rec.suggestions[0].suggestion
+                      : 'No suggestions'}
+                  </p>
                 </div>
               </div>
 
               <div className="flex gap-2 mt-3">
-                {rec.isUseful && <Badge variant="secondary">Marked Useful</Badge>}
-                {rec.selectedForTemplate && <Badge variant="secondary">Used in Template</Badge>}
+                {rec.userNotes && <Badge variant="secondary">Has Notes</Badge>}
               </div>
             </Card>
           ))
@@ -157,24 +156,41 @@ export function RecommendationRegistry({ applicationId }: RecommendationRegistry
 
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium text-gray-700">Original Query:</p>
-              <p className="text-gray-600">{selectedRecommendation.originalQuery}</p>
+              <p className="font-medium text-gray-700">Original Prompt:</p>
+              <p className="text-gray-600">{selectedRecommendation.originalPrompt}</p>
             </div>
 
             <div>
-              <p className="font-medium text-gray-700">Context:</p>
-              <p className="text-gray-600 bg-white p-2 rounded">{selectedRecommendation.context}</p>
+              <p className="font-medium text-gray-700">Original Response:</p>
+              <p className="text-gray-600 bg-white p-2 rounded">{selectedRecommendation.originalResponse}</p>
             </div>
 
-            <div>
-              <p className="font-medium text-gray-700">Suggested Prompt:</p>
-              <p className="text-gray-600 bg-white p-2 rounded">{selectedRecommendation.suggestedPrompt}</p>
-            </div>
+            {selectedRecommendation.context && (
+              <div>
+                <p className="font-medium text-gray-700">Context:</p>
+                <p className="text-gray-600 bg-white p-2 rounded">{selectedRecommendation.context}</p>
+              </div>
+            )}
 
-            {selectedRecommendation.notes && (
+            {selectedRecommendation.suggestions && selectedRecommendation.suggestions.length > 0 && (
+              <div>
+                <p className="font-medium text-gray-700">Suggestions:</p>
+                <div className="space-y-2">
+                  {selectedRecommendation.suggestions.map((sugg, idx) => (
+                    <div key={idx} className="bg-white p-2 rounded text-sm">
+                      <p className="font-medium text-gray-700">{sugg.issue}</p>
+                      <p className="text-gray-600">{sugg.suggestion}</p>
+                      <p className="text-gray-500 text-xs">Expected: {sugg.expectedImprovement}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedRecommendation.userNotes && (
               <div>
                 <p className="font-medium text-gray-700">Notes:</p>
-                <p className="text-gray-600">{selectedRecommendation.notes}</p>
+                <p className="text-gray-600">{selectedRecommendation.userNotes}</p>
               </div>
             )}
           </div>
