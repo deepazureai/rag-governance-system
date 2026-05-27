@@ -77,15 +77,20 @@ export const LLMProviderSettings: React.FC<LLMProviderSettingsProps> = ({ applic
             setMaxTokens(data.data.maxTokens ?? 2048);
             
             // Populate form with existing values
-            const form: Record<string, string> = {};
-            Object.keys(PROVIDER_FIELDS[data.data.provider]).forEach(key => {
-              const fieldName = PROVIDER_FIELDS[data.data.provider][key].name;
-              const value = data.data[fieldName as keyof LLMConfig];
-              if (value && typeof value === 'string') {
-                form[fieldName] = value;
-              }
-            });
-            setFormData(form);
+            if (data.data) {
+              const form: Record<string, string> = {};
+              const configData = data.data;
+              const provider = (configData.provider || 'azure') as keyof typeof PROVIDER_FIELDS;
+              const providerFields = PROVIDER_FIELDS[provider] as Record<string, ProviderField>;
+              Object.entries(providerFields).forEach(([_, field]) => {
+                const fieldName = field.name;
+                const value = configData[fieldName as keyof LLMConfig];
+                if (value && typeof value === 'string') {
+                  form[fieldName] = value;
+                }
+              });
+              setFormData(form);
+            }
           }
         }
       } catch (error: unknown) {

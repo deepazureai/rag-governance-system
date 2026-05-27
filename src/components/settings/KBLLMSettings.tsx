@@ -103,15 +103,20 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             setMaxTokens(data.data.maxTokens ?? 2048);
             
             // Populate form with existing values
-            const form: Record<string, string> = {};
-            const allFields = [...Object.values(EMBEDDING_FIELDS[data.data.embeddingProvider]), ...Object.values(KB_LLM_FIELDS[data.data.kbLlmProvider])];
-            allFields.forEach((field: ProviderField) => {
-              const value = data.data[field.name as keyof KnowledgeBaseConfig];
-              if (value && typeof value === 'string') {
-                form[field.name] = value;
-              }
-            });
-            setFormData(form);
+            if (data.data) {
+              const form: Record<string, string> = {};
+              const embeddingProvider = data.data.embeddingProvider || 'openai';
+              const kbLlmProvider = data.data.kbLlmProvider || 'azure';
+              const allFields = [...Object.values(EMBEDDING_FIELDS[embeddingProvider] ?? {}), ...Object.values(KB_LLM_FIELDS[kbLlmProvider] ?? {})];
+              const configData = data.data;
+              allFields.forEach((field: ProviderField) => {
+                const value = configData[field.name as keyof KnowledgeBaseConfig];
+                if (value && typeof value === 'string') {
+                  form[field.name] = value;
+                }
+              });
+              setFormData(form);
+            }
           }
         }
       } catch (error: unknown) {
