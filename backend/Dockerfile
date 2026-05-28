@@ -6,7 +6,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 COPY backend/tsconfig.json ./
 
-RUN npm ci || npm install
+RUN npm install
 
 COPY backend/src ./src
 
@@ -30,8 +30,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files first
 COPY backend/package*.json ./
 
-# Install all dependencies
-RUN npm ci || npm install
+# Install production dependencies only for runtime
+RUN npm install --production=false
 
 # Copy built application and node_modules from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
