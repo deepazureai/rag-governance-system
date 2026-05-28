@@ -94,7 +94,7 @@ knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, 
       return;
     }
 
-    const vectorStore = await getVectorStore(`app-${applicationId}`);
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
     const results: UploadResult[] = [];
 
     for (const file of files) {
@@ -186,7 +186,7 @@ knowledgeBaseRouter.post('/search', async (req: Request, res: Response): Promise
       return;
     }
 
-    const vectorStore = await getVectorStore(`app-${applicationId}`);
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
 
     const results = await vectorStore.hybridSearch(query, filters, { k });
 
@@ -230,7 +230,7 @@ knowledgeBaseRouter.post('/validate-response', async (req: Request, res: Respons
       return;
     }
 
-    const vectorStore = await getVectorStore(`app-${applicationId}`);
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
 
     // Search for relevant documents using user prompt
     const relevantDocs = await vectorStore.search(userPrompt, { k: topK });
@@ -284,7 +284,7 @@ knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Respo
       return;
     }
 
-    const vectorStore = await getVectorStore(`app-${applicationId}`);
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
     const stats = await vectorStore.getStats();
 
     res.json({

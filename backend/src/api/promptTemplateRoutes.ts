@@ -4,6 +4,7 @@ import { PromptTemplate } from '../models/PromptTemplate.js';
 import { promptTemplateService } from '../services/PromptTemplateService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
+import { llmConfigService } from '../services/LLMConfigService.js';
 import { logger } from '../utils/logger.js';
 import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate.js';
 import type { ApiResponse } from '../types/models.js';
@@ -154,9 +155,18 @@ promptTemplateRouter.post('/refine/:appId', async (req: Request, res: Response):
       return;
     }
 
-    // Get LLM provider
+    // Get LLM provider and check for app-specific config
     const providerResult = await llmProviderService.getRecommendationLLMProvider(appId.toString());
     const provider = providerResult.provider;
+    
+    // Try to retrieve app-specific LLM config
+    let appLLMConfig = null;
+    try {
+      appLLMConfig = await llmConfigService.getDefaultConfig(appId.toString());
+      logger.info(`[promptTemplateRoutes] Using saved LLM config for app ${appId}`);
+    } catch (error: any) {
+      logger.info(`[promptTemplateRoutes] No saved LLM config found for app, using default provider`);
+    }
 
     // Extract source content
     const sourceContent = sources

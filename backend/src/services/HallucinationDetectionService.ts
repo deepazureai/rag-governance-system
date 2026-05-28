@@ -1,4 +1,5 @@
 import { getAzureOpenAIClient, getDeploymentId } from './AzureOpenAIConfig.js';
+import { llmConfigService } from './LLMConfigService.js';
 
 /**
  * Hallucination Detection Service
@@ -65,8 +66,19 @@ async function callAzureOpenAI(
 export async function detectHallucinations(
   sourceDocuments: string[],
   userPrompt: string,
-  llmResponse: string
+  llmResponse: string,
+  applicationId?: string
 ): Promise<HallucinationAnalysis> {
+  // Try to retrieve app-specific Azure config
+  let appConfig = null;
+  if (applicationId) {
+    try {
+      appConfig = await llmConfigService.getDefaultConfig(applicationId);
+      console.log('[HallucinationDetection] Using saved config for app:', applicationId);
+    } catch (error: any) {
+      console.log('[HallucinationDetection] No saved config found, using env variables:', error.message);
+    }
+  }
   const systemPrompt = `You are an expert LLM Judge and RAG evaluator. Analyze the given source documents, user prompt, and LLM response to detect hallucinations, missing context, and prompt gaps.
 
 Respond ONLY with valid JSON (no markdown, no code blocks, just raw JSON) with this exact structure:

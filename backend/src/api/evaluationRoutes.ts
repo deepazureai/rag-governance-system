@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter, Request, Response } from 'express
 import DeepEvalClient, { EvaluationRequest, EvaluationResponse } from '../services/DeepEvalClient.js';
 import { RawDataRecord } from '../models/RawDataRecord.js';
 import { BAReviewQueue } from '../models/BAReviewQueue.js';
+import { llmConfigService } from '../services/LLMConfigService.js';
 
 const router: ExpressRouter = Router();
 
@@ -27,6 +28,15 @@ router.post('/evaluate/:applicationId/:recordId', async (req: Request, res: Resp
       return res.status(404).json({ error: 'Record not found' });
     }
 
+    // Retrieve app-specific LLM config from MongoDB (for potential Azure OpenAI overrides)
+    let appLLMConfig = null;
+    try {
+      appLLMConfig = await llmConfigService.getDefaultConfig(applicationId);
+      console.log('[v0] Retrieved saved LLM config for app:', applicationId);
+    } catch (error: any) {
+      console.log('[v0] No saved LLM config found for app, using default:', error.message);
+    }
+
     // Prepare evaluation request
     const evaluationRequest: EvaluationRequest = {
       user_prompt: record.recordData?.query || '',
@@ -35,7 +45,11 @@ router.post('/evaluate/:applicationId/:recordId', async (req: Request, res: Resp
       record_id: recordId,
     };
 
-    console.log('[v0] Sending evaluation request to DeepEval:', evaluationRequest);
+    console.log('[v0] Sending evaluation request to DeepEval with app config:', {
+      applicationId,
+      hasAppConfig: !!appLLMConfig,
+      configType: appLLMConfig?.provider || 'default',
+    });
 
     // Call DeepEval service
     const evaluationResponse = await deepEvalClient.evaluate(evaluationRequest);
@@ -49,18 +63,20 @@ router.post('/evaluate/:applicationId/:recordId', async (req: Request, res: Resp
             framework: evaluationResponse.framework,
             scores: evaluationResponse.scores,
             generatedAt: new Date(evaluationResponse.timestamp),
+            usedAppConfig: !!appLLMConfig,
           },
         },
       },
       { new: true }
     );
 
-    console.log('[v0] Record updated with DeepEval scores');
+    console.log('[v0] Record updated with DeepEval scores, used app config:', !!appLLMConfig);
 
     res.json({
       success: true,
       record: updatedRecord,
       evaluation: evaluationResponse,
+      usedAppConfig: !!appLLMConfig,
     });
   } catch (error: any) {
     console.error('[v0] Evaluation error:', error.message);

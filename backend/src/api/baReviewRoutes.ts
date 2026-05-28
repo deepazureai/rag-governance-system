@@ -243,4 +243,70 @@ baReviewRouter.post('/assist/refine-recommendation', async (req: Request, res: R
   }
 });
 
+/**
+ * GET /api/recommendations/app/:applicationId
+ * Fetch LLM-generated recommendations for an application from raw data records
+ * Retrieves saved Azure config from MongoDB and uses it for recommendation generation
+ */
+baReviewRouter.get('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId } = req.params;
+
+    if (!applicationId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching recommendations for app: ${applicationId}`);
+
+    // Fetch raw data records with evaluation data for this application
+    const RawDataRecordCollection = require('mongoose').connection.collection('rawdatarecords');
+    const records = await RawDataRecordCollection.find({
+      applicationId: applicationId.toString(),
+      'llm_recommendations': { $exists: true, $ne: null }
+    })
+      .limit(50)
+      .toArray();
+
+    if (!records || records.length === 0) {
+      logger.info(`[baReviewRoutes] No recommendations found for app ${applicationId}`);
+      res.status(200).json({
+        success: true,
+        message: 'No recommendations available',
+        data: [],
+      });
+      return;
+    }
+
+    // Extract and format recommendations
+    const recommendations = records.map((record: any) => ({
+      recordId: record._id?.toString(),
+      applicationId: record.applicationId,
+      userPrompt: record.user_prompt,
+      context: record.context,
+      llmResponse: record.llm_response,
+      recommendation: record.llm_recommendations,
+      evaluationScores: record.evaluationScores,
+      createdAt: record.createdAt || new Date().toISOString(),
+    }));
+
+    logger.info(`[baReviewRoutes] Retrieved ${recommendations.length} recommendations`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Recommendations fetched successfully',
+      data: recommendations,
+      count: recommendations.length,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching recommendations: ${message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recommendations',
+      error: message,
+    });
+  }
+});
+
 export default baReviewRouter;

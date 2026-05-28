@@ -4,10 +4,12 @@ import { Document } from 'langchain/document';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
+import { llmConfigService } from './LLMConfigService.js';
 
 interface ChromaConfig {
   collectionName: string;
   persistDir: string;
+  applicationId?: string;
 }
 
 interface SearchOptions {
@@ -27,18 +29,34 @@ export class VectorStoreService {
   private collectionName: string;
   private persistDir: string;
   private isInitialized: boolean = false;
+  private applicationId?: string;
 
   constructor(config: ChromaConfig) {
     this.collectionName = config.collectionName;
     this.persistDir = config.persistDir;
+    this.applicationId = config.applicationId;
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      const apiKey = process.env.AZURE_OPENAI_API_KEY;
-      const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      let apiKey = process.env.AZURE_OPENAI_API_KEY;
+      let endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+
+      // Try to retrieve app-specific KB config from MongoDB
+      if (this.applicationId) {
+        try {
+          const appConfig = await llmConfigService.getDefaultConfig(this.applicationId);
+          if (appConfig && appConfig.azureApiKey) {
+            apiKey = appConfig.azureApiKey;
+            endpoint = appConfig.azureEndpoint || endpoint;
+            logger.info(`[VectorStoreService] Using saved KB config for app ${this.applicationId}`);
+          }
+        } catch (error: any) {
+          logger.info(`[VectorStoreService] No saved KB config for app, using env variables: ${error.message}`);
+        }
+      }
 
       if (!apiKey || !endpoint) {
         throw new Error('Azure OpenAI credentials not configured for embeddings');
@@ -60,7 +78,7 @@ export class VectorStoreService {
       });
 
       this.isInitialized = true;
-      logger.info(`[VectorStoreService] Initialized with collection: ${this.collectionName}`);
+      logger.info(`[VectorStoreService] Initialized with collection: ${this.collectionName}, appId: ${this.applicationId}`);
     } catch (error) {
       logger.error('[VectorStoreService] Initialization failed:', error);
       throw error;
@@ -251,16 +269,21 @@ export class VectorStoreService {
   }
 }
 
-// Singleton instance for application
-let vectorStoreInstance: VectorStoreService | null = null;
+// Singleton instances per application
+const vectorStoreInstances: Map<string, VectorStoreService> = new Map();
 
-export async function getVectorStore(collectionName: string = 'knowledge-base'): Promise<VectorStoreService> {
-  if (!vectorStoreInstance) {
-    vectorStoreInstance = new VectorStoreService({
+export async function getVectorStore(collectionName: string = 'knowledge-base', applicationId?: string): Promise<VectorStoreService> {
+  const instanceKey = applicationId || 'default';
+  
+  if (!vectorStoreInstances.has(instanceKey)) {
+    const instance = new VectorStoreService({
       collectionName,
       persistDir: path.join(process.cwd(), 'data', 'vectorstore'),
+      applicationId,
     });
-    await vectorStoreInstance.initialize();
+    await instance.initialize();
+    vectorStoreInstances.set(instanceKey, instance);
   }
-  return vectorStoreInstance;
+  
+  return vectorStoreInstances.get(instanceKey)!;
 }
