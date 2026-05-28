@@ -10,6 +10,7 @@ import { BAReviewDashboard } from '@/src/components/dashboard/ba-review-dashboar
 import { KnowledgeBaseTab } from '@/src/components/dashboard/knowledge-base-tab';
 import { TemplatesTab } from '@/src/components/dashboard/templates-tab';
 import { AlertsDisplay, CollectiveAlertsSummary } from '@/src/components/dashboard/alerts-display';
+import { DashboardRefreshButton } from '@/src/components/dashboard/refresh-button';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAppSelector, useAppDispatch } from '@/src/hooks/useRedux';

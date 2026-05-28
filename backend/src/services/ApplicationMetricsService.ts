@@ -54,8 +54,12 @@ export class ApplicationMetricsService {
     try {
       logger.info(`[v0] Fetching metrics for app: ${applicationId}`);
       
-      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
-      const evaluations = await EvaluationCollection.find({ applicationId }).toArray();
+      // Query the RawDataRecord model collection for evaluation data
+      const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+      const evaluations = await RawDataRecordCollection.find({ 
+        applicationId,
+        'evaluationScores': { $exists: true }
+      }).toArray();
       
       if (!evaluations || evaluations.length === 0) {
         logger.info(`[v0] No evaluations found for app ${applicationId}`);
