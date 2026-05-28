@@ -1,6 +1,7 @@
 import mongoose, { Types } from 'mongoose';
 import { LLMConfig, LLMConfigInput, ApiResponse } from '../types/models.js';
 import { LLMConfigSchema } from '../schemas/index.js';
+import { cryptoUtil } from '../utils/CryptoUtil.js';
 
 /**
  * LLM Config Service
@@ -11,6 +12,7 @@ export class LLMConfigService {
 
   /**
    * Create or update LLM configuration for an application
+   * Encrypts sensitive credentials before storing
    */
   async upsertConfig(input: LLMConfigInput): Promise<LLMConfig> {
     try {
@@ -19,10 +21,12 @@ export class LLMConfigService {
         throw new Error(`Validation failed: ${JSON.stringify(validation.error.errors)}`);
       }
 
+      // Encrypt sensitive fields
+      const config = this.encryptSensitiveFields(validation.data);
+
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
 
-      const config = validation.data;
       const result = await collection.findOneAndUpdate(
         { applicationId: config.applicationId },
         { $set: config },
@@ -219,6 +223,34 @@ export class LLMConfigService {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[LLMConfigService.${method}] Error: ${message}`);
     return new Error(`LLM Config Service Error in ${method}: ${message}`);
+  }
+
+  /**
+   * Encrypt sensitive credential fields
+   * @param config - Configuration object to encrypt
+   * @returns Configuration with encrypted sensitive fields
+   */
+  private encryptSensitiveFields(config: LLMConfigInput): LLMConfigInput {
+    const encrypted: LLMConfigInput = { ...config };
+
+    // Encrypt provider-specific credentials
+    if (encrypted.azureApiKey) {
+      encrypted.azureApiKey = cryptoUtil.encrypt(encrypted.azureApiKey);
+    }
+    if (encrypted.claudeApiKey) {
+      encrypted.claudeApiKey = cryptoUtil.encrypt(encrypted.claudeApiKey);
+    }
+    if (encrypted.awsAccessKeyId) {
+      encrypted.awsAccessKeyId = cryptoUtil.encrypt(encrypted.awsAccessKeyId);
+    }
+    if (encrypted.awsSecretAccessKey) {
+      encrypted.awsSecretAccessKey = cryptoUtil.encrypt(encrypted.awsSecretAccessKey);
+    }
+    if (encrypted.openaiApiKey) {
+      encrypted.openaiApiKey = cryptoUtil.encrypt(encrypted.openaiApiKey);
+    }
+
+    return encrypted;
   }
 }
 

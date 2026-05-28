@@ -1,6 +1,7 @@
 import mongoose, { Types } from 'mongoose';
 import { KnowledgeBaseConfig, KnowledgeBaseConfigInput } from '../types/models.js';
 import { KnowledgeBaseConfigSchema } from '../schemas/index.js';
+import { cryptoUtil } from '../utils/CryptoUtil.js';
 
 /**
  * Knowledge Base Config Service
@@ -11,6 +12,7 @@ export class KnowledgeBaseConfigService {
 
   /**
    * Create or update KB configuration for an application
+   * Encrypts sensitive credentials before storing
    */
   async upsertConfig(input: KnowledgeBaseConfigInput): Promise<KnowledgeBaseConfig> {
     try {
@@ -19,12 +21,15 @@ export class KnowledgeBaseConfigService {
         throw new Error(`Validation failed: ${JSON.stringify(validation.error.errors)}`);
       }
 
+      // Encrypt sensitive fields
+      const config = this.encryptSensitiveFields(validation.data);
+
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
 
       const result = await collection.findOneAndUpdate(
         { applicationId: input.applicationId },
-        { $set: { ...validation.data, updatedAt: new Date() } },
+        { $set: { ...config, updatedAt: new Date() } },
         { upsert: true, returnDocument: 'after' }
       );
 
@@ -187,6 +192,54 @@ export class KnowledgeBaseConfigService {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[KnowledgeBaseConfigService.${method}] Error: ${message}`);
     return new Error(`KB Config Service Error in ${method}: ${message}`);
+  }
+
+  /**
+   * Encrypt sensitive credential fields
+   * @param config - Configuration object to encrypt
+   * @returns Configuration with encrypted sensitive fields
+   */
+  private encryptSensitiveFields(config: KnowledgeBaseConfigInput): KnowledgeBaseConfigInput {
+    const encrypted: KnowledgeBaseConfigInput = { ...config };
+
+    // Encrypt embedding provider credentials
+    if (encrypted.openaiApiKey) {
+      encrypted.openaiApiKey = cryptoUtil.encrypt(encrypted.openaiApiKey);
+    }
+
+    // Encrypt KB LLM credentials based on provider
+    if (encrypted.kbLlmProvider) {
+      switch (encrypted.kbLlmProvider) {
+        case 'azure-openai':
+          if (encrypted.kbLlmAzureApiKey) {
+            encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
+          }
+          break;
+
+        case 'claude':
+          if (encrypted.kbLlmClaudeApiKey) {
+            encrypted.kbLlmClaudeApiKey = cryptoUtil.encrypt(encrypted.kbLlmClaudeApiKey);
+          }
+          break;
+
+        case 'aws-bedrock':
+          if (encrypted.kbLlmAwsAccessKeyId) {
+            encrypted.kbLlmAwsAccessKeyId = cryptoUtil.encrypt(encrypted.kbLlmAwsAccessKeyId);
+          }
+          if (encrypted.kbLlmAwsSecretAccessKey) {
+            encrypted.kbLlmAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.kbLlmAwsSecretAccessKey);
+          }
+          break;
+
+        case 'openai':
+          if (encrypted.kbLlmOpenaiApiKey) {
+            encrypted.kbLlmOpenaiApiKey = cryptoUtil.encrypt(encrypted.kbLlmOpenaiApiKey);
+          }
+          break;
+      }
+    }
+
+    return encrypted;
   }
 }
 
