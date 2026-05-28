@@ -124,8 +124,11 @@ export default function DashboardPage() {
   // Auto-select first app when applications load
   useEffect(() => {
     if (applications.length > 0 && selectedAppIds.length === 0) {
-      console.log('[v0] Auto-selecting first application:', applications[0].id);
-      dispatch(selectApps([applications[0].id]));
+      const firstApp = applications[0];
+      if (firstApp?.id) {
+        console.log('[v0] Auto-selecting first application:', firstApp.id);
+        dispatch(selectApps([firstApp.id]));
+      }
     }
   }, [applications, selectedAppIds.length, dispatch]);
 
