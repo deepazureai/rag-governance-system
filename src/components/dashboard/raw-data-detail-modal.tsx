@@ -68,6 +68,7 @@ export function RawDataDetailModal({
           userPrompt: record.userPrompt,
           llmResponse: record.llmResponse,
           recordId: record._id,
+          applicationId: record.applicationId,
         }),
       });
 
@@ -76,15 +77,15 @@ export function RawDataDetailModal({
       }
 
       const data = await response.json() as {
-        result?: {
-          analysis?: { reasoning?: string };
+        evaluation?: {
+          hallucinationAnalysis?: { reasoning?: string };
           improvedPrompt?: { suggestions?: Array<{ issue?: string; suggestion?: string; expectedImprovement?: string }> };
         };
       };
 
       setLlmRecommendations({
-        reasoning: data.result?.analysis?.reasoning ?? 'Analysis completed',
-        suggestions: (data.result?.improvedPrompt?.suggestions ?? []).map((suggestion: { issue?: string; suggestion?: string; expectedImprovement?: string }) => ({
+        reasoning: data.evaluation?.hallucinationAnalysis?.reasoning ?? 'Analysis completed',
+        suggestions: (data.evaluation?.improvedPrompt?.suggestions ?? []).map((suggestion: { issue?: string; suggestion?: string; expectedImprovement?: string }) => ({
           issue: suggestion.issue ?? 'N/A',
           suggestion: suggestion.suggestion ?? 'N/A',
           expectedImprovement: suggestion.expectedImprovement ?? 'N/A',

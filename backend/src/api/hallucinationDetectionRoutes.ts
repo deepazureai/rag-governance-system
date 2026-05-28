@@ -148,6 +148,7 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
       llmResponse,
       targetGroundedness = 80,
       recordId,
+      applicationId,
     } = req.body;
 
     if (!sourceDocuments || !Array.isArray(sourceDocuments) || sourceDocuments.length === 0) {
@@ -164,14 +165,16 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
 
     logger.info('[EndToEndEvaluation API] Starting complete evaluation', {
       recordId,
+      applicationId,
       targetGroundedness,
     });
 
-    // Step 1: Detect hallucinations
+    // Step 1: Detect hallucinations - Pass applicationId to retrieve app-specific LLM config
     const hallucinationAnalysis = await detectHallucinations(
       sourceDocuments,
       userPrompt,
-      llmResponse
+      llmResponse,
+      applicationId
     );
 
     // Step 2: Analyze prompt quality
@@ -194,6 +197,7 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
     res.json({
       success: true,
       recordId,
+      applicationId,
       evaluation: {
         hallucinationAnalysis,
         promptQuality,
