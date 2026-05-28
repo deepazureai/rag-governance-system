@@ -22,7 +22,7 @@ export class KnowledgeBaseConfigService {
       }
 
       // Encrypt sensitive fields
-      const config = this.encryptSensitiveFields(validation.data);
+      const config = this.encryptSensitiveFields(validation.data as any);
 
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
