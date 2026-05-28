@@ -23,6 +23,9 @@ importers:
       '@langchain/community':
         specifier: ^1.1.28
         version: 1.1.28(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/credential-provider-node@3.972.45)(@browserbasehq/sdk@2.12.0)(@browserbasehq/stagehand@1.14.0(@playwright/test@1.60.0)(deepmerge@4.3.1)(dotenv@16.4.5)(openai@4.104.0(ws@8.20.0)(zod@3.25.76))(zod@3.25.76))(@ibm-cloud/watsonx-ai@1.7.12)(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(openai@4.104.0(ws@8.20.0)(zod@3.25.76))(ws@8.20.0))(@opentelemetry/api@1.9.1)(@smithy/signature-v4@5.4.5)(fast-xml-parser@5.7.3)(ibm-cloud-sdk-core@5.4.20)(jsonwebtoken@9.0.3)(lodash@4.17.23)(mongodb@7.2.0)(openai@4.104.0(ws@8.20.0)(zod@3.25.76))(playwright@1.60.0)(ws@8.20.0)
+      '@langchain/core':
+        specifier: ^1.1.47
+        version: 1.1.48(@opentelemetry/api@1.9.1)(openai@4.104.0(ws@8.20.0)(zod@3.25.76))(ws@8.20.0)
       '@langchain/openai':
         specifier: ^1.4.7
         version: 1.4.7(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(openai@4.104.0(ws@8.20.0)(zod@3.25.76))(ws@8.20.0))(ws@8.20.0)
