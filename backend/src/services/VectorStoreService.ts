@@ -66,8 +66,12 @@ export class VectorStoreService {
               logger.info(`[VectorStoreService] Using saved KB embedding config for app ${this.applicationId}`);
             }
           }
-        } catch (error: any) {
-          logger.info(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            logger.info(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
+          } else {
+            logger.info(`[VectorStoreService] No saved KB config found for app, using env variables`);
+          }
         }
       }
 

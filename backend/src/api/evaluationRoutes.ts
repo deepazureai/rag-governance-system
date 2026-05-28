@@ -29,12 +29,16 @@ router.post('/evaluate/:applicationId/:recordId', async (req: Request, res: Resp
     }
 
     // Retrieve app-specific LLM config from MongoDB (for potential Azure OpenAI overrides)
-    let appLLMConfig = null;
+    let appLLMConfig: Awaited<ReturnType<typeof llmConfigService.getDefaultConfig>> | null = null;
     try {
       appLLMConfig = await llmConfigService.getDefaultConfig(applicationId);
       console.log('[v0] Retrieved saved LLM config for app:', applicationId);
-    } catch (error: any) {
-      console.log('[v0] No saved LLM config found for app, using default:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log('[v0] No saved LLM config found for app, using default:', error.message);
+      } else {
+        console.log('[v0] No saved LLM config found for app, using default');
+      }
     }
 
     // Prepare evaluation request

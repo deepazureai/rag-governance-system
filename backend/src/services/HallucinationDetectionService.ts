@@ -70,13 +70,17 @@ export async function detectHallucinations(
   applicationId?: string
 ): Promise<HallucinationAnalysis> {
   // Try to retrieve app-specific Azure config
-  let appConfig = null;
+  let appConfig: Awaited<ReturnType<typeof llmConfigService.getDefaultConfig>> | null = null;
   if (applicationId) {
     try {
       appConfig = await llmConfigService.getDefaultConfig(applicationId);
       console.log('[HallucinationDetection] Using saved config for app:', applicationId);
-    } catch (error: any) {
-      console.log('[HallucinationDetection] No saved config found, using env variables:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log('[HallucinationDetection] No saved config found, using env variables:', error.message);
+      } else {
+        console.log('[HallucinationDetection] No saved config found, using env variables');
+      }
     }
   }
   const systemPrompt = `You are an expert LLM Judge and RAG evaluator. Analyze the given source documents, user prompt, and LLM response to detect hallucinations, missing context, and prompt gaps.
