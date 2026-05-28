@@ -163,7 +163,6 @@ async function createServer(): Promise<Express> {
   await scheduledBatchJobService.initializeAllScheduledJobs();
 
   // API routes
-  const evaluationRouter = createEvaluationRouter(evaluationService);
   app.use('/api/evaluations', evaluationRouter);
   app.use('/api/applications', applicationsRouter);
   app.use('/api/applications', applicationRecordsRouter);
@@ -182,7 +181,6 @@ async function createServer(): Promise<Express> {
   app.use('/api/governance-metrics', governanceMetricsRouter);
   app.use('/api/ba-review', baReviewRouter);
   app.use('/api/prompt-templates', promptTemplateRouter);
-  app.use('/api/evaluation/deepeval', evaluationRouter);
   app.use('/api/evaluation', hallucinationDetectionRouter);
   app.use('/api/knowledge-base', knowledgeBaseRouter);
   app.use('/api/llm-config', llmConfigRouter);
