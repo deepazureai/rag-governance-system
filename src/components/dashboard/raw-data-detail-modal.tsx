@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { X, ThumbsUp, ThumbsDown, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { RawDataRecordDetail, BAPromptImprovement } from '@/types/index';
-import { EvaluationPanel } from './evaluation-panel';
+import { EnhancedEvaluationPanel } from './enhanced-evaluation-panel';
 
 interface RawDataDetailModalProps {
   record: RawDataRecordDetail;
@@ -405,7 +405,7 @@ export function RawDataDetailModal({
           )}
 
           {/* Evaluation Panel */}
-          <EvaluationPanel 
+          <EnhancedEvaluationPanel 
             record={record}
             onEvaluationComplete={(scores) => {
               console.log('[v0] Evaluation completed with scores:', scores);

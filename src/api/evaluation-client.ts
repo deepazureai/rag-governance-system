@@ -75,4 +75,29 @@ export const evaluationClient = {
       return false;
     }
   },
+
+  /**
+   * Get improvement suggestions for low-scoring metrics
+   */
+  async getImprovements(
+    applicationId: string,
+    evaluationData: {
+      user_prompt: string;
+      context: string;
+      llm_response: string;
+      scores: Record<string, number>;
+      record_id?: string;
+    }
+  ) {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/evaluations/improvements/${applicationId}`,
+        evaluationData
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('[Evaluation] Failed to get improvements:', error.response?.data || error.message);
+      throw error;
+    }
+  },
 };
