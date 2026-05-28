@@ -4,7 +4,8 @@ import { Document } from 'langchain/document';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
-import { llmConfigService } from './LLMConfigService.js';
+import { kbConfigService } from './KnowledgeBaseConfigService.js';
+import { cryptoUtil } from '../utils/CryptoUtil.js';
 
 interface ChromaConfig {
   collectionName: string;
@@ -43,18 +44,30 @@ export class VectorStoreService {
     try {
       let apiKey = process.env.AZURE_OPENAI_API_KEY;
       let endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      let deploymentName = 'text-embedding-ada-002';
 
-      // Try to retrieve app-specific KB config from MongoDB
+      // Try to retrieve app-specific KB config from MongoDB (knowledgebaseconfigs collection)
       if (this.applicationId) {
         try {
-          const appConfig = await llmConfigService.getDefaultConfig(this.applicationId);
-          if (appConfig && appConfig.azureApiKey) {
-            apiKey = appConfig.azureApiKey;
-            endpoint = appConfig.azureEndpoint || endpoint;
-            logger.info(`[VectorStoreService] Using saved KB config for app ${this.applicationId}`);
+          const kbConfig = await kbConfigService.getConfig(this.applicationId);
+          if (kbConfig) {
+            // KB config stores embedding credentials separately
+            if (kbConfig.embeddingProvider === 'azure-openai') {
+              // Decrypt encrypted credentials
+              if (kbConfig.embeddingAzureApiKey) {
+                apiKey = cryptoUtil.decrypt(kbConfig.embeddingAzureApiKey);
+              }
+              if (kbConfig.embeddingAzureEndpoint) {
+                endpoint = kbConfig.embeddingAzureEndpoint;
+              }
+              if (kbConfig.embeddingAzureDeploymentName) {
+                deploymentName = kbConfig.embeddingAzureDeploymentName;
+              }
+              logger.info(`[VectorStoreService] Using saved KB embedding config for app ${this.applicationId}`);
+            }
           }
         } catch (error: any) {
-          logger.info(`[VectorStoreService] No saved KB config for app, using env variables: ${error.message}`);
+          logger.info(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
         }
       }
 
@@ -65,7 +78,7 @@ export class VectorStoreService {
       this.embeddings = new OpenAIEmbeddings({
         openAIApiKey: apiKey,
         apiKey: apiKey,
-        model: 'text-embedding-ada-002',
+        model: deploymentName,
       });
 
       if (!fs.existsSync(this.persistDir)) {
@@ -78,7 +91,7 @@ export class VectorStoreService {
       });
 
       this.isInitialized = true;
-      logger.info(`[VectorStoreService] Initialized with collection: ${this.collectionName}, appId: ${this.applicationId}`);
+      logger.info(`[VectorStoreService] Initialized with collection: ${this.collectionName}, appId: ${this.applicationId}, using KB config`);
     } catch (error) {
       logger.error('[VectorStoreService] Initialization failed:', error);
       throw error;
