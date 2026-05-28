@@ -7,10 +7,13 @@ const router: ExpressRouter = Router();
 
 // Initialize DeepEval client
 const deepEvalServiceUrl = process.env.DEEPEVAL_SERVICE_URL || 'http://deepeval:8000';
-const deepEvalApiKey = process.env.DEEPEVAL_API_KEY;
-if (!deepEvalApiKey) {
-  throw new Error('DEEPEVAL_API_KEY environment variable is required');
+const isMockMode = process.env.DEEPEVAL_MOCK_MODE === 'true';
+const deepEvalApiKey = process.env.DEEPEVAL_API_KEY || (isMockMode ? 'mock-api-key-dev' : '');
+
+if (!deepEvalApiKey && !isMockMode) {
+  throw new Error('DEEPEVAL_API_KEY environment variable is required when DEEPEVAL_MOCK_MODE is not enabled');
 }
+
 const deepEvalClient = new DeepEvalClient(deepEvalServiceUrl, deepEvalApiKey);
 
 // POST /evaluate/:applicationId/:recordId - Evaluate a single record
