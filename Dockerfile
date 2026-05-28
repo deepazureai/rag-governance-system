@@ -8,7 +8,7 @@ COPY tsconfig.json ./
 COPY tailwind.config.ts ./
 COPY postcss.config.mjs ./
 
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 COPY src ./src
 COPY app ./app
