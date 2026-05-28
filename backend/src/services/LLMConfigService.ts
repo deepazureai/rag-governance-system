@@ -28,7 +28,7 @@ export class LLMConfigService {
       const collection = db.collection(this.collection);
 
       const result = await collection.findOneAndUpdate(
-        { applicationId: config.applicationId },
+        { applicationId: (config as Record<string, unknown>).applicationId },
         { $set: config },
         { upsert: true, returnDocument: 'after' }
       );

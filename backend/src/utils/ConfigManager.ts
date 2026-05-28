@@ -292,17 +292,40 @@ export class ConfigManager {
   private decryptKBConfig(config: IKnowledgeBaseConfig): IKnowledgeBaseConfig {
     const decrypted: IKnowledgeBaseConfig = { ...config };
 
-    if (decrypted.llmConfigId && typeof decrypted.llmConfigId === 'object') {
-      // If it's a populated reference, decrypt its sensitive fields
-      const llmConfig = decrypted.llmConfigId as unknown as ILLMConfig;
-      if (llmConfig && typeof llmConfig === 'object') {
-        const decryptedLLM = this.decryptConfig(llmConfig);
-        decrypted.llmConfigId = decryptedLLM._id || '';
-      }
+    // Decrypt embedding provider credentials
+    if (decrypted.embeddingOpenaiApiKey) {
+      decrypted.embeddingOpenaiApiKey = cryptoUtil.decrypt(decrypted.embeddingOpenaiApiKey);
+    }
+    if (decrypted.embeddingAzureApiKey) {
+      decrypted.embeddingAzureApiKey = cryptoUtil.decrypt(decrypted.embeddingAzureApiKey);
+    }
+    if (decrypted.embeddingAwsAccessKeyId) {
+      decrypted.embeddingAwsAccessKeyId = cryptoUtil.decrypt(decrypted.embeddingAwsAccessKeyId);
+    }
+    if (decrypted.embeddingAwsSecretAccessKey) {
+      decrypted.embeddingAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.embeddingAwsSecretAccessKey);
     }
 
-    if (decrypted.openaiApiKey) {
-      decrypted.openaiApiKey = cryptoUtil.decrypt(decrypted.openaiApiKey);
+    // Decrypt KB LLM credentials
+    if (decrypted.kbLlmAzureApiKey) {
+      decrypted.kbLlmAzureApiKey = cryptoUtil.decrypt(decrypted.kbLlmAzureApiKey);
+    }
+    if (decrypted.kbLlmClaudeApiKey) {
+      decrypted.kbLlmClaudeApiKey = cryptoUtil.decrypt(decrypted.kbLlmClaudeApiKey);
+    }
+    if (decrypted.kbLlmAwsAccessKeyId) {
+      decrypted.kbLlmAwsAccessKeyId = cryptoUtil.decrypt(decrypted.kbLlmAwsAccessKeyId);
+    }
+    if (decrypted.kbLlmAwsSecretAccessKey) {
+      decrypted.kbLlmAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.kbLlmAwsSecretAccessKey);
+    }
+    if (decrypted.kbLlmOpenaiApiKey) {
+      decrypted.kbLlmOpenaiApiKey = cryptoUtil.decrypt(decrypted.kbLlmOpenaiApiKey);
+    }
+
+    // Decrypt vector store API key if present
+    if (decrypted.vectorStoreApiKey) {
+      decrypted.vectorStoreApiKey = cryptoUtil.decrypt(decrypted.vectorStoreApiKey);
     }
 
     return decrypted;
@@ -324,9 +347,9 @@ export class ConfigManager {
         return null;
       }
 
-      const defaultConfig: Partial<ILLMConfig> = {
+      const defaultConfig = {
         applicationId,
-        provider: 'azure-openai',
+        provider: 'azure-openai' as const,
         azureEndpoint,
         azureApiKey: cryptoUtil.encrypt(azureApiKey),
         azureDeploymentName,
@@ -343,7 +366,7 @@ export class ConfigManager {
         return null;
       }
 
-      const created = await llmConfigService.upsertConfig(defaultConfig as any);
+      const created = await llmConfigService.upsertConfig(defaultConfig);
       console.log(`[ConfigManager] Created default Azure OpenAI config for app: ${applicationId}`);
       return created;
     } catch (error: unknown) {
@@ -358,24 +381,26 @@ export class ConfigManager {
    */
   private async initializeDefaultKBConfig(applicationId: string): Promise<IKnowledgeBaseConfig | null> {
     try {
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      const openaiModel = process.env.OPENAI_MODEL || 'text-embedding-3-small';
+      const embeddingOpenaiApiKey = process.env.OPENAI_API_KEY;
 
-      if (!openaiApiKey) {
+      if (!embeddingOpenaiApiKey) {
         console.warn('[ConfigManager] OpenAI environment variables not configured. Cannot create default KB config.');
         return null;
       }
 
-      const defaultConfig: Partial<IKnowledgeBaseConfig> = {
+      const defaultConfig = {
         applicationId,
-        embeddingProvider: 'openai',
-        openaiApiKey: cryptoUtil.encrypt(openaiApiKey),
-        openaiModel,
-        vectorDimension: 1536,
-        isDefault: true,
+        embeddingProvider: 'openai' as const,
+        embeddingOpenaiApiKey: cryptoUtil.encrypt(embeddingOpenaiApiKey),
+        kbLlmProvider: 'azure-openai' as const,
+        vectorStoreType: 'chroma' as const,
+        chunkSize: 1024,
+        overlapSize: 100,
+        temperature: 0.7,
+        maxTokens: 2048,
       };
 
-      const created = await kbConfigService.upsertConfig(defaultConfig as any);
+      const created = await kbConfigService.upsertConfig(defaultConfig);
       console.log(`[ConfigManager] Created default KB config for app: ${applicationId}`);
       return created;
     } catch (error: unknown) {

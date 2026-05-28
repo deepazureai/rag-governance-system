@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { PromptTemplate } from '../models/PromptTemplate.js';
 import { promptTemplateService } from '../services/PromptTemplateService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
+import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { logger } from '../utils/logger.js';
 import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate.js';
 import type { ApiResponse } from '../types/models.js';
@@ -366,5 +367,80 @@ function convertTemplatesToCSV(templates: IPromptTemplate[]): string {
 
   return csvContent;
 }
+
+/**
+ * POST /api/prompt-templates/assist/combine-prompts
+ * LLM-assisted template generation by combining multiple prompts
+ * User must edit the suggestion before saving as a new template
+ */
+promptTemplateRouter.post('/assist/combine-prompts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, selectedPromptIds, userContext } = req.body as Record<string, unknown>;
+
+    if (!applicationId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
+
+    if (!Array.isArray(selectedPromptIds) || selectedPromptIds.length === 0) {
+      res.status(400).json({ success: false, message: 'At least one prompt ID is required' });
+      return;
+    }
+
+    if (selectedPromptIds.length > 10) {
+      res.status(400).json({ success: false, message: 'Cannot combine more than 10 prompts' });
+      return;
+    }
+
+    // Fetch prompts from database
+    const prompts = await PromptTemplate.find({
+      _id: { $in: selectedPromptIds },
+      applicationId: applicationId.toString(),
+    });
+
+    if (prompts.length === 0) {
+      res.status(404).json({ success: false, message: 'No prompts found with the provided IDs' });
+      return;
+    }
+
+    const promptTexts = prompts
+      .map((p) => p.templateText ?? '')
+      .filter((text) => text.trim().length > 0);
+
+    if (promptTexts.length === 0) {
+      res.status(400).json({ success: false, message: 'Selected prompts have no text content' });
+      return;
+    }
+
+    console.log(`[promptTemplateRoutes] Generating combined prompt suggestion for app: ${applicationId}, prompts: ${selectedPromptIds.length}`);
+
+    // Get LLM assistance
+    const suggestion = await llmAssistanceService.assistCombinePrompts(
+      applicationId.toString(),
+      promptTexts,
+      userContext as string | undefined
+    );
+
+    // Validate response
+    const validatedSuggestion = llmAssistanceService.validateLLMResponse(suggestion, 20, 5000);
+
+    logger.info(`[promptTemplateRoutes] Generated combined prompt suggestion (${validatedSuggestion.length} chars)`);
+
+    res.status(200).json({
+      success: true,
+      message: 'LLM suggestion generated successfully',
+      data: {
+        suggestion: validatedSuggestion,
+        selectedPromptIds,
+        llmProvider: 'configured-provider',
+        generatedAt: new Date().toISOString(),
+      },
+    } as ApiResponse<Record<string, unknown>>);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error in combine-prompts assistance: ${message}`);
+    res.status(500).json({ success: false, message });
+  }
+});
 
 export default promptTemplateRouter;

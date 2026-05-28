@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 /**
  * CryptoUtil - Encryption/Decryption for Sensitive Data
@@ -49,11 +49,9 @@ export class CryptoUtil {
       let encrypted = cipher.update(plaintext, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
-      // Get auth tag for integrity check
-      const authTag = cipher.getAuthTag ? cipher.getAuthTag().toString('hex') : '';
-
-      // Return format: iv:ciphertext:authTag
-      const result = `${this.iv.toString('hex')}:${encrypted}:${authTag}`;
+      // Note: GCM mode auth tag not used in CBC mode, return empty string
+      // Return format: iv:ciphertext
+      const result = `${this.iv.toString('hex')}:${encrypted}`;
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -64,9 +62,9 @@ export class CryptoUtil {
 
   /**
    * Decrypt sensitive data
-   * @param encrypted - Encrypted data in format: iv:ciphertext:authTag (hex encoded)
+   * @param encrypted - Encrypted data in format: iv:ciphertext (hex encoded)
    * @returns Decrypted plaintext
-   * @throws Error if decryption fails or integrity check fails
+   * @throws Error if decryption fails
    */
   decrypt(encrypted: string): string {
     try {
@@ -74,7 +72,7 @@ export class CryptoUtil {
         return encrypted;
       }
 
-      // Check if this looks like encrypted data (contains colons)
+      // Check if this looks like encrypted data (contains colon)
       if (!encrypted.includes(':')) {
         // Data might not be encrypted (legacy), return as-is
         return encrypted;
@@ -87,23 +85,12 @@ export class CryptoUtil {
 
       const ivHex = parts[0];
       const ciphertextHex = parts[1];
-      const authTagHex = parts[2] || '';
-
-      // Verify IV matches
-      if (ivHex !== this.iv.toString('hex')) {
-        // In production with random IVs per encryption, skip this check
-        // For now, we use static IV, so this is OK
-      }
 
       const decipher = crypto.createDecipheriv(
         this.algorithm,
         this.encryptionKey,
         Buffer.from(ivHex, 'hex')
       );
-
-      if (authTagHex && decipher.setAuthTag) {
-        decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
-      }
 
       let decrypted = decipher.update(ciphertextHex, 'hex', 'utf8');
       decrypted += decipher.final('utf8');

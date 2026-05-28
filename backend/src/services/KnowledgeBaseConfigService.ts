@@ -203,8 +203,17 @@ export class KnowledgeBaseConfigService {
     const encrypted: KnowledgeBaseConfigInput = { ...config };
 
     // Encrypt embedding provider credentials
-    if (encrypted.openaiApiKey) {
-      encrypted.openaiApiKey = cryptoUtil.encrypt(encrypted.openaiApiKey);
+    if (encrypted.embeddingOpenaiApiKey) {
+      encrypted.embeddingOpenaiApiKey = cryptoUtil.encrypt(encrypted.embeddingOpenaiApiKey);
+    }
+    if (encrypted.embeddingAzureApiKey) {
+      encrypted.embeddingAzureApiKey = cryptoUtil.encrypt(encrypted.embeddingAzureApiKey);
+    }
+    if (encrypted.embeddingAwsAccessKeyId) {
+      encrypted.embeddingAwsAccessKeyId = cryptoUtil.encrypt(encrypted.embeddingAwsAccessKeyId);
+    }
+    if (encrypted.embeddingAwsSecretAccessKey) {
+      encrypted.embeddingAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.embeddingAwsSecretAccessKey);
     }
 
     // Encrypt KB LLM credentials based on provider
@@ -237,6 +246,11 @@ export class KnowledgeBaseConfigService {
           }
           break;
       }
+    }
+
+    // Encrypt vector store API key if present
+    if (encrypted.vectorStoreApiKey) {
+      encrypted.vectorStoreApiKey = cryptoUtil.encrypt(encrypted.vectorStoreApiKey);
     }
 
     return encrypted;
