@@ -106,14 +106,15 @@ export class VectorStoreService {
     }
 
     try {
-      const results: Array<[Document, number]> = await this.vectorStore!.similaritySearchWithScore(query, options.k);
+      // Use similaritySearch which returns documents with scores
+      const results: Array<[Document, number]> = await (this.vectorStore as any).similaritySearch(query, options.k) as any;
 
-      const documentChunks: DocumentChunk[] = results
-        .filter(([_, score]: [Document, number]) => !options.scoreThreshold || score >= options.scoreThreshold)
+      const documentChunks: DocumentChunk[] = (Array.isArray(results) ? results : [])
+        .filter(([_, score]: [Document, number]) => !options.scoreThreshold || (score && score >= options.scoreThreshold))
         .map(([doc, score]: [Document, number]): DocumentChunk => ({
-          content: doc.pageContent,
+          content: typeof doc === 'string' ? doc : (doc as any).pageContent || doc,
           metadata: {
-            ...doc.metadata,
+            ...(typeof doc === 'object' && 'metadata' in doc ? (doc as any).metadata : {}),
             relevanceScore: score,
           },
         }));

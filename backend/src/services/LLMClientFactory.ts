@@ -319,13 +319,24 @@ export class AWSBedrockProvider implements ILLMProvider {
       const response = await client.send(command);
       const responseBody = response.body;
 
-      // Read the stream
-      const reader = responseBody.getReader();
+      // Read the stream - handle Uint8Array blob adapter
       let result = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        result += new TextDecoder().decode(value);
+      if (responseBody) {
+        if ('getReader' in responseBody && typeof responseBody.getReader === 'function') {
+          const reader = responseBody.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            result += new TextDecoder().decode(value);
+          }
+        } else if (responseBody instanceof Uint8Array) {
+          result = new TextDecoder().decode(responseBody);
+        } else if (typeof responseBody === 'string') {
+          result = responseBody;
+        } else {
+          // Try to convert to string
+          result = JSON.stringify(responseBody);
+        }
       }
 
       // Parse response based on model
