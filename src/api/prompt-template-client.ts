@@ -203,6 +203,42 @@ class PromptTemplateClient {
       throw new Error(error.message || 'Failed to delete template');
     }
   }
+
+  /**
+   * Generate LLM-assisted combined prompt suggestion
+   */
+  async generateLLMSuggestion(
+    applicationId: string,
+    selectedPromptIds: string[],
+    userContext?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data?: {
+      suggestion: string;
+      selectedPromptIds: string[];
+      llmProvider: string;
+      generatedAt: string;
+    };
+  }> {
+    const response = await fetch(`${API_URL}/api/prompt-templates/assist/combine-prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        applicationId,
+        selectedPromptIds,
+        userContext,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to generate LLM suggestion');
+    }
+
+    return result;
+  }
 }
 
 export const promptTemplateClient = new PromptTemplateClient();
