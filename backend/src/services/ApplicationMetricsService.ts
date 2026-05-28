@@ -145,19 +145,24 @@ export class ApplicationMetricsService {
       aggregated[key] = 0;
     }
 
-    // Average each metric across all evaluations
-    for (const key of metricKeys) {
-      const validValues = evaluations
-        .map((evaluation: Record<string, unknown>) => {
-          // Try top-level metric first (new structure)
-          let value = evaluation[key];
-          
-          // If not found, try under evaluation object (backward compatibility)
-          if (value === undefined || value === null) {
-            const evalObj = evaluation.evaluation as Record<string, unknown> | undefined;
-            value = evalObj?.[key];
+    // Flatten evaluation scores from the array structure
+    const allScores: Array<Record<string, number>> = [];
+    for (const evaluation of evaluations) {
+      const evalScoresArray = evaluation.evaluationScores as Array<{ scores: Record<string, number> }> | undefined;
+      if (evalScoresArray && Array.isArray(evalScoresArray)) {
+        for (const evalScore of evalScoresArray) {
+          if (evalScore.scores && typeof evalScore.scores === 'object') {
+            allScores.push(evalScore.scores);
           }
-          
+        }
+      }
+    }
+
+    // Average each metric across all score objects
+    for (const key of metricKeys) {
+      const validValues = allScores
+        .map((scoreObj: Record<string, number>) => {
+          const value = scoreObj[key];
           return typeof value === 'number' ? value : undefined;
         })
         .filter((v): v is number => v !== undefined && !isNaN(v));
@@ -167,7 +172,7 @@ export class ApplicationMetricsService {
         : 0;
     }
 
-    logger.debug(`[v0] Calculated average metrics:`, aggregated);
+    logger.debug(`[v0] Calculated average metrics from ${allScores.length} score objects:`, aggregated);
     
     // Build the properly typed return object
     return {
