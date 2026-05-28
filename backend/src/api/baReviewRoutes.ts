@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { baReviewQueueService } from '../services/BAReviewQueueService.js';
+import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { logger } from '../utils/logger.js';
 
 const baReviewRouter: ExpressRouter = Router();
@@ -184,6 +185,61 @@ baReviewRouter.get('/item/:queueItemId', async (req: Request, res: Response) => 
       message: 'Failed to get queue item',
       error: error.message,
     });
+  }
+});
+
+/**
+ * POST /api/ba-review/assist/refine-recommendation
+ * LLM-assisted recommendation refinement
+ * User provides original recommendation, gets LLM suggestion, must edit before saving
+ */
+baReviewRouter.post('/assist/refine-recommendation', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, queueItemId, recommendationText } = req.body as Record<string, unknown>;
+
+    if (!applicationId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
+
+    if (!recommendationText?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Recommendation text is required' });
+      return;
+    }
+
+    const textContent = recommendationText.toString().trim();
+
+    if (textContent.length < 10 || textContent.length > 5000) {
+      res.status(400).json({ success: false, message: 'Recommendation text must be between 10 and 5000 characters' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Generating refined recommendation suggestion for app: ${applicationId}, queue item: ${queueItemId || 'N/A'}`);
+
+    const suggestion = await llmAssistanceService.assistRefineRecommendation(
+      applicationId.toString(),
+      textContent
+    );
+
+    const validatedSuggestion = llmAssistanceService.validateLLMResponse(suggestion, 20, 5000);
+
+    logger.info(`[baReviewRoutes] Generated refined recommendation suggestion (${validatedSuggestion.length} chars)`);
+
+    res.status(200).json({
+      success: true,
+      message: 'LLM suggestion generated successfully',
+      data: {
+        suggestion: validatedSuggestion,
+        originalRecommendation: textContent,
+        queueItemId: queueItemId || null,
+        llmProvider: 'configured-provider',
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[baReviewRoutes] Error in refine-recommendation assistance: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 

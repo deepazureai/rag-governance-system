@@ -182,6 +182,73 @@ export class ConfigManager {
   }
 
   /**
+   * Validate KB configuration for required fields
+   * @param config - KB configuration to validate
+   * @returns Validation result with any errors
+   */
+  validateKBConfig(config: IKnowledgeBaseConfig): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!config.embeddingProvider) {
+      errors.push('Embedding provider is required');
+      return { valid: false, errors };
+    }
+
+    // Validate embedding provider credentials
+    switch (config.embeddingProvider) {
+      case 'openai':
+        if (!config.embeddingOpenaiApiKey) errors.push('OpenAI API Key is required for embeddings');
+        break;
+
+      case 'azure-openai':
+        if (!config.embeddingAzureApiKey) errors.push('Azure API Key is required for embeddings');
+        if (!config.embeddingAzureEndpoint) errors.push('Azure Endpoint is required for embeddings');
+        break;
+
+      case 'aws-bedrock':
+        if (!config.embeddingAwsAccessKeyId) errors.push('AWS Access Key ID is required for embeddings');
+        if (!config.embeddingAwsSecretAccessKey) errors.push('AWS Secret Access Key is required for embeddings');
+        break;
+
+      default:
+        errors.push(`Unknown embedding provider: ${config.embeddingProvider}`);
+    }
+
+    // Validate KB LLM provider if specified
+    if (config.kbLlmProvider) {
+      switch (config.kbLlmProvider) {
+        case 'azure-openai':
+          if (!config.kbLlmAzureApiKey) errors.push('Azure API Key is required for KB LLM');
+          if (!config.kbLlmAzureEndpoint) errors.push('Azure Endpoint is required for KB LLM');
+          break;
+
+        case 'claude':
+          if (!config.kbLlmClaudeApiKey) errors.push('Claude API Key is required for KB LLM');
+          break;
+
+        case 'aws-bedrock':
+          if (!config.kbLlmAwsAccessKeyId) errors.push('AWS Access Key ID is required for KB LLM');
+          if (!config.kbLlmAwsSecretAccessKey) errors.push('AWS Secret Access Key is required for KB LLM');
+          break;
+
+        case 'openai':
+          if (!config.kbLlmOpenaiApiKey) errors.push('OpenAI API Key is required for KB LLM');
+          break;
+      }
+    }
+
+    // Validate vector store type
+    if (config.vectorStoreType && !['chroma', 'pinecone', 'weaviate', 'milvus'].includes(config.vectorStoreType)) {
+      errors.push(`Unknown vector store type: ${config.vectorStoreType}`);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }
+
+  /**
    * Invalidate cache for a specific application
    * Call this when config is updated
    * @param applicationId - Application to invalidate

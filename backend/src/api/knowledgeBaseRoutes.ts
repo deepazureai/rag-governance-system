@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { VectorStoreService, getVectorStore } from '../services/VectorStoreService.js';
 import { DocumentProcessorService } from '../services/DocumentProcessorService.js';
+import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { logger } from '../utils/logger.js';
 
 const knowledgeBaseRouter: ExpressRouter = Router();
@@ -294,6 +295,61 @@ knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Respo
   } catch (error) {
     logger.error('[KnowledgeBase] Stats retrieval failed:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to get stats' });
+  }
+});
+
+/**
+ * POST /api/knowledge-base/assist/generate-summary
+ * LLM-assisted KB content summary generation
+ * Accepts document content, returns LLM-suggested summary for user review
+ */
+knowledgeBaseRouter.post('/assist/generate-summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, documentId, contentText } = req.body as Record<string, unknown>;
+
+    if (!applicationId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
+
+    if (!contentText?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Content text is required' });
+      return;
+    }
+
+    const content = contentText.toString().trim();
+
+    if (content.length < 50 || content.length > 50000) {
+      res.status(400).json({ success: false, message: 'Content must be between 50 and 50000 characters' });
+      return;
+    }
+
+    logger.info(`[knowledgeBaseRoutes] Generating summary for KB content in app: ${applicationId}, doc: ${documentId || 'N/A'}`);
+
+    const suggestion = await llmAssistanceService.assistGenerateKBSummary(
+      applicationId.toString(),
+      content
+    );
+
+    const validatedSuggestion = llmAssistanceService.validateLLMResponse(suggestion, 50, 2000);
+
+    logger.info(`[knowledgeBaseRoutes] Generated KB summary suggestion (${validatedSuggestion.length} chars)`);
+
+    res.status(200).json({
+      success: true,
+      message: 'KB summary suggestion generated successfully',
+      data: {
+        suggestion: validatedSuggestion,
+        originalContentLength: content.length,
+        documentId: documentId || null,
+        llmProvider: 'configured-kb-provider',
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[knowledgeBaseRoutes] Error in generate-summary assistance: ${message}`);
+    res.status(500).json({ success: false, message });
   }
 });
 
