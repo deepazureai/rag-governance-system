@@ -255,12 +255,15 @@ export class ClaudeProvider implements ILLMProvider {
 
 /**
  * AWS Bedrock LLM Provider
+ * Supports Claude, Llama, and other models available through Bedrock
  */
 export class AWSBedrockProvider implements ILLMProvider {
   private region: string;
   private modelId: string;
   private temperature: number;
   private maxTokens: number;
+  private awsAccessKeyId?: string;
+  private awsSecretAccessKey?: string;
 
   constructor(config: LLMConfig) {
     if (!config.awsRegion || !config.bedrockModelId) {
@@ -271,13 +274,68 @@ export class AWSBedrockProvider implements ILLMProvider {
     this.modelId = config.bedrockModelId;
     this.temperature = config.temperature ?? 0.7;
     this.maxTokens = config.maxTokens ?? 2048;
+    this.awsAccessKeyId = config.awsAccessKeyId;
+    this.awsSecretAccessKey = config.awsSecretAccessKey;
   }
 
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<string> {
     try {
-      // AWS Bedrock integration would use AWS SDK
-      // This is a placeholder implementation showing the structure
-      throw new Error('AWS Bedrock integration requires AWS SDK setup');
+      // Dynamically import AWS SDK to avoid issues if not needed
+      const { BedrockRuntimeClient, InvokeModelCommand } = await import('@aws-sdk/client-bedrock-runtime');
+
+      const temperature = options?.temperature ?? this.temperature;
+      const maxTokens = options?.maxTokens ?? this.maxTokens;
+
+      // Create credentials if provided
+      let credentials: { accessKeyId: string; secretAccessKey: string } | undefined;
+      if (this.awsAccessKeyId && this.awsSecretAccessKey) {
+        credentials = {
+          accessKeyId: this.awsAccessKeyId,
+          secretAccessKey: this.awsSecretAccessKey,
+        };
+      }
+
+      const client = new BedrockRuntimeClient({ 
+        region: this.region,
+        ...(credentials && { credentials }),
+      });
+
+      // Build the request body based on model family
+      // Different models have different API structures
+      const requestBody = this.buildRequestBody(
+        prompt,
+        temperature,
+        maxTokens,
+        options?.systemPrompt
+      );
+
+      const command = new InvokeModelCommand({
+        modelId: this.modelId,
+        body: requestBody,
+        contentType: 'application/json',
+        accept: 'application/json',
+      });
+
+      const response = await client.send(command);
+      const responseBody = response.body;
+
+      // Read the stream
+      const reader = responseBody.getReader();
+      let result = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        result += new TextDecoder().decode(value);
+      }
+
+      // Parse response based on model
+      const content = this.parseResponse(result);
+
+      if (!content || content.trim().length === 0) {
+        throw new Error('No response content from AWS Bedrock');
+      }
+
+      return content;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`AWS Bedrock Provider Error: ${message}`);
@@ -285,10 +343,154 @@ export class AWSBedrockProvider implements ILLMProvider {
   }
 
   async validate(): Promise<{ valid: boolean; error?: string }> {
-    return {
-      valid: false,
-      error: 'AWS Bedrock validation not yet implemented',
-    };
+    try {
+      const testPrompt = 'Say "OK" to confirm connection.';
+      const result = await this.generate(testPrompt, { maxTokens: 20 });
+      
+      if (!result || result.length === 0) {
+        return { valid: false, error: 'No response from Bedrock' };
+      }
+
+      return { valid: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { valid: false, error: `Validation failed: ${message}` };
+    }
+  }
+
+  /**
+   * Build request body based on model type
+   * Different Bedrock models have different API contracts
+   */
+  private buildRequestBody(
+    prompt: string,
+    temperature: number,
+    maxTokens: number,
+    systemPrompt?: string
+  ): string {
+    // Claude models (claude-*, claude-instant-*)
+    if (this.modelId.includes('claude')) {
+      return JSON.stringify({
+        prompt: systemPrompt
+          ? `${systemPrompt}\n\nUser: ${prompt}`
+          : `User: ${prompt}`,
+        max_tokens: maxTokens,
+        temperature,
+        top_p: 1,
+        top_k: 250,
+      });
+    }
+
+    // Llama models (llama-*, llama2-*)
+    if (this.modelId.includes('llama')) {
+      return JSON.stringify({
+        prompt: systemPrompt
+          ? `[SYSTEM] ${systemPrompt}\n\n${prompt}`
+          : prompt,
+        max_gen_len: maxTokens,
+        temperature,
+        top_p: 0.9,
+      });
+    }
+
+    // Mistral models (mistral-7b-instruct-*, mistral-large-*)
+    if (this.modelId.includes('mistral')) {
+      return JSON.stringify({
+        prompt: systemPrompt
+          ? `[INST] ${systemPrompt}\n\n${prompt} [/INST]`
+          : `[INST] ${prompt} [/INST]`,
+        max_tokens: maxTokens,
+        temperature,
+        top_p: 1,
+      });
+    }
+
+    // Cohere models (command-*, command-light-*)
+    if (this.modelId.includes('command')) {
+      return JSON.stringify({
+        prompt: systemPrompt
+          ? `${systemPrompt}\n\n${prompt}`
+          : prompt,
+        max_tokens: maxTokens,
+        temperature,
+        p: 0.75,
+      });
+    }
+
+    // Default generic format
+    return JSON.stringify({
+      prompt: systemPrompt
+        ? `System: ${systemPrompt}\n\nUser: ${prompt}`
+        : prompt,
+      max_tokens: maxTokens,
+      temperature,
+    });
+  }
+
+  /**
+   * Parse response based on model type
+   * Different models return responses in different formats
+   */
+  private parseResponse(responseString: string): string {
+    try {
+      const response = JSON.parse(responseString);
+
+      // Claude responses: array of content blocks
+      if (Array.isArray(response.content)) {
+        return response.content
+          .map((block: { text?: string; type?: string }) => block.text ?? '')
+          .join('');
+      }
+
+      // Claude text completion: single text field
+      if (response.completion) {
+        return response.completion.trim();
+      }
+
+      // Llama responses: results array
+      if (Array.isArray(response.results)) {
+        return response.results
+          .map((r: { generated_text?: string; text?: string }) => r.generated_text ?? r.text ?? '')
+          .join('');
+      }
+
+      // Mistral responses: outputs array
+      if (Array.isArray(response.outputs)) {
+        return response.outputs
+          .map((o: { text?: string }) => o.text ?? '')
+          .join('');
+      }
+
+      // Cohere responses: generations array
+      if (Array.isArray(response.generations)) {
+        return response.generations
+          .map((g: { text?: string }) => g.text ?? '')
+          .join('');
+      }
+
+      // Generic text field
+      if (response.text) {
+        return response.text;
+      }
+
+      // Generic generated_text field
+      if (response.generated_text) {
+        return response.generated_text;
+      }
+
+      // Fallback: return first text-like value found
+      for (const key of Object.keys(response)) {
+        if (typeof response[key] === 'string' && response[key].length > 0) {
+          return response[key];
+        }
+      }
+
+      return '';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[AWSBedrockProvider] Failed to parse response: ${message}`);
+      return '';
+    }
   }
 }
 
