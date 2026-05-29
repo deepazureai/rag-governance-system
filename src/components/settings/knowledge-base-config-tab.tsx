@@ -15,15 +15,30 @@ interface KnowledgeBaseConfigTabProps {
 }
 
 interface KBConfig {
+  // Embedding Configuration
   embeddingProvider: 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
   embeddingModel: string;
-  embeddingApiKey?: string;
+  embedding_api_key?: string;           // Exact: for Azure embeddings
+  embedding_azure_endpoint?: string;    // Exact: for Azure embeddings
+  embedding_api_version?: string;       // NEW: for Azure embeddings
+  embedding_deployment?: string;        // NEW: for Azure embeddings
+  embedding_skipSslVerification?: boolean; // NEW: SSL bypass for embeddings
+  embeddingApiKey?: string;             // Legacy field
+  
+  // KB LLM Configuration
   llmProvider: 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
   llmModel: string;
-  llmApiKey?: string;
+  kbllm_api_key?: string;               // Exact: for KB LLM
+  kbllm_azure_endpoint?: string;        // Exact: for KB LLM
+  kbllm_api_version?: string;           // NEW: for KB LLM
+  kbllm_deployment?: string;            // NEW: for KB LLM
+  kbllm_skipSslVerification?: boolean;   // NEW: SSL bypass for KB LLM
+  llmApiKey?: string;                   // Legacy field
+  
+  // Vector Store Configuration
   chunkSize: number;
   overlapSize: number;
-  vectorStoreType: 'chroma' | 'pinecone' | 'weaviate';
+  vectorStoreType: 'chroma' | 'pinecone' | 'weaviate' | 'azure-search';
   vectorStoreUrl?: string;
   temperature?: number;
   maxTokens?: number;

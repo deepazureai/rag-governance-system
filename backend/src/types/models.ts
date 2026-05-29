@@ -14,10 +14,20 @@ export interface LLMConfig {
   _id?: Types.ObjectId;
   applicationId: string;
   provider: LLMProvider;
+  
+  // Azure OpenAI - Exact parameter names required for connection
+  api_key?: string;              // Exact: for Azure OpenAI client
+  azure_endpoint?: string;       // Exact: for Azure OpenAI client
+  api_version?: string;          // Exact: for Azure OpenAI client (e.g., "2024-02-15-preview")
+  deployment?: string;           // Exact: deployment name (e.g., "gpt-4-deployment")
+  skipSslVerification?: boolean;  // Optional: for corporate proxies/self-signed certs
+  
+  // Legacy fields for backward compatibility
   azureEndpoint?: string;
   azureApiKey?: string;
   azureDeploymentName?: string;
   azureApiVersion?: string;
+  
   claudeApiKey?: string;
   claudeModel?: string;
   awsRegion?: string;
@@ -43,12 +53,21 @@ export type LLMConfigInput = Omit<LLMConfig, '_id' | 'createdAt' | 'updatedAt'>;
 // ============================================================
 export type EmbeddingProvider = 'azure-openai' | 'openai' | 'aws-bedrock';
 export type KBLLMProvider = 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai';
-export type VectorStoreType = 'chroma' | 'pinecone' | 'weaviate';
+export type VectorStoreType = 'chroma' | 'pinecone' | 'weaviate' | 'azure-search';
 
 export interface KnowledgeBaseConfig {
   _id?: Types.ObjectId;
   applicationId: string;
+  
+  // Embedding Configuration - Exact parameter names for Azure OpenAI embeddings
   embeddingProvider: EmbeddingProvider;
+  embedding_api_key?: string;              // Exact: for embedding client
+  embedding_azure_endpoint?: string;       // Exact: for embedding client
+  embedding_api_version?: string;          // NEW: Exact parameter
+  embedding_deployment?: string;           // NEW: Exact parameter (e.g., "text-embedding-ada-002-deployment")
+  embedding_skipSslVerification?: boolean;  // NEW: Optional SSL bypass for embeddings
+  
+  // Legacy embedding fields for backward compatibility
   embeddingAzureEndpoint?: string;
   embeddingAzureApiKey?: string;
   embeddingAzureDeploymentName?: string;
@@ -57,7 +76,16 @@ export interface KnowledgeBaseConfig {
   embeddingAwsAccessKeyId?: string;
   embeddingAwsSecretAccessKey?: string;
   embeddingBedrockModelId?: string;
+  
+  // KB LLM Configuration - Exact parameter names for Azure OpenAI LLM
   kbLlmProvider: KBLLMProvider;
+  kbllm_api_key?: string;              // Exact: for KB LLM client
+  kbllm_azure_endpoint?: string;       // Exact: for KB LLM client
+  kbllm_api_version?: string;          // NEW: Exact parameter
+  kbllm_deployment?: string;           // NEW: Exact parameter (e.g., "gpt-4-deployment")
+  kbllm_skipSslVerification?: boolean;  // NEW: Optional SSL bypass for KB LLM
+  
+  // Legacy KB LLM fields for backward compatibility
   kbLlmAzureEndpoint?: string;
   kbLlmAzureApiKey?: string;
   kbLlmAzureDeploymentName?: string;
@@ -69,6 +97,8 @@ export interface KnowledgeBaseConfig {
   kbLlmBedrockModelId?: string;
   kbLlmOpenaiApiKey?: string;
   kbLlmOpenaiModel?: string;
+  
+  // Vector Store Configuration
   vectorStoreType: VectorStoreType;
   vectorStoreUrl?: string;
   vectorStoreApiKey?: string;

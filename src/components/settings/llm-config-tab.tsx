@@ -16,9 +16,13 @@ interface LLMConfigTabProps {
 
 interface LLMConfig {
   provider: 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
-  model: string;
-  apiKey: string;
-  apiUrl?: string;
+  api_key: string;              // Exact: for Azure OpenAI
+  azure_endpoint?: string;      // Exact: for Azure OpenAI
+  api_version?: string;         // NEW: Exact parameter for Azure OpenAI (e.g., "2024-02-15-preview")
+  deployment?: string;          // NEW: Exact parameter for Azure OpenAI deployment name
+  skipSslVerification?: boolean; // NEW: Optional SSL bypass for corporate proxies
+  model?: string;               // Legacy field for backward compatibility
+  apiUrl?: string;              // Legacy field
   temperature?: number;
   maxTokens?: number;
   isDefault?: boolean;
@@ -40,10 +44,10 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [config, setConfig] = useState<LLMConfig>({
     provider: 'openai',
-    model: 'gpt-4-turbo',
-    apiKey: '',
+    api_key: '',
     temperature: 0.7,
     maxTokens: 2000,
+    skipSslVerification: false,
   });
 
   useEffect(() => {
@@ -82,10 +86,29 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
       setError(null);
       setSuccess(null);
 
-      if (!config.apiKey.trim()) {
+      if (!config.api_key?.trim()) {
         setError('API Key is required');
         setIsSaving(false);
         return;
+      }
+
+      // For Azure OpenAI, validate required fields
+      if (config.provider === 'azure-openai') {
+        if (!config.azure_endpoint?.trim()) {
+          setError('Azure Endpoint is required for Azure OpenAI');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.api_version?.trim()) {
+          setError('API Version is required for Azure OpenAI (e.g., 2024-02-15-preview)');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.deployment?.trim()) {
+          setError('Deployment name is required for Azure OpenAI');
+          setIsSaving(false);
+          return;
+        }
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -188,7 +211,7 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
             <Label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
               Model
             </Label>
-            <Select value={config.model} onValueChange={(model) => setConfig({ ...config, model })}>
+            <Select value={config.model || ''} onValueChange={(model) => setConfig({ ...config, model })}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -204,22 +227,87 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
 
           {/* API Key */}
           <div>
-            <Label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
+            <Label htmlFor="api_key" className="block text-sm font-medium text-gray-700 mb-2">
               API Key
             </Label>
             <Input
-              id="apiKey"
+              id="api_key"
               type="password"
-              value={config.apiKey}
-              onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+              value={config.api_key}
+              onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
               placeholder="Enter your API key"
               className="font-mono text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">Your API key is encrypted and secure</p>
           </div>
 
-          {/* API URL (for Azure/Custom) */}
+          {/* Azure OpenAI Specific Fields */}
           {config.provider === 'azure-openai' && (
+            <>
+              <div>
+                <Label htmlFor="azure_endpoint" className="block text-sm font-medium text-gray-700 mb-2">
+                  Azure Endpoint
+                </Label>
+                <Input
+                  id="azure_endpoint"
+                  type="url"
+                  value={config.azure_endpoint || ''}
+                  onChange={(e) => setConfig({ ...config, azure_endpoint: e.target.value })}
+                  placeholder="https://your-resource.openai.azure.com/"
+                />
+                <p className="text-xs text-gray-500 mt-1">Your Azure OpenAI resource endpoint</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="api_version" className="block text-sm font-medium text-gray-700 mb-2">
+                    API Version
+                  </Label>
+                  <Input
+                    id="api_version"
+                    type="text"
+                    value={config.api_version || ''}
+                    onChange={(e) => setConfig({ ...config, api_version: e.target.value })}
+                    placeholder="e.g., 2024-02-15-preview"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Azure API version</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="deployment" className="block text-sm font-medium text-gray-700 mb-2">
+                    Deployment Name
+                  </Label>
+                  <Input
+                    id="deployment"
+                    type="text"
+                    value={config.deployment || ''}
+                    onChange={(e) => setConfig({ ...config, deployment: e.target.value })}
+                    placeholder="e.g., gpt-4-deployment"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Your deployment name in Azure</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  id="skipSslVerification"
+                  type="checkbox"
+                  checked={config.skipSslVerification || false}
+                  onChange={(e) => setConfig({ ...config, skipSslVerification: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                />
+                <Label htmlFor="skipSslVerification" className="font-medium text-gray-700 cursor-pointer">
+                  Skip SSL Verification
+                </Label>
+              </div>
+              <p className="text-xs text-amber-600 mb-4">
+                <strong>Warning:</strong> Only enable in development or corporate environments with proxy inspection. Disables SSL certificate verification.
+              </p>
+            </>
+          )}
+
+          {/* API URL (for legacy/other providers) */}
+          {config.provider !== 'azure-openai' && (
             <div>
               <Label htmlFor="apiUrl" className="block text-sm font-medium text-gray-700 mb-2">
                 API Endpoint URL
@@ -229,7 +317,7 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
                 type="url"
                 value={config.apiUrl || ''}
                 onChange={(e) => setConfig({ ...config, apiUrl: e.target.value })}
-                placeholder="https://your-resource.openai.azure.com/"
+                placeholder="https://api.example.com/"
               />
             </div>
           )}
