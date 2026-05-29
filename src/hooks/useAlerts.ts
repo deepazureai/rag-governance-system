@@ -75,6 +75,12 @@ export function useAlerts(): UseAlertsReturn {
         
         for (const metricKey of metricKeys) {
           const metricValue = metrics[metricKey];
+          
+          // Skip if metric value is not available
+          if (metricValue === undefined || typeof metricValue !== 'number') {
+            continue;
+          }
+          
           // Get threshold config for this metric key
           const threshold = thresholds[metricKey as keyof typeof thresholds] as MetricThreshold | undefined;
           

@@ -256,8 +256,11 @@ export function ScheduleJobModal({
               <span className="font-semibold">Summary:</span>{' '}
               {formData.schedule.type === 'daily' &&
                 `Batch job will run daily at ${formData.schedule.time}`}
-              {formData.schedule.type === 'weekly' &&
-                `Batch job will run every ${DAYS_OF_WEEK[formData.schedule.dayOfWeek || 0].label} at ${formData.schedule.time}`}
+              {formData.schedule.type === 'weekly' && (() => {
+                const dayIndex = formData.schedule.dayOfWeek ?? 0;
+                const dayLabel = DAYS_OF_WEEK[dayIndex]?.label ?? 'Unknown day';
+                return `Batch job will run every ${dayLabel} at ${formData.schedule.time}`;
+              })()}
               {formData.schedule.type === 'monthly' &&
                 `Batch job will run on day ${formData.schedule.dayOfMonth} of each month at ${formData.schedule.time}`}
               , timezone: <span className="font-mono">{formData.schedule.timezone}</span>

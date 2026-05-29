@@ -67,11 +67,12 @@ export function LLMConfigTab({ applicationId: initialAppId }: LLMConfigTabProps)
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         const response = await fetch(`${apiUrl}/api/applications`);
         const data = await response.json() as { success: boolean; data?: Application[] };
-        if (data.success && data.data) {
+        if (data.success && data.data && data.data.length > 0) {
           setApplications(data.data);
           // If no initial app selected, select first one
-          if (!selectedAppId && data.data.length > 0) {
-            setSelectedAppId(data.data[0].id);
+          const firstApp = data.data[0];
+          if (!selectedAppId && firstApp) {
+            setSelectedAppId(firstApp.id);
           }
         }
       } catch (err) {

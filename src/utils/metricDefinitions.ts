@@ -163,9 +163,12 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
 export function getMetricDefinition(label: string): MetricDefinition | undefined {
   // Convert label to key (e.g., "BLEU Score" -> "bleuScore")
   const key = Object.keys(METRIC_DEFINITIONS).find(
-    k => METRIC_DEFINITIONS[k].label === label
+    k => {
+      const metric = METRIC_DEFINITIONS[k as keyof typeof METRIC_DEFINITIONS];
+      return metric && metric.label === label;
+    }
   );
-  return key ? METRIC_DEFINITIONS[key] : undefined;
+  return key ? METRIC_DEFINITIONS[key as keyof typeof METRIC_DEFINITIONS] : undefined;
 }
 
 /**
@@ -182,10 +185,22 @@ export function getMetricTooltip(label: string): string {
  * Get score color based on metric value and ranges
  */
 export function getScoreColor(value: number, definition: MetricDefinition): string {
-  const [goodMin, goodMax] = definition.goodRange.split('-').map(v => parseFloat(v));
-  const [warnMin, warnMax] = definition.warningRange.split('-').map(v => parseFloat(v));
+  const goodValues = definition.goodRange.split('-').map(v => parseFloat(v));
+  const warnValues = definition.warningRange.split('-').map(v => parseFloat(v));
   
-  if (value >= goodMin && value <= goodMax) return 'text-green-600 bg-green-50';
-  if (value >= warnMin && value <= warnMax) return 'text-amber-600 bg-amber-50';
+  const goodMin = goodValues[0];
+  const goodMax = goodValues[1];
+  const warnMin = warnValues[0];
+  const warnMax = warnValues[1];
+  
+  // Check for valid parsed values
+  if (typeof goodMin === 'number' && typeof goodMax === 'number' && !isNaN(goodMin) && !isNaN(goodMax)) {
+    if (value >= goodMin && value <= goodMax) return 'text-green-600 bg-green-50';
+  }
+  
+  if (typeof warnMin === 'number' && typeof warnMax === 'number' && !isNaN(warnMin) && !isNaN(warnMax)) {
+    if (value >= warnMin && value <= warnMax) return 'text-amber-600 bg-amber-50';
+  }
+  
   return 'text-red-600 bg-red-50';
 }
