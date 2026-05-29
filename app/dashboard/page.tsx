@@ -425,7 +425,11 @@ export default function DashboardPage() {
           )}
 
           {activeTab === 'templates' && selectedAppIds.length > 0 && firstSelectedAppId ? (
-            <TemplatesTab applicationId={firstSelectedAppId} />
+            <TemplatesTab 
+              applicationId={firstSelectedAppId}
+              userRole="admin"
+              userId="current-user"
+            />
           ) : null}
 
           {activeTab === 'templates' && selectedAppIds.length === 0 && (

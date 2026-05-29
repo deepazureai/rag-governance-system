@@ -16,7 +16,7 @@ type TabValue = 'create' | 'library';
  * Templates Tab Component
  * Main hub for template creation, editing, and distribution
  */
-export default function TemplatesTab({
+export function TemplatesTab({
   applicationId,
   userRole,
   userId,
