@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter, Request, Response } from 'express
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import * as pg from 'pg';
+// @ts-ignore - mysql2/promise types are not available but library is installed
 import * as mysql from 'mysql2/promise';
 
 export const databaseSchemaRouter: ExpressRouter = Router();

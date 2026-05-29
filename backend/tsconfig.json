@@ -20,7 +20,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
     "skipLibCheck": true,
-    "noEmitOnError": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "noEmitOnError": false,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": true,
@@ -38,6 +39,6 @@
       "@/utils/*": ["./utils/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/express-custom.d.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

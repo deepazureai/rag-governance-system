@@ -6,6 +6,7 @@ import { llmProviderService } from '../services/LLMProviderService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { llmConfigService } from '../services/LLMConfigService.js';
 import { logger } from '../utils/logger.js';
+import { getQueryString } from '../utils/queryParamUtils.js';
 import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate.js';
 import type { ApiResponse } from '../types/models.js';
 
@@ -109,9 +110,9 @@ promptTemplateRouter.get('/app/:appId', async (req: Request, res: Response): Pro
  */
 promptTemplateRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = getQueryString(req.params.id);
 
-    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(404).json({ success: false, message: 'Template not found' });
       return;
     }

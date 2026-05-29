@@ -6,6 +6,7 @@ import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
 import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
+import { getQueryString } from '../utils/queryParamUtils.js';
 import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models.js';
 
 const llmConfigRouter: ExpressRouter = Router();
@@ -16,8 +17,8 @@ const llmConfigRouter: ExpressRouter = Router();
  */
 llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
@@ -52,8 +53,8 @@ llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<
  */
 llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
@@ -102,8 +103,8 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
  */
 llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
@@ -147,8 +148,8 @@ llmConfigRouter.get('/providers', (_req: Request, res: Response): void => {
  */
 llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
@@ -183,8 +184,8 @@ llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response)
  */
 llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
@@ -233,8 +234,8 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
  */
 llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
-    if (!appId?.trim()) {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
