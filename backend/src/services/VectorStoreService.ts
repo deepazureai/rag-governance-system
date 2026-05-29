@@ -44,7 +44,8 @@ export class VectorStoreService {
     try {
       let apiKey = process.env.AZURE_OPENAI_API_KEY;
       let endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-      let deploymentName = 'text-embedding-ada-002';
+      let apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
+      let deploymentName = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-large';
 
       // Try to retrieve app-specific KB config from MongoDB (knowledgebaseconfigs collection)
       if (this.applicationId) {
@@ -53,16 +54,20 @@ export class VectorStoreService {
           if (kbConfig) {
             // KB config stores embedding credentials separately
             if (kbConfig.embeddingProvider === 'azure-openai') {
-              // Decrypt encrypted credentials
-              if (kbConfig.embeddingAzureApiKey) {
-                apiKey = cryptoUtil.decrypt(kbConfig.embeddingAzureApiKey);
+              // Use exact parameter names (new)
+              if (kbConfig.embedding_api_key) {
+                apiKey = cryptoUtil.decrypt(kbConfig.embedding_api_key);
               }
-              if (kbConfig.embeddingAzureEndpoint) {
-                endpoint = kbConfig.embeddingAzureEndpoint;
+              if (kbConfig.embedding_azure_endpoint) {
+                endpoint = kbConfig.embedding_azure_endpoint;
               }
-              if (kbConfig.embeddingAzureDeploymentName) {
-                deploymentName = kbConfig.embeddingAzureDeploymentName;
+              if (kbConfig.embedding_api_version) {
+                apiVersion = kbConfig.embedding_api_version;
               }
+              if (kbConfig.embedding_deployment) {
+                deploymentName = kbConfig.embedding_deployment;
+              }
+              
               logger.info(`[VectorStoreService] Using saved KB embedding config for app ${this.applicationId}`);
             }
           }
@@ -76,13 +81,15 @@ export class VectorStoreService {
       }
 
       if (!apiKey || !endpoint) {
-        throw new Error('Azure OpenAI credentials not configured for embeddings');
+        throw new Error('Azure OpenAI credentials not configured for embeddings. Required: api_key, azure_endpoint, api_version, deployment');
       }
 
       this.embeddings = new OpenAIEmbeddings({
-        openAIApiKey: apiKey,
         apiKey: apiKey,
-        model: deploymentName,
+        model: deploymentName, // For Azure, this is the deployment name
+        azureOpenAIApiVersion: apiVersion,
+        azureOpenAIApiInstanceName: endpoint.replace('https://', '').replace('.openai.azure.com/', ''),
+        azureOpenAIApiDeploymentName: deploymentName,
       });
 
       if (!fs.existsSync(this.persistDir)) {

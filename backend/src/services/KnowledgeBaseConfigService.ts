@@ -123,11 +123,17 @@ export class KnowledgeBaseConfigService {
       errors.push('Embedding provider is required');
     } else {
       switch (config.embeddingProvider) {
-        case 'azure-openai':
-          if (!config.embeddingAzureEndpoint) errors.push('Embedding Azure Endpoint is required');
-          if (!config.embeddingAzureApiKey) errors.push('Embedding Azure API Key is required');
-          if (!config.embeddingAzureDeploymentName) errors.push('Embedding Azure Deployment Name is required');
+        case 'azure-openai': {
+          // Accept exact param names (new) or legacy names
+          const hasEndpoint = config.embedding_azure_endpoint || config.embeddingAzureEndpoint;
+          const hasApiKey = config.embedding_api_key || config.embeddingAzureApiKey;
+          const hasDeployment = config.embedding_deployment || config.embeddingAzureDeploymentName;
+          
+          if (!hasEndpoint) errors.push('Embedding Azure Endpoint is required');
+          if (!hasApiKey) errors.push('Embedding Azure API Key is required');
+          if (!hasDeployment) errors.push('Embedding Azure Deployment is required');
           break;
+        }
 
         case 'openai':
           if (!config.embeddingOpenaiApiKey) errors.push('Embedding OpenAI API Key is required');
@@ -145,11 +151,17 @@ export class KnowledgeBaseConfigService {
       errors.push('KB LLM provider is required');
     } else {
       switch (config.kbLlmProvider) {
-        case 'azure-openai':
-          if (!config.kbLlmAzureEndpoint) errors.push('KB LLM Azure Endpoint is required');
-          if (!config.kbLlmAzureApiKey) errors.push('KB LLM Azure API Key is required');
-          if (!config.kbLlmAzureDeploymentName) errors.push('KB LLM Azure Deployment Name is required');
+        case 'azure-openai': {
+          // Accept exact param names (new) or legacy names
+          const hasEndpoint = config.kbllm_azure_endpoint || config.kbLlmAzureEndpoint;
+          const hasApiKey = config.kbllm_api_key || config.kbLlmAzureApiKey;
+          const hasDeployment = config.kbllm_deployment || config.kbLlmAzureDeploymentName;
+          
+          if (!hasEndpoint) errors.push('KB LLM Azure Endpoint is required');
+          if (!hasApiKey) errors.push('KB LLM Azure API Key is required');
+          if (!hasDeployment) errors.push('KB LLM Azure Deployment is required');
           break;
+        }
 
         case 'claude':
           if (!config.kbLlmClaudeApiKey) errors.push('KB LLM Claude API Key is required');
@@ -202,7 +214,11 @@ export class KnowledgeBaseConfigService {
   private encryptSensitiveFields(config: KnowledgeBaseConfigInput): KnowledgeBaseConfigInput {
     const encrypted: KnowledgeBaseConfigInput = { ...config };
 
-    // Encrypt embedding provider credentials
+    // Encrypt embedding provider credentials (exact param names)
+    if ((encrypted as any).embedding_api_key) {
+      (encrypted as any).embedding_api_key = cryptoUtil.encrypt((encrypted as any).embedding_api_key);
+    }
+    // Encrypt legacy embedding credentials
     if (encrypted.embeddingOpenaiApiKey) {
       encrypted.embeddingOpenaiApiKey = cryptoUtil.encrypt(encrypted.embeddingOpenaiApiKey);
     }
@@ -220,6 +236,11 @@ export class KnowledgeBaseConfigService {
     if (encrypted.kbLlmProvider) {
       switch (encrypted.kbLlmProvider) {
         case 'azure-openai':
+          // Encrypt exact param names
+          if ((encrypted as any).kbllm_api_key) {
+            (encrypted as any).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
+          }
+          // Encrypt legacy fields
           if (encrypted.kbLlmAzureApiKey) {
             encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
           }

@@ -59,13 +59,21 @@ export class LLMProviderService {
         throw new Error(`Invalid KB NLP LLM configuration: ${validation.errors.join(', ')}`);
       }
 
-      // Create a temporary LLMConfig from KB NLP settings
+      // Create a temporary LLMConfig from KB NLP settings using exact parameter names
       const llmConfig: LLMConfig = {
         applicationId,
         provider: kbConfig.kbLlmProvider as 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai',
-        azureEndpoint: kbConfig.kbLlmAzureEndpoint,
-        azureApiKey: kbConfig.kbLlmAzureApiKey,
-        azureDeploymentName: kbConfig.kbLlmAzureDeploymentName,
+        // Exact parameter names (new)
+        api_key: kbConfig.kbllm_api_key,
+        azure_endpoint: kbConfig.kbllm_azure_endpoint,
+        api_version: kbConfig.kbllm_api_version,
+        deployment: kbConfig.kbllm_deployment,
+        skipSslVerification: kbConfig.kbllm_skipSslVerification,
+        // Legacy fields fallback
+        azureEndpoint: kbConfig.kbLlmAzureEndpoint || kbConfig.kbllm_azure_endpoint,
+        azureApiKey: kbConfig.kbLlmAzureApiKey || kbConfig.kbllm_api_key,
+        azureDeploymentName: kbConfig.kbLlmAzureDeploymentName || kbConfig.kbllm_deployment,
+        azureApiVersion: kbConfig.kbllm_api_version,
         claudeApiKey: kbConfig.kbLlmClaudeApiKey,
         claudeModel: kbConfig.kbLlmClaudeModel,
         awsRegion: kbConfig.kbLlmAwsRegion,
