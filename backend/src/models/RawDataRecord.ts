@@ -11,6 +11,43 @@ export interface IBAPromptImprovement {
   updatedAt: Date;
 }
 
+export interface IKnowledgeBaseDocument {
+  documentId: string;
+  fileName: string;
+  fileSize: number;
+  uploadDate: Date;
+  totalChunks: number;
+  embeddingModel: string;
+  status: 'indexed' | 'processing' | 'failed';
+  mimeType: string;
+}
+
+export interface IKnowledgeBaseChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  contextUsed?: Array<{
+    documentId: string;
+    chunkId: string;
+    content: string;
+    relevanceScore: number;
+  }>;
+  timestamp: Date;
+}
+
+export interface IKnowledgeBaseChatThread {
+  threadId: string;
+  createdAt: Date;
+  messages: IKnowledgeBaseChatMessage[];
+  topic: string;
+  usedInTemplate: boolean;
+}
+
+export interface IKnowledgeBase {
+  documents: IKnowledgeBaseDocument[];
+  chatThreads: IKnowledgeBaseChatThread[];
+  lastUpdated: Date;
+}
+
 export interface IContextRetrieved {
   source: string;
   relevanceScore: number;
@@ -70,6 +107,9 @@ export interface IRawDataRecord extends Document {
   templateId?: string;  // If response was generated using a prompt template
   templateVersion?: number;  // Version of template used
   
+  // Knowledge Base
+  knowledgeBase?: IKnowledgeBase;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +124,53 @@ const BAPromptImprovementSchema = new Schema<IBAPromptImprovement>(
     estimatedScoreImpact: { type: Number },
   },
   { timestamps: true }
+);
+
+const KnowledgeBaseDocumentSchema = new Schema<IKnowledgeBaseDocument>(
+  {
+    documentId: { type: String, required: true },
+    fileName: { type: String, required: true },
+    fileSize: { type: Number, required: true },
+    uploadDate: { type: Date, required: true },
+    totalChunks: { type: Number, required: true },
+    embeddingModel: { type: String, required: true },
+    status: { type: String, enum: ['indexed', 'processing', 'failed'], default: 'processing' },
+    mimeType: { type: String, required: true },
+  }
+);
+
+const KnowledgeBaseChatMessageSchema = new Schema<IKnowledgeBaseChatMessage>(
+  {
+    role: { type: String, enum: ['user', 'assistant'], required: true },
+    content: { type: String, required: true },
+    contextUsed: [
+      {
+        documentId: { type: String },
+        chunkId: { type: String },
+        content: { type: String },
+        relevanceScore: { type: Number },
+      },
+    ],
+    timestamp: { type: Date, default: Date.now },
+  }
+);
+
+const KnowledgeBaseChatThreadSchema = new Schema<IKnowledgeBaseChatThread>(
+  {
+    threadId: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    messages: [KnowledgeBaseChatMessageSchema],
+    topic: { type: String, required: true },
+    usedInTemplate: { type: Boolean, default: false },
+  }
+);
+
+const KnowledgeBaseSchema = new Schema<IKnowledgeBase>(
+  {
+    documents: [KnowledgeBaseDocumentSchema],
+    chatThreads: [KnowledgeBaseChatThreadSchema],
+    lastUpdated: { type: Date, default: Date.now },
+  }
 );
 
 const ContextRetrievedSchema = new Schema<IContextRetrieved>(
@@ -149,6 +236,9 @@ const RawDataRecordSchema = new Schema<IRawDataRecord>(
     // Template usage
     templateId: { type: String },
     templateVersion: { type: Number },
+    
+    // Knowledge Base
+    knowledgeBase: KnowledgeBaseSchema,
   },
   { timestamps: true }
 );
