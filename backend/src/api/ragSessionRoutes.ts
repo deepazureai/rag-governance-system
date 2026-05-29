@@ -55,7 +55,7 @@ ragSessionRouter.post('/create', async (req: Request, res: Response): Promise<vo
 ragSessionRouter.get('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
     const applicationId = asStringTrimmed(req.params.applicationId);
-    const activeOnly = asString(req.query.activeOnly);
+    const activeOnly = (req.query.activeOnly as string) || 'true';
 
     if (!applicationId) {
       res.status(400).json({
@@ -93,9 +93,9 @@ ragSessionRouter.get('/app/:applicationId', async (req: Request, res: Response):
  */
 ragSessionRouter.get('/:sessionId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',
@@ -133,10 +133,10 @@ ragSessionRouter.get('/:sessionId', async (req: Request, res: Response): Promise
  */
 ragSessionRouter.post('/:sessionId/chat', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
     const { role, content } = req.body;
 
-    if (!sessionId?.trim() || !role?.trim() || !content?.trim()) {
+    if (!sessionId || !role?.trim() || !content?.trim()) {
       res.status(400).json({
         success: false,
         error: 'Session ID, role, and content are required',
@@ -186,10 +186,10 @@ ragSessionRouter.post('/:sessionId/chat', async (req: Request, res: Response): P
  */
 ragSessionRouter.get('/:sessionId/chat-history', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
     const { limit } = req.query;
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',
@@ -224,10 +224,10 @@ ragSessionRouter.get('/:sessionId/chat-history', async (req: Request, res: Respo
  */
 ragSessionRouter.put('/:sessionId/metadata', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
     const { uploadedFileNames, vectorStoreId, totalChunks } = req.body;
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',
@@ -270,10 +270,10 @@ ragSessionRouter.put('/:sessionId/metadata', async (req: Request, res: Response)
  */
 ragSessionRouter.post('/:sessionId/token-usage', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
     const { tokensUsed } = req.body;
 
-    if (!sessionId?.trim() || typeof tokensUsed !== 'number' || tokensUsed < 0) {
+    if (!sessionId || typeof tokensUsed !== 'number' || tokensUsed < 0) {
       res.status(400).json({
         success: false,
         error: 'Valid session ID and positive token count are required',
@@ -303,9 +303,9 @@ ragSessionRouter.post('/:sessionId/token-usage', async (req: Request, res: Respo
  */
 ragSessionRouter.get('/:sessionId/stats', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',
@@ -343,9 +343,9 @@ ragSessionRouter.get('/:sessionId/stats', async (req: Request, res: Response): P
  */
 ragSessionRouter.post('/:sessionId/clear-history', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',
@@ -384,9 +384,9 @@ ragSessionRouter.post('/:sessionId/clear-history', async (req: Request, res: Res
  */
 ragSessionRouter.delete('/:sessionId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
 
-    if (!sessionId?.trim()) {
+    if (!sessionId) {
       res.status(400).json({
         success: false,
         error: 'Session ID is required',

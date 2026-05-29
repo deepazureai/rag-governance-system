@@ -409,7 +409,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.patch('/schedule/:jobId/toggle', async (req: Request, res: Response) => {
     try {
-      const { jobId } = req.params;
+      const jobId = asString(req.params.jobId);
 
       if (!jobId) {
         return res.status(400).json({
@@ -440,7 +440,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.delete('/schedule/:jobId', async (req: Request, res: Response) => {
     try {
-      const { jobId } = req.params;
+      const jobId = asString(req.params.jobId);
 
       if (!jobId) {
         return res.status(400).json({
@@ -469,7 +469,7 @@ export function createBatchProcessingRouter(): Router {
    */
   router.post('/schedule/:jobId/trigger', async (req: Request, res: Response) => {
     try {
-      const { jobId } = req.params;
+      const jobId = asString(req.params.jobId);
 
       if (!jobId) {
         return res.status(400).json({

@@ -278,7 +278,7 @@ knowledgeBaseRouter.post('/validate-response', async (req: Request, res: Respons
  */
 knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
+    const applicationId = asString(req.params.applicationId);
     
     if (!applicationId) {
       res.status(400).json({ error: 'Missing applicationId' });

@@ -6,6 +6,7 @@ import { Router, Request, Response } from 'express';
 import { EvaluationService } from '../services/evaluation.js';
 import { FrameworkType } from '../frameworks/registry.js';
 import { z } from 'zod';
+import { asString } from '../utils/queryParamUtils.js';
 
 const evaluationRouter = Router();
 
@@ -169,7 +170,7 @@ export function createEvaluationRouter(evaluationService: EvaluationService): Ro
    */
   evaluationRouter.get('/history/:appId', async (req: Request, res: Response) => {
     try {
-      const { appId } = req.params;
+      const appId = asString(req.params.appId);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 

@@ -44,8 +44,8 @@ baReviewRouter.post('/populate-queue', async (req: Request, res: Response) => {
 baReviewRouter.get('/queue/:applicationId', async (req: Request, res: Response) => {
   try {
     const applicationId = asString(req.params.applicationId);
-    const page = parseInt(asString(req.query.page) as string) || 1;
-    const pageSize = parseInt(asString(req.query.pageSize) as string) || 10;
+    const page = parseInt((req.query.page as string) || '1', 10) || 1;
+    const pageSize = parseInt((req.query.pageSize as string) || '10', 10) || 10;
 
     if (!applicationId) {
       return res.status(400).json({ success: false, message: 'applicationId is required' });
@@ -127,9 +127,9 @@ baReviewRouter.post('/add-improvement', async (req: Request, res: Response) => {
 baReviewRouter.get('/similar-records/:applicationId', async (req: Request, res: Response) => {
   try {
     const applicationId = asString(req.params.applicationId);
-    const userPrompt = asString(req.query.userPrompt);
-    const limit = asString(req.query.limit);
-    const threshold = asString(req.query.threshold);
+    const userPrompt = (req.query.userPrompt as string) || '';
+    const limit = (req.query.limit as string) || '10';
+    const threshold = (req.query.threshold as string) || '0.7';
 
     if (!applicationId || !userPrompt) {
       return res.status(400).json({

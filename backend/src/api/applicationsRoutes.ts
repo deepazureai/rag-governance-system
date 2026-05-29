@@ -7,6 +7,7 @@ import { Router, type Router as ExpressRouter, Request, Response } from 'express
 import { z } from 'zod';
 import { batchProcessingService } from '../services/BatchProcessingService.js';
 import { getStringParam } from '../utils/paramParser.js';
+import { asString } from '../utils/queryParamUtils.js';
 import { INDUSTRY_STANDARD_SLA } from '../utils/sla-benchmarks.js';
 import mongoose from 'mongoose';
 
@@ -448,7 +449,7 @@ applicationsRouter.delete('/:id', async (req: Request, res: Response) => {
  */
 applicationsRouter.post('/:id/batch-process', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { dataSource } = req.body;
 
     console.log('[API] POST /api/applications/:id/batch-process for app:', id);
