@@ -320,11 +320,12 @@ export class PromptTemplateService {
       let mostUsedTemplate: { id: string; name: string; usageCount: number } | undefined;
       if (templates.length > 0) {
         const sorted = templates.sort((a, b) => (b.usageMetrics?.totalUsageCount ?? 0) - (a.usageMetrics?.totalUsageCount ?? 0));
-        if (sorted[0]._id) {
+        const topTemplate = sorted[0];
+        if (topTemplate && topTemplate._id) {
           mostUsedTemplate = {
-            id: sorted[0]._id.toString(),
-            name: sorted[0].name,
-            usageCount: sorted[0].usageMetrics?.totalUsageCount ?? 0,
+            id: topTemplate._id.toString(),
+            name: topTemplate.name,
+            usageCount: topTemplate.usageMetrics?.totalUsageCount ?? 0,
           };
         }
       }

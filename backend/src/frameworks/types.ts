@@ -122,6 +122,9 @@ export abstract class BaseEvaluationFramework implements IEvaluationFramework {
 
     for (let i = 0; i < request.evaluations.length; i++) {
       const evaluation = request.evaluations[i];
+      if (!evaluation) {
+        continue; // Skip undefined evaluations
+      }
       const result = await this.evaluate(evaluation);
       results.push(result);
 

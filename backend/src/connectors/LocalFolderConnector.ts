@@ -251,6 +251,9 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
 
       // Parse header
       const headerLine = lines[0];
+      if (!headerLine) {
+        throw new Error('CSV file is empty - no header row found');
+      }
       const headers = this.parseCSVLine(headerLine);
       
       // Parse data rows
@@ -391,6 +394,11 @@ export class LocalFolderConnector extends EventEmitter implements IDataSourceCon
     while ((match = pattern.exec(recordString)) !== null) {
       const key = match[1];
       let value = match[2];
+      
+      // Validate captured groups are not undefined
+      if (!key || !value) {
+        continue;
+      }
 
       // Try to parse as JSON if it looks like a number or boolean
       if (value === 'true') {

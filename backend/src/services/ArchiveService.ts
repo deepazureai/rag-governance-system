@@ -65,8 +65,8 @@ export class ArchiveService {
           fileSize: compressed.length,
           checksum,
           dateRange: {
-            startDate: existingRecords[0].createdAt,
-            endDate: existingRecords[existingRecords.length - 1].createdAt,
+            startDate: existingRecords[0]?.createdAt || new Date(),
+            endDate: existingRecords[existingRecords.length - 1]?.createdAt || new Date(),
           },
         },
         retentionPolicy: {

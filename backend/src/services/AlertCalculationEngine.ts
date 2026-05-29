@@ -179,12 +179,18 @@ export class AlertCalculationEngine {
       if (!byApp[alert.appId]) {
         byApp[alert.appId] = { alerts: [], severity: 'healthy' };
       }
-      byApp[alert.appId].alerts.push(alert);
+      const appEntry = byApp[alert.appId];
+      if (appEntry) {
+        appEntry.alerts.push(alert);
+      }
     }
 
     // Calculate per-app severity
     for (const appId in byApp) {
-      byApp[appId].severity = this.calculateCollectiveSeverity(byApp[appId].alerts);
+      const appAlerts = byApp[appId];
+      if (appAlerts) {
+        appAlerts.severity = this.calculateCollectiveSeverity(appAlerts.alerts);
+      }
     }
 
     return byApp;

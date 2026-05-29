@@ -85,6 +85,11 @@ export class CryptoUtil {
 
       const ivHex = parts[0];
       const ciphertextHex = parts[1];
+      
+      // Type guards for array elements
+      if (typeof ivHex !== 'string' || typeof ciphertextHex !== 'string') {
+        throw new Error('Invalid encrypted data format: missing components');
+      }
 
       const decipher = crypto.createDecipheriv(
         this.algorithm,

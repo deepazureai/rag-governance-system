@@ -172,7 +172,7 @@ This is an automated alert from RAG Evaluation Platform.
 
         // Exponential backoff before retry
         if (attempt < this.MAX_RETRIES - 1) {
-          const delay = this.RETRY_DELAYS[attempt];
+          const delay = this.RETRY_DELAYS[attempt] ?? 1000; // Default to 1000ms if undefined
           logger.info(`[EmailService] Retrying in ${delay}ms...`);
           await this.sleep(delay);
         }

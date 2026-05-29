@@ -601,16 +601,20 @@ export class MultiFrameworkEvaluator {
         const val1 = arr1[i - 1];
         const val2 = arr2[j - 1];
         
+        const currentRow = dp[i];
+        if (!currentRow) continue; // Skip if row doesn't exist
+        
         if (val1 === val2) {
           const dpPrev = dp[i - 1];
-          const dpVal = dpPrev ? dpPrev[j - 1] : 0;
-          dp[i][j] = (typeof dpVal === 'number' ? dpVal : 0) + 1;
+          const dpVal = (dpPrev?.[j - 1]) ?? 0;
+          const numVal = typeof dpVal === 'number' ? dpVal : 0;
+          currentRow[j] = numVal + 1;
         } else {
           const dpRow1 = dp[i - 1];
           const dpRow2 = dp[i];
-          const left = dpRow1 ? dpRow1[j]! : 0;
-          const up = dpRow2 ? dpRow2[j - 1]! : 0;
-          dp[i][j] = Math.max(left ?? 0, up ?? 0);
+          const left = (dpRow1?.[j]) ?? 0;
+          const up = (dpRow2?.[j - 1]) ?? 0;
+          currentRow[j] = Math.max(left, up);
         }
       }
     }

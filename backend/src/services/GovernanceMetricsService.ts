@@ -365,18 +365,24 @@ export class GovernanceMetricsService {
           if (!complianceByMetric[sla.metricName]) {
             complianceByMetric[sla.metricName] = { passed: 0, total: 0 };
           }
-          complianceByMetric[sla.metricName].total++;
-          if (sla.status === 'healthy') {
-            complianceByMetric[sla.metricName].passed++;
+          const metricCompliance = complianceByMetric[sla.metricName];
+          if (metricCompliance) {
+            metricCompliance.total++;
+            if (sla.status === 'healthy') {
+              metricCompliance.passed++;
+            }
           }
           
           // By framework
           if (!complianceByFramework[sla.framework]) {
             complianceByFramework[sla.framework] = { passed: 0, total: 0 };
           }
-          complianceByFramework[sla.framework].total++;
-          if (sla.status === 'healthy') {
-            complianceByFramework[sla.framework].passed++;
+          const frameworkCompliance = complianceByFramework[sla.framework];
+          if (frameworkCompliance) {
+            frameworkCompliance.total++;
+            if (sla.status === 'healthy') {
+              frameworkCompliance.passed++;
+            }
           }
           
           // Count by status

@@ -48,7 +48,12 @@ export function calculateUserMetrics(records: EvaluationRecord[]): {
     };
   }
 
-  const userId = records[0].userId || 'Unknown';
+  const firstRecord = records[0];
+  if (!firstRecord) {
+    throw new Error('No records available');
+  }
+
+  const userId = firstRecord.userId || 'Unknown';
   
   // Calculate averages
   const avgMetrics: EvaluationMetric = {
@@ -73,7 +78,11 @@ export function calculateUserMetrics(records: EvaluationRecord[]): {
     else criticalCount++;
 
     Object.keys(avgMetrics).forEach((key) => {
-      avgMetrics[key as keyof EvaluationMetric] += (record.evaluation?.[key as keyof EvaluationMetric] || 0) / records.length;
+      const metric = avgMetrics[key as keyof EvaluationMetric];
+      const recordMetric = record.evaluation?.[key as keyof EvaluationMetric];
+      if (typeof metric === 'number' && typeof recordMetric === 'number') {
+        avgMetrics[key as keyof EvaluationMetric] += recordMetric / records.length;
+      }
     });
   });
 
