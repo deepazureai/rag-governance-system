@@ -43,9 +43,9 @@ baReviewRouter.post('/populate-queue', async (req: Request, res: Response) => {
  */
 baReviewRouter.get('/queue/:applicationId', async (req: Request, res: Response) => {
   try {
-    const { applicationId } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const applicationId = asString(req.params.applicationId);
+    const page = parseInt(asString(req.query.page) as string) || 1;
+    const pageSize = parseInt(asString(req.query.pageSize) as string) || 10;
 
     if (!applicationId) {
       return res.status(400).json({ success: false, message: 'applicationId is required' });
@@ -53,7 +53,7 @@ baReviewRouter.get('/queue/:applicationId', async (req: Request, res: Response) 
 
     logger.info(`[baReviewRoutes] Getting queue for app ${applicationId}, page ${page}`);
 
-    const result = await baReviewQueueService.getReviewQueue(applicationId, page, pageSize);
+    const result = await baReviewQueueService.getReviewQueue(applicationId as string, page, pageSize);
 
     return res.status(200).json({
       success: true,
@@ -126,8 +126,10 @@ baReviewRouter.post('/add-improvement', async (req: Request, res: Response) => {
  */
 baReviewRouter.get('/similar-records/:applicationId', async (req: Request, res: Response) => {
   try {
-    const { applicationId } = req.params;
-    const { userPrompt, limit, threshold } = req.query;
+    const applicationId = asString(req.params.applicationId);
+    const userPrompt = asString(req.query.userPrompt);
+    const limit = asString(req.query.limit);
+    const threshold = asString(req.query.threshold);
 
     if (!applicationId || !userPrompt) {
       return res.status(400).json({
@@ -139,7 +141,7 @@ baReviewRouter.get('/similar-records/:applicationId', async (req: Request, res: 
     logger.info(`[baReviewRoutes] Finding similar records for app ${applicationId}`);
 
     const result = await baReviewQueueService.findSimilarRecords(
-      applicationId,
+      applicationId as string,
       userPrompt as string,
       parseFloat(threshold as string) || 0.7,
       parseInt(limit as string) || 10
