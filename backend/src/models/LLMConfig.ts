@@ -8,7 +8,14 @@ export interface ILLMConfig extends Document {
   applicationId: string;
   provider: 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai';
   
-  // Azure OpenAI
+  // Azure OpenAI - Exact parameter names (new)
+  api_key?: string;              // Exact: for Azure OpenAI LLM
+  azure_endpoint?: string;       // Exact: for Azure OpenAI LLM
+  api_version?: string;          // Exact: for Azure OpenAI LLM (e.g., "2024-02-15-preview")
+  deployment?: string;           // Exact: for Azure OpenAI deployment name
+  skipSslVerification?: boolean;  // SSL bypass for corporate proxies
+  
+  // Azure OpenAI - Legacy field names (backward compatibility)
   azureEndpoint?: string;
   azureApiKey?: string;
   azureDeploymentName?: string;
@@ -50,6 +57,13 @@ export const llmConfigSchema = new Schema<ILLMConfig>(
       enum: ['azure-openai', 'claude', 'aws-bedrock', 'openai'],
       required: true,
     },
+    // Azure OpenAI - Exact parameter names (new)
+    api_key: { type: String },
+    azure_endpoint: { type: String },
+    api_version: { type: String },
+    deployment: { type: String },
+    skipSslVerification: { type: Boolean, default: false },
+    // Azure OpenAI - Legacy field names
     azureEndpoint: { type: String },
     azureApiKey: { type: String },
     azureDeploymentName: { type: String },

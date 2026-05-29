@@ -1,5 +1,6 @@
-import { getAzureOpenAIClient, getDeploymentId } from './AzureOpenAIConfig.js';
+import { getAzureOpenAIClient, getDeploymentId, createAzureOpenAIClientFromConfig, getDeploymentNameFromConfig } from './AzureOpenAIConfig.js';
 import { llmConfigService } from './LLMConfigService.js';
+import { ILLMConfig } from '../models/LLMConfig.js';
 
 /**
  * Hallucination Detection Service
@@ -29,10 +30,23 @@ export interface PromptSuggestion {
 
 async function callAzureOpenAI(
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  llmConfig?: any
 ): Promise<string> {
-  const client = getAzureOpenAIClient();
-  const deploymentId = getDeploymentId();
+  let client;
+  let deploymentId;
+
+  if (llmConfig && llmConfig.provider === 'azure-openai') {
+    // Use app-specific config
+    client = createAzureOpenAIClientFromConfig(llmConfig);
+    deploymentId = getDeploymentNameFromConfig(llmConfig);
+    console.log(`[v0] Using app-specific Azure config for app ${llmConfig.applicationId}`);
+  } else {
+    // Fallback to env variables (default behavior if no config provided)
+    client = getAzureOpenAIClient();
+    deploymentId = getDeploymentId();
+    console.log('[v0] Using environment variable Azure config');
+  }
 
   try {
     const response = await client.chat.completions.create({
@@ -47,8 +61,8 @@ async function callAzureOpenAI(
           content: userPrompt,
         },
       ],
-      temperature: 0.2,
-      max_tokens: 2000,
+      temperature: llmConfig?.temperature ?? 0.2,
+      max_tokens: llmConfig?.maxTokens ?? 2000,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -69,19 +83,21 @@ export async function detectHallucinations(
   llmResponse: string,
   applicationId?: string
 ): Promise<HallucinationAnalysis> {
-  // Try to retrieve app-specific Azure config
-  let appConfig: Awaited<ReturnType<typeof llmConfigService.getDefaultConfig>> | null = null;
+  // Always retrieve app-specific LLM config
+  let appConfig: any = null;
   if (applicationId) {
     try {
       appConfig = await llmConfigService.getDefaultConfig(applicationId);
-      console.log('[HallucinationDetection] Using saved config for app:', applicationId);
+      console.log('[v0] [HallucinationDetection] Using saved config for app:', applicationId);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.log('[HallucinationDetection] No saved config found, using env variables:', error.message);
+        console.log('[v0] [HallucinationDetection] No saved config found, will attempt to use env variables:', error.message);
       } else {
-        console.log('[HallucinationDetection] No saved config found, using env variables');
+        console.log('[v0] [HallucinationDetection] No saved config found, will attempt to use env variables');
       }
     }
+  } else {
+    console.log('[v0] [HallucinationDetection] No applicationId provided, will use env variables if available');
   }
   const systemPrompt = `You are an expert LLM Judge and RAG evaluator. Analyze the given source documents, user prompt, and LLM response to detect hallucinations, missing context, and prompt gaps.
 
@@ -134,7 +150,7 @@ Identify:
 5. Structural gaps in the PROMPT
 6. Concrete suggestions to improve the prompt structure and context to increase groundedness`;
 
-  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis);
+  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis, appConfig ?? undefined);
 
   // Parse JSON response
   let analysisData;
@@ -174,7 +190,7 @@ Identify:
   };
 }
 
-export async function analyzePromptQuality(prompt: string): Promise<{
+export async function analyzePromptQuality(prompt: string, appConfig?: any): Promise<{
   score: number;
   issues: string[];
   suggestions: string[];
@@ -194,7 +210,7 @@ ${prompt}
 
 Return JSON with: score (0-100), issues found, and specific suggestions.`;
 
-  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis);
+  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis, appConfig);
 
   try {
     const cleanedResponse = response
@@ -215,7 +231,8 @@ Return JSON with: score (0-100), issues found, and specific suggestions.`;
 export async function generateImprovedPrompt(
   originalPrompt: string,
   issues: string[],
-  targetGroundedness: number = 80
+  targetGroundedness: number = 80,
+  appConfig?: any
 ): Promise<{
   improvedPrompt: string;
   improvements: string[];
@@ -247,7 +264,7 @@ Create an improved prompt that:
 
 Return JSON with: improvedPrompt, list of improvements made, and expectedIncrease.`;
 
-  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis);
+  const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis, appConfig);
 
   try {
     const cleanedResponse = response

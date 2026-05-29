@@ -1,4 +1,6 @@
 import { OpenAI } from 'openai';
+import { ILLMConfig } from '../models/LLMConfig.js';
+import { cryptoUtil } from '../utils/CryptoUtil.js';
 
 /**
  * Azure OpenAI Configuration Service
@@ -60,4 +62,61 @@ export function getConfig(): AzureOpenAIConfig {
     apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview',
     deploymentId: process.env.AZURE_OPENAI_DEPLOYMENT_ID || 'gpt-4',
   };
+}
+
+/**
+ * Create an Azure OpenAI client from application-specific LLM config
+ * Supports exact parameter names (api_key, azure_endpoint, etc.) and legacy names
+ */
+export function createAzureOpenAIClientFromConfig(llmConfig: ILLMConfig): OpenAI {
+  if (llmConfig.provider !== 'azure-openai') {
+    throw new Error(`Invalid provider: ${llmConfig.provider}. Expected 'azure-openai'.`);
+  }
+
+  // Get credentials from exact parameter names (new) or legacy names
+  const apiKey = llmConfig.api_key || llmConfig.azureApiKey;
+  const endpoint = llmConfig.azure_endpoint || llmConfig.azureEndpoint;
+  const apiVersion = llmConfig.api_version || llmConfig.azureApiVersion || '2024-02-15-preview';
+  const deploymentName = llmConfig.deployment || llmConfig.azureDeploymentName;
+
+  if (!apiKey || !endpoint || !deploymentName) {
+    throw new Error(
+      `Incomplete Azure OpenAI config for app ${llmConfig.applicationId}. ` +
+      `Missing: ${!apiKey ? 'api_key ' : ''}${!endpoint ? 'azure_endpoint ' : ''}${!deploymentName ? 'deployment' : ''}`
+    );
+  }
+
+  // Decrypt credentials if encrypted
+  let decryptedApiKey = apiKey;
+  try {
+    decryptedApiKey = cryptoUtil.decrypt(apiKey);
+  } catch {
+    // Already decrypted or not encrypted, use as-is
+    decryptedApiKey = apiKey;
+  }
+
+  // Extract instance name from endpoint URL
+  const instanceName = endpoint.replace('https://', '').replace('.openai.azure.com/', '');
+
+  const client = new OpenAI({
+    apiKey: decryptedApiKey,
+    baseURL: `${endpoint}/openai/deployments`,
+    defaultHeaders: {
+      'api-key': decryptedApiKey,
+    },
+    defaultQuery: { 'api-version': apiVersion },
+  });
+
+  console.log(`[AzureOpenAI] Created client for app ${llmConfig.applicationId} using deployment: ${deploymentName}`);
+  return client;
+}
+
+/**
+ * Extract deployment name from LLMConfig
+ */
+export function getDeploymentNameFromConfig(llmConfig: ILLMConfig): string {
+  if (llmConfig.provider !== 'azure-openai') {
+    throw new Error(`Invalid provider: ${llmConfig.provider}`);
+  }
+  return llmConfig.deployment || llmConfig.azureDeploymentName || 'gpt-4-turbo';
 }

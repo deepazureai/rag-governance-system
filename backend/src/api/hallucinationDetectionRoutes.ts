@@ -3,8 +3,9 @@ import {
   detectHallucinations,
   analyzePromptQuality,
   generateImprovedPrompt,
-  HallucinationAnalysis,
 } from '../services/HallucinationDetectionService.js';
+import { llmConfigService } from '../services/LLMConfigService.js';
+import { ILLMConfig } from '../models/LLMConfig.js';
 import { logger } from '../utils/logger.js';
 
 const hallucinationDetectionRouter: ExpressRouter = Router();
@@ -169,6 +170,21 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
       targetGroundedness,
     });
 
+    // Fetch app-specific LLM config
+    let appConfig: ILLMConfig | null = null;
+    if (applicationId) {
+      try {
+        appConfig = await llmConfigService.getDefaultConfig(applicationId);
+        logger.info('[EndToEndEvaluation API] Using saved LLM config for app:', applicationId);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          logger.warn(`[EndToEndEvaluation API] No saved config for app ${applicationId}:`, error.message);
+        } else {
+          logger.warn(`[EndToEndEvaluation API] No saved config for app ${applicationId}`);
+        }
+      }
+    }
+
     // Step 1: Detect hallucinations - Pass applicationId to retrieve app-specific LLM config
     const hallucinationAnalysis = await detectHallucinations(
       sourceDocuments,
@@ -177,8 +193,8 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
       applicationId
     );
 
-    // Step 2: Analyze prompt quality
-    const promptQuality = await analyzePromptQuality(userPrompt);
+    // Step 2: Analyze prompt quality - Pass app-specific config
+    const promptQuality = await analyzePromptQuality(userPrompt, appConfig ?? undefined);
 
     // Step 3: Generate improved prompt if groundedness is below target
     let improvedPrompt = null;
@@ -190,7 +206,8 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
           ...hallucinationAnalysis.incompleteElements,
           ...hallucinationAnalysis.promptGaps,
         ],
-        targetGroundedness
+        targetGroundedness,
+        appConfig ?? undefined
       );
     }
 
