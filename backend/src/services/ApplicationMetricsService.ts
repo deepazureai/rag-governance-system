@@ -54,15 +54,12 @@ export class ApplicationMetricsService {
     try {
       logger.info(`[v0] Fetching metrics for app: ${applicationId}`);
       
-      // Query the RawDataRecord model collection for evaluation data
-      const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
-      const evaluations = await RawDataRecordCollection.find({ 
-        applicationId,
-        'evaluationScores': { $exists: true }
-      }).toArray();
+      // Query the evaluationrecords collection which stores calculated metrics from all frameworks
+      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+      const evaluations = await EvaluationCollection.find({ applicationId }).toArray();
       
       if (!evaluations || evaluations.length === 0) {
-        logger.info(`[v0] No evaluations found for app ${applicationId}`);
+        logger.info(`[v0] No evaluation records found for app ${applicationId}`);
         return null;
       }
 
@@ -145,24 +142,11 @@ export class ApplicationMetricsService {
       aggregated[key] = 0;
     }
 
-    // Flatten evaluation scores from the array structure
-    const allScores: Array<Record<string, number>> = [];
-    for (const evaluation of evaluations) {
-      const evalScoresArray = evaluation.evaluationScores as Array<{ scores: Record<string, number> }> | undefined;
-      if (evalScoresArray && Array.isArray(evalScoresArray)) {
-        for (const evalScore of evalScoresArray) {
-          if (evalScore.scores && typeof evalScore.scores === 'object') {
-            allScores.push(evalScore.scores);
-          }
-        }
-      }
-    }
-
-    // Average each metric across all score objects
+    // Average each metric across all evaluations
     for (const key of metricKeys) {
-      const validValues = allScores
-        .map((scoreObj: Record<string, number>) => {
-          const value = scoreObj[key];
+      const validValues = evaluations
+        .map((evaluation: Record<string, unknown>) => {
+          const value = evaluation[key];
           return typeof value === 'number' ? value : undefined;
         })
         .filter((v): v is number => v !== undefined && !isNaN(v));
@@ -172,7 +156,7 @@ export class ApplicationMetricsService {
         : 0;
     }
 
-    logger.debug(`[v0] Calculated average metrics from ${allScores.length} score objects:`, aggregated);
+    logger.debug(`[v0] Calculated average metrics from ${evaluations.length} evaluation records:`, aggregated);
     
     // Build the properly typed return object
     return {
