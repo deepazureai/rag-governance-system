@@ -179,6 +179,11 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
   ];
 
   const currentStep = steps[step];
+  if (!currentStep) {
+    // Fallback if step is out of bounds (should not happen in normal flow)
+    return null;
+  }
+  
   const isFirst = step === 0;
   const isLast = step === steps.length - 1;
 

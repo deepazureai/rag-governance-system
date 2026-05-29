@@ -142,7 +142,8 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     
     return allFields.every(field => {
       if (field.required) {
-        return formData[field.name]?.trim().length > 0;
+        const value = formData[field.name];
+        return typeof value === 'string' && value.trim().length > 0;
       }
       return true;
     });

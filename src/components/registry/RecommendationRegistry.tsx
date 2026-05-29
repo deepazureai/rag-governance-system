@@ -126,7 +126,7 @@ export function RecommendationRegistry({ applicationId }: RecommendationRegistry
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-1">Suggestions:</p>
                   <p className="text-sm text-gray-600 line-clamp-2">
-                    {rec.suggestions && rec.suggestions.length > 0
+                    {rec.suggestions && rec.suggestions[0]
                       ? rec.suggestions[0].suggestion
                       : 'No suggestions'}
                   </p>

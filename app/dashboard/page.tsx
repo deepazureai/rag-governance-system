@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const [appsError, setAppsError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
+  const firstSelectedAppId: string | undefined = selectedAppIds[0];  // Type explicit for noUncheckedIndexedAccess
   const { metrics, isLoading, error, refreshMetrics } = useMetricsFetch();
   const { alerts, calculateAlertsForApp, getAggregatedAlerts, getAppAlerts, resolveAlert } = useAlerts();
 
@@ -384,9 +385,9 @@ export default function DashboardPage() {
             />
           )}
 
-          {activeTab === 'raw-data' && selectedAppIds.length > 0 && (
-            <RawDataTab applicationId={selectedAppIds[0]} />
-          )}
+          {activeTab === 'raw-data' && selectedAppIds.length > 0 && firstSelectedAppId ? (
+            <RawDataTab applicationId={firstSelectedAppId} />
+          ) : null}
 
           {activeTab === 'raw-data' && selectedAppIds.length === 0 && (
             <Card className="p-8 bg-blue-50 border border-blue-200">
@@ -397,9 +398,9 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {activeTab === 'ba-review' && selectedAppIds.length > 0 && (
-            <BAReviewDashboard applicationId={selectedAppIds[0]} />
-          )}
+          {activeTab === 'ba-review' && selectedAppIds.length > 0 && firstSelectedAppId ? (
+            <BAReviewDashboard applicationId={firstSelectedAppId} />
+          ) : null}
 
           {activeTab === 'ba-review' && selectedAppIds.length === 0 && (
             <Card className="p-8 bg-blue-50 border border-blue-200">
@@ -410,9 +411,9 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {activeTab === 'knowledge-base' && selectedAppIds.length > 0 && (
-            <KnowledgeBaseTab applicationId={selectedAppIds[0]} />
-          )}
+          {activeTab === 'knowledge-base' && selectedAppIds.length > 0 && firstSelectedAppId ? (
+            <KnowledgeBaseTab applicationId={firstSelectedAppId} />
+          ) : null}
 
           {activeTab === 'knowledge-base' && selectedAppIds.length === 0 && (
             <Card className="p-8 bg-blue-50 border border-blue-200">
@@ -423,9 +424,9 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {activeTab === 'templates' && selectedAppIds.length > 0 && (
-            <TemplatesTab applicationId={selectedAppIds[0]} />
-          )}
+          {activeTab === 'templates' && selectedAppIds.length > 0 && firstSelectedAppId ? (
+            <TemplatesTab applicationId={firstSelectedAppId} />
+          ) : null}
 
           {activeTab === 'templates' && selectedAppIds.length === 0 && (
             <Card className="p-8 bg-blue-50 border border-blue-200">

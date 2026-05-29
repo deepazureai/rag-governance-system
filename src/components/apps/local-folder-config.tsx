@@ -141,6 +141,10 @@ export function LocalFolderConfig({ onConfigure, isLoading, onValidationChange }
 
       // Check if it looks like CSV format (has delimiter)
       const firstLine = nonEmptyLines[0];
+      if (!firstLine) {
+        throw new Error('Unable to read first line of file');
+      }
+      
       const secondLine = nonEmptyLines[1]; // Check second line for data format
       
       // Try to detect delimiter - check both header and first data row

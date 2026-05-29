@@ -166,15 +166,15 @@ export function DataSourcesTab() {
 
                         {testResults[config.id] && (
                           <div className="mt-2 flex items-center gap-2 text-sm">
-                            {testResults[config.id].success ? (
+                            {testResults[config.id]?.success ? (
                               <>
                                 <Check className="w-4 h-4 text-green-600" />
-                                <span className="text-green-700">{testResults[config.id].message}</span>
+                                <span className="text-green-700">{testResults[config.id]?.message}</span>
                               </>
                             ) : (
                               <>
                                 <X className="w-4 h-4 text-red-600" />
-                                <span className="text-red-700">{testResults[config.id].message}</span>
+                                <span className="text-red-700">{testResults[config.id]?.message}</span>
                               </>
                             )}
                           </div>
