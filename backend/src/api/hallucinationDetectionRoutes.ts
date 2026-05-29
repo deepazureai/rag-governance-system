@@ -171,7 +171,7 @@ hallucinationDetectionRouter.post('/end-to-end', async (req: Request, res: Respo
     });
 
     // Fetch app-specific LLM config
-    let appConfig: ILLMConfig | null = null;
+    let appConfig: any = null;
     if (applicationId) {
       try {
         appConfig = await llmConfigService.getDefaultConfig(applicationId);
