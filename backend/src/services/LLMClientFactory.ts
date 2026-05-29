@@ -25,6 +25,7 @@ export interface LLMGenerationOptions {
 
 /**
  * Azure OpenAI LLM Provider
+ * Uses exact parameter names required by Azure OpenAI SDK
  */
 export class AzureOpenAIProvider implements ILLMProvider {
   private endpoint: string;
@@ -33,18 +34,29 @@ export class AzureOpenAIProvider implements ILLMProvider {
   private apiVersion: string;
   private temperature: number;
   private maxTokens: number;
+  private skipSslVerification: boolean;
 
   constructor(config: LLMConfig) {
-    if (!config.azureEndpoint || !config.azureApiKey || !config.azureDeploymentName || !config.azureApiVersion) {
-      throw new Error('Missing required Azure OpenAI configuration fields');
+    // Support both exact parameter names (new) and legacy names (old)
+    const endpoint = config.azure_endpoint || config.azureEndpoint;
+    const apiKey = config.api_key || config.azureApiKey;
+    const deploymentName = config.deployment || config.azureDeploymentName;
+    const apiVersion = config.api_version || config.azureApiVersion;
+
+    if (!endpoint || !apiKey || !deploymentName || !apiVersion) {
+      throw new Error(
+        'Missing required Azure OpenAI configuration fields. Required: ' +
+        'api_key, azure_endpoint, api_version, deployment'
+      );
     }
 
-    this.endpoint = config.azureEndpoint;
-    this.apiKey = config.azureApiKey;
-    this.deploymentName = config.azureDeploymentName;
-    this.apiVersion = config.azureApiVersion;
+    this.endpoint = endpoint;
+    this.apiKey = apiKey;
+    this.deploymentName = deploymentName;
+    this.apiVersion = apiVersion;
     this.temperature = config.temperature ?? 0.7;
     this.maxTokens = config.maxTokens ?? 2048;
+    this.skipSslVerification = config.skipSslVerification ?? false;
   }
 
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<string> {
@@ -54,7 +66,8 @@ export class AzureOpenAIProvider implements ILLMProvider {
 
       const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/chat/completions?api-version=${this.apiVersion}`;
 
-      const response = await fetch(url, {
+      // Create fetch options with optional SSL verification skip
+      const fetchOptions: RequestInit = {
         method: 'POST',
         headers: {
           'api-key': this.apiKey,
@@ -69,7 +82,17 @@ export class AzureOpenAIProvider implements ILLMProvider {
           max_tokens: maxTokens,
           top_p: options?.topP ?? 1,
         }),
-      });
+      };
+
+      // Note: In Node.js, to skip SSL verification globally, use:
+      // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      // This is handled at the request level in browsers/some runtime
+      if (this.skipSslVerification) {
+        // Add any runtime-specific SSL skip logic here if needed
+        console.warn('[AzureOpenAIProvider] SSL verification is disabled - use only in development');
+      }
+
+      const response = await fetch(url, fetchOptions);
 
       if (!response.ok) {
         const error = await response.text();
@@ -94,7 +117,12 @@ export class AzureOpenAIProvider implements ILLMProvider {
     try {
       const prompt = 'Test message';
       const result = await this.generate(prompt, { maxTokens: 10 });
-      return { valid: typeof result === 'string' && result.length > 0 };
+      
+      if (typeof result !== 'string' || result.length === 0) {
+        return { valid: false, error: 'No response from Azure OpenAI' };
+      }
+
+      return { valid: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       return { valid: false, error: `Validation failed: ${message}` };

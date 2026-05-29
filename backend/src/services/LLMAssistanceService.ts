@@ -57,7 +57,8 @@ export class LLMAssistanceService {
         throw new Error(`Invalid LLM config: ${validation.errors.join(', ')}`);
       }
 
-      // Create LLM client
+      // Create LLM client - uses exact Azure OpenAI parameter names (api_key, azure_endpoint, api_version, deployment)
+      // if provided in config, with fallback to legacy names for backward compatibility
       const llmClient = LLMClientFactory.create(llmConfig);
 
       // Validate LLM connection
