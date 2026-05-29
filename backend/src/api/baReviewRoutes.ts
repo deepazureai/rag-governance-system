@@ -3,6 +3,7 @@ import { asString } from '../utils/queryParamUtils.js';
 import { baReviewQueueService } from '../services/BAReviewQueueService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { logger } from '../utils/logger.js';
+import mongoose from 'mongoose';
 
 const baReviewRouter: ExpressRouter = Router();
 
@@ -70,7 +71,66 @@ baReviewRouter.get('/queue/:applicationId', async (req: Request, res: Response) 
 });
 
 /**
- * Add prompt improvement for a record
+ * GET /api/ba-review/raw-data/:recordId
+ * Fetch a specific raw data record with all details including saved improvements
+ */
+baReviewRouter.get('/raw-data/:recordId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const recordId = asString(req.params.recordId);
+
+    if (!recordId) {
+      res.status(400).json({ success: false, message: 'recordId is required' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching raw data record: ${recordId}`);
+
+    const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+    const record = await RawDataCollection.findOne({
+      _id: new mongoose.Types.ObjectId(recordId),
+    });
+
+    if (!record) {
+      res.status(404).json({ success: false, message: 'Raw data record not found' });
+      return;
+    }
+
+    // Format the response
+    const response = {
+      _id: record._id?.toString(),
+      applicationId: record.applicationId,
+      userPrompt: record.userPrompt,
+      llmResponse: record.llmResponse,
+      context: record.context,
+      evaluationScores: record.evaluationScores,
+      userFeedback: record.userFeedback,
+      totalLatency: record.totalLatency,
+      baReview: record.baReview || {
+        promptImprovements: [],
+        reviewStatus: 'pending',
+      },
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+
+    logger.info(`[baReviewRoutes] Successfully retrieved record ${recordId} with ${response.baReview.promptImprovements?.length || 0} improvements`);
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching raw data record: ${message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch raw data record',
+      error: message,
+    });
+  }
+});
+
+/**
  * POST /api/ba-review/add-improvement
  */
 baReviewRouter.post('/add-improvement', async (req: Request, res: Response) => {
@@ -86,21 +146,21 @@ baReviewRouter.post('/add-improvement', async (req: Request, res: Response) => {
     } = req.body;
 
     // Validate required fields
-    if (!queueItemId || !rawDataRecordId || !improvedPrompt || !reason || !baName || !baEmail) {
+    if (!rawDataRecordId || !improvedPrompt || !reason || !baEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: queueItemId, rawDataRecordId, improvedPrompt, reason, baName, baEmail',
+        message: 'Missing required fields: rawDataRecordId, improvedPrompt, reason, baEmail',
       });
     }
 
     logger.info(`[baReviewRoutes] Adding prompt improvement for record ${rawDataRecordId}`);
 
     const result = await baReviewQueueService.addPromptImprovement(
-      queueItemId,
+      queueItemId || '',
       rawDataRecordId,
       improvedPrompt,
       reason,
-      baName,
+      baName || 'Business Analyst',
       baEmail,
       estimatedScoreImpact
     );
