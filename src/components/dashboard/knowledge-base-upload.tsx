@@ -1,0 +1,429 @@
+'use client';
+
+import { useState, useRef, ChangeEvent, DragEvent } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
+import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+
+interface UploadedDocument {
+  documentId: string;
+  fileName: string;
+  fileSize: number;
+  uploadDate: Date;
+  totalChunks: number;
+  status: 'indexed' | 'processing' | 'failed';
+}
+
+interface KnowledgeBaseUploadProps {
+  applicationId: string;
+}
+
+export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps) {
+  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      await handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInput = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  const handleFile = async (file: File) => {
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Invalid file type. Please upload PDF, DOCX, TXT, or MD files.');
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File too large. Maximum size is 50MB.');
+      return;
+    }
+
+    setError(null);
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('applicationId', applicationId);
+      formData.append('append', 'true'); // Append mode by default
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+      console.log('[v0] Uploading knowledge base document:', file.name);
+
+      const response = await fetch(`${apiUrl}/api/knowledge-base/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      console.log('[v0] Document uploaded successfully:', data);
+
+      // Add document to list
+      setDocuments((prev) => [
+        ...prev,
+        {
+          documentId: data.documentId,
+          fileName: file.name,
+          fileSize: file.size,
+          uploadDate: new Date(),
+          totalChunks: data.chunksCreated,
+          status: 'processing',
+        },
+      ]);
+
+      setUploadProgress(100);
+
+      // Reset progress after delay
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 2000);
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      setError(errorMessage);
+      console.error('[v0] Upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string, fileName: string) => {
+    if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+      const response = await fetch(`${apiUrl}/api/knowledge-base/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete document');
+      }
+
+      setDocuments((prev) => prev.filter((doc) => doc.documentId !== documentId));
+      console.log('[v0] Document deleted:', fileName);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Delete failed';
+      setError(errorMessage);
+      console.error('[v0] Delete error:', err);
+    }
+  };
+
+  const handleDeleteAllKnowledge = async () => {
+    if (
+      !confirm(
+        'Delete ALL knowledge base data? This will remove all documents and chat history (except the finalized template chat). This cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+      const response = await fetch(`${apiUrl}/api/knowledge-base/all`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete knowledge base');
+      }
+
+      setDocuments([]);
+      setShowDeleteConfirm(false);
+      console.log('[v0] All knowledge base data deleted');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Delete failed';
+      setError(errorMessage);
+      console.error('[v0] Delete all error:', err);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
+
+  const getStatusIcon = (status: 'indexed' | 'processing' | 'failed') => {
+    switch (status) {
+      case 'indexed':
+        return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+      case 'processing':
+        return <Clock className="w-5 h-5 text-blue-500 animate-spin" />;
+      case 'failed':
+        return <AlertTriangle className="w-5 h-5 text-red-500" />;
+    }
+  };
+
+  const totalChunks = documents.reduce((sum, doc) => sum + doc.totalChunks, 0);
+  const totalSize = documents.reduce((sum, doc) => sum + doc.fileSize, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <Card className="bg-red-50 border border-red-200 p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-red-900">Error</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Upload Section */}
+      <Card className="border-2 border-dashed border-blue-300 bg-blue-50 p-8">
+        <div className="text-center">
+          <Upload className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Knowledge Documents</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Supported formats: PDF, DOCX, TXT, MD (max 50MB each)
+          </p>
+
+          <div
+            className={`
+              border-2 border-dashed rounded-lg p-8 mb-4 transition-colors cursor-pointer
+              ${dragActive ? 'border-blue-500 bg-blue-100' : 'border-blue-300 bg-white'}
+            `}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileText className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+            <p className="text-sm font-medium text-gray-900">Drag documents here or click to browse</p>
+            <p className="text-xs text-gray-500 mt-1">Uploads will create chunks and embeddings automatically</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileInput}
+              accept=".pdf,.docx,.txt,.md"
+              className="hidden"
+              disabled={isUploading}
+            />
+          </div>
+
+          {isUploading && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 justify-center">
+                <Spinner className="w-4 h-4" />
+                <span className="text-sm text-blue-700">Processing document...</span>
+              </div>
+              <div className="bg-blue-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {uploadProgress === 100 && (
+            <div className="flex items-center gap-2 justify-center text-green-700">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-sm">Document uploaded successfully!</span>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Statistics */}
+      {documents.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <p className="text-2xl font-bold text-blue-900">{documents.length}</p>
+            <p className="text-xs text-blue-700 mt-1">Documents Uploaded</p>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <p className="text-2xl font-bold text-green-900">{totalChunks}</p>
+            <p className="text-xs text-green-700 mt-1">Chunks Created</p>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <p className="text-2xl font-bold text-purple-900">{formatFileSize(totalSize)}</p>
+            <p className="text-xs text-purple-700 mt-1">Total Size</p>
+          </Card>
+        </div>
+      )}
+
+      {/* Documents List */}
+      {documents.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Uploaded Documents</h3>
+          <div className="space-y-3">
+            {documents.map((doc) => (
+              <Card key={doc.documentId} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4 flex-1">
+                    <FileText className="w-5 h-5 text-gray-600 flex-shrink-0 mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 truncate">{doc.fileName}</h4>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                        <span>{formatFileSize(doc.fileSize)}</span>
+                        <span>•</span>
+                        <span>{doc.totalChunks} chunks</span>
+                        <span>•</span>
+                        <span>{formatDate(doc.uploadDate)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(doc.status)}
+                      <Badge
+                        variant="outline"
+                        className={`
+                          ${doc.status === 'indexed' && 'bg-green-50 text-green-700 border-green-200'}
+                          ${doc.status === 'processing' && 'bg-blue-50 text-blue-700 border-blue-200'}
+                          ${doc.status === 'failed' && 'bg-red-50 text-red-700 border-red-200'}
+                        `}
+                      >
+                        {doc.status === 'indexed' && 'Indexed'}
+                        {doc.status === 'processing' && 'Processing'}
+                        {doc.status === 'failed' && 'Failed'}
+                      </Badge>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteDocument(doc.documentId, doc.fileName)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {documents.length === 0 && !isUploading && (
+        <Card className="p-12 text-center bg-gray-50 border-gray-200">
+          <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
+          <p className="text-sm text-gray-600 mb-4">Upload your first document to get started with the knowledge base</p>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Document
+          </Button>
+        </Card>
+      )}
+
+      {/* Append Mode Info */}
+      {documents.length > 0 && (
+        <Card className="bg-blue-50 border border-blue-200 p-4">
+          <p className="text-sm text-blue-900">
+            <strong>Append Mode Enabled:</strong> New document uploads will be added to your existing knowledge base. All documents will be indexed and searchable together.
+          </p>
+        </Card>
+      )}
+
+      {/* Delete All Button */}
+      {documents.length > 0 && (
+        <div className="pt-4 border-t border-gray-200">
+          <Button
+            variant="outline"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-red-600 border-red-300 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete All Knowledge Data
+          </Button>
+
+          {showDeleteConfirm && (
+            <Card className="mt-4 bg-red-50 border border-red-200 p-4">
+              <h4 className="font-medium text-red-900 mb-3">Confirm Deletion</h4>
+              <p className="text-sm text-red-800 mb-4">
+                This will permanently delete all documents and chat history. The finalized template chat (if any) will be preserved for reference.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAllKnowledge}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Delete All
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
