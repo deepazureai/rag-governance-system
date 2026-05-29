@@ -18,22 +18,22 @@ interface KBConfig {
   // Embedding Configuration
   embeddingProvider: 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
   embeddingModel: string;
-  embedding_api_key?: string;           // Exact: for Azure embeddings
-  embedding_azure_endpoint?: string;    // Exact: for Azure embeddings
-  embedding_api_version?: string;       // NEW: for Azure embeddings
-  embedding_deployment?: string;        // NEW: for Azure embeddings
-  embedding_skipSslVerification?: boolean; // NEW: SSL bypass for embeddings
-  embeddingApiKey?: string;             // Legacy field
+  embedding_api_key?: string;              // Exact: for Azure embeddings
+  embedding_azure_endpoint?: string;       // Exact: for Azure embeddings
+  embedding_api_version?: string;          // Exact: for Azure embeddings
+  embedding_deployment?: string;           // Exact: for Azure embeddings
+  embedding_skipSslVerification?: boolean;  // SSL bypass for embeddings
+  embeddingApiKey?: string;                // Legacy field
   
   // KB LLM Configuration
   llmProvider: 'openai' | 'azure-openai' | 'claude' | 'deepinfra' | 'grok';
   llmModel: string;
-  kbllm_api_key?: string;               // Exact: for KB LLM
-  kbllm_azure_endpoint?: string;        // Exact: for KB LLM
-  kbllm_api_version?: string;           // NEW: for KB LLM
-  kbllm_deployment?: string;            // NEW: for KB LLM
-  kbllm_skipSslVerification?: boolean;   // NEW: SSL bypass for KB LLM
-  llmApiKey?: string;                   // Legacy field
+  kbllm_api_key?: string;                  // Exact: for KB LLM
+  kbllm_azure_endpoint?: string;           // Exact: for KB LLM
+  kbllm_api_version?: string;              // Exact: for KB LLM
+  kbllm_deployment?: string;               // Exact: for KB LLM
+  kbllm_skipSslVerification?: boolean;      // SSL bypass for KB LLM
+  llmApiKey?: string;                      // Legacy field
   
   // Vector Store Configuration
   chunkSize: number;
@@ -97,6 +97,66 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
       setIsSaving(true);
       setError(null);
       setSuccess(null);
+
+      // Validate embedding config
+      if (!config.embeddingModel?.trim()) {
+        setError('Embedding model is required');
+        setIsSaving(false);
+        return;
+      }
+
+      if (config.embeddingProvider === 'azure-openai') {
+        if (!config.embedding_api_key?.trim()) {
+          setError('Embedding API Key is required for Azure OpenAI');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.embedding_azure_endpoint?.trim()) {
+          setError('Embedding Azure Endpoint is required');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.embedding_api_version?.trim()) {
+          setError('Embedding API Version is required');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.embedding_deployment?.trim()) {
+          setError('Embedding Deployment name is required');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // Validate LLM config
+      if (!config.llmModel?.trim()) {
+        setError('LLM model is required');
+        setIsSaving(false);
+        return;
+      }
+
+      if (config.llmProvider === 'azure-openai') {
+        if (!config.kbllm_api_key?.trim()) {
+          setError('LLM API Key is required for Azure OpenAI');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.kbllm_azure_endpoint?.trim()) {
+          setError('LLM Azure Endpoint is required');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.kbllm_api_version?.trim()) {
+          setError('LLM API Version is required');
+          setIsSaving(false);
+          return;
+        }
+        if (!config.kbllm_deployment?.trim()) {
+          setError('LLM Deployment name is required');
+          setIsSaving(false);
+          return;
+        }
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${applicationId}`, {
@@ -208,29 +268,93 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
                 </Select>
               </div>
 
+              {/* Azure OpenAI Embedding Fields */}
+              {config.embeddingProvider === 'azure-openai' && (
+                <>
+                  <div>
+                    <Label htmlFor="embedding_api_key" className="block text-sm font-medium text-gray-700 mb-2">
+                      API Key <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="embedding_api_key"
+                      type="password"
+                      value={config.embedding_api_key || ''}
+                      onChange={(e) => setConfig({ ...config, embedding_api_key: e.target.value })}
+                      placeholder="Your Azure OpenAI API key"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Required to create embeddings</p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="embedding_azure_endpoint" className="block text-sm font-medium text-gray-700 mb-2">
+                      Azure Endpoint <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="embedding_azure_endpoint"
+                      type="url"
+                      value={config.embedding_azure_endpoint || ''}
+                      onChange={(e) => setConfig({ ...config, embedding_azure_endpoint: e.target.value })}
+                      placeholder="https://your-resource.openai.azure.com/"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="embedding_api_version" className="block text-sm font-medium text-gray-700 mb-2">
+                        API Version <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="embedding_api_version"
+                        type="text"
+                        value={config.embedding_api_version || ''}
+                        onChange={(e) => setConfig({ ...config, embedding_api_version: e.target.value })}
+                        placeholder="2024-02-15-preview"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="embedding_deployment" className="block text-sm font-medium text-gray-700 mb-2">
+                        Deployment <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="embedding_deployment"
+                        type="text"
+                        value={config.embedding_deployment || ''}
+                        onChange={(e) => setConfig({ ...config, embedding_deployment: e.target.value })}
+                        placeholder="text-embedding-3-large"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="embedding_skipSslVerification"
+                      type="checkbox"
+                      checked={config.embedding_skipSslVerification || false}
+                      onChange={(e) => setConfig({ ...config, embedding_skipSslVerification: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <Label htmlFor="embedding_skipSslVerification" className="font-medium text-gray-700 cursor-pointer">
+                      Skip SSL Verification
+                    </Label>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    Warning: Only enable in development with corporate proxies.
+                  </p>
+                </>
+              )}
+
+              {/* Generic Embedding Model for all providers */}
               <div>
                 <Label htmlFor="embeddingModel" className="block text-sm font-medium text-gray-700 mb-2">
-                  Embedding Model
+                  {config.embeddingProvider === 'azure-openai' ? 'Model Name (for reference)' : 'Embedding Model'} <span className="text-red-600">*</span>
                 </Label>
                 <Input
                   id="embeddingModel"
                   value={config.embeddingModel}
                   onChange={(e) => setConfig({ ...config, embeddingModel: e.target.value })}
-                  placeholder="e.g., text-embedding-3-large"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="embeddingApiKey" className="block text-sm font-medium text-gray-700 mb-2">
-                  Embedding API Key (Optional)
-                </Label>
-                <Input
-                  id="embeddingApiKey"
-                  type="password"
-                  value={config.embeddingApiKey || ''}
-                  onChange={(e) => setConfig({ ...config, embeddingApiKey: e.target.value })}
-                  placeholder="Leave empty to use LLM provider's API key"
-                  className="font-mono text-sm"
+                  placeholder={config.embeddingProvider === 'azure-openai' ? 'text-embedding-3-large' : 'e.g., text-embedding-ada-002'}
                 />
               </div>
             </div>
@@ -248,14 +372,14 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
             ) : (
               <ChevronDown className="w-4 h-4" />
             )}
-            LLM Configuration
+            LLM Configuration for KB Responses
           </button>
 
           {expandedSections.has('llm') && (
             <div className="space-y-4 mt-4">
               <div>
                 <Label htmlFor="llmProvider" className="block text-sm font-medium text-gray-700 mb-2">
-                  LLM Provider for NLP Responses
+                  LLM Provider <span className="text-red-600">*</span>
                 </Label>
                 <Select
                   value={config.llmProvider}
@@ -274,29 +398,93 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
                 </Select>
               </div>
 
+              {/* Azure OpenAI LLM Fields */}
+              {config.llmProvider === 'azure-openai' && (
+                <>
+                  <div>
+                    <Label htmlFor="kbllm_api_key" className="block text-sm font-medium text-gray-700 mb-2">
+                      API Key <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="kbllm_api_key"
+                      type="password"
+                      value={config.kbllm_api_key || ''}
+                      onChange={(e) => setConfig({ ...config, kbllm_api_key: e.target.value })}
+                      placeholder="Your Azure OpenAI API key"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Required to generate KB responses</p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="kbllm_azure_endpoint" className="block text-sm font-medium text-gray-700 mb-2">
+                      Azure Endpoint <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="kbllm_azure_endpoint"
+                      type="url"
+                      value={config.kbllm_azure_endpoint || ''}
+                      onChange={(e) => setConfig({ ...config, kbllm_azure_endpoint: e.target.value })}
+                      placeholder="https://your-resource.openai.azure.com/"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="kbllm_api_version" className="block text-sm font-medium text-gray-700 mb-2">
+                        API Version <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="kbllm_api_version"
+                        type="text"
+                        value={config.kbllm_api_version || ''}
+                        onChange={(e) => setConfig({ ...config, kbllm_api_version: e.target.value })}
+                        placeholder="2024-02-15-preview"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="kbllm_deployment" className="block text-sm font-medium text-gray-700 mb-2">
+                        Deployment <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="kbllm_deployment"
+                        type="text"
+                        value={config.kbllm_deployment || ''}
+                        onChange={(e) => setConfig({ ...config, kbllm_deployment: e.target.value })}
+                        placeholder="gpt-4-deployment"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="kbllm_skipSslVerification"
+                      type="checkbox"
+                      checked={config.kbllm_skipSslVerification || false}
+                      onChange={(e) => setConfig({ ...config, kbllm_skipSslVerification: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <Label htmlFor="kbllm_skipSslVerification" className="font-medium text-gray-700 cursor-pointer">
+                      Skip SSL Verification
+                    </Label>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    Warning: Only enable in development with corporate proxies.
+                  </p>
+                </>
+              )}
+
+              {/* Generic LLM Model for all providers */}
               <div>
                 <Label htmlFor="llmModel" className="block text-sm font-medium text-gray-700 mb-2">
-                  LLM Model
+                  {config.llmProvider === 'azure-openai' ? 'Model Name (for reference)' : 'LLM Model'} <span className="text-red-600">*</span>
                 </Label>
                 <Input
                   id="llmModel"
                   value={config.llmModel}
                   onChange={(e) => setConfig({ ...config, llmModel: e.target.value })}
-                  placeholder="e.g., gpt-4-turbo"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="llmApiKey" className="block text-sm font-medium text-gray-700 mb-2">
-                  LLM API Key (Optional)
-                </Label>
-                <Input
-                  id="llmApiKey"
-                  type="password"
-                  value={config.llmApiKey || ''}
-                  onChange={(e) => setConfig({ ...config, llmApiKey: e.target.value })}
-                  placeholder="Leave empty to use default LLM provider's key"
-                  className="font-mono text-sm"
+                  placeholder={config.llmProvider === 'azure-openai' ? 'gpt-4-turbo' : 'e.g., gpt-4-turbo'}
                 />
               </div>
             </div>
