@@ -36,7 +36,11 @@ interface ImprovementSuggestion {
 
 interface EnhancedEvaluationPanelProps {
   record: RawDataRecordDetail;
-  onEvaluationComplete?: (scores: any) => void;
+  onEvaluationComplete?: (result: {
+    scores?: any;
+    improvements?: Record<string, ImprovementSuggestion[]> | null;
+    reasoning?: string;
+  }) => void;
 }
 
 export function EnhancedEvaluationPanel({
@@ -107,12 +111,21 @@ export function EnhancedEvaluationPanel({
 
       if (result.evaluation?.details) {
         setEvaluationScores(result.evaluation.details);
-        onEvaluationComplete?.(result.evaluation.scores);
-
+        
         // Automatically generate improvements for low scores
         setLoadingImprovements(true);
+        let improvementsResult: any = null;
+        
         try {
-          const improvementsResult = await evaluationClient.getImprovements(
+          console.log('[v0] === DEEPEVAL DATA SOURCES ===');
+          console.log('[v0] Record ID:', record._id);
+          console.log('[v0] Application ID:', record.applicationId);
+          console.log('[v0] User Prompt:', record.userPrompt);
+          console.log('[v0] Context Documents:', (record.contextRetrieved?.map((c) => c.content) ?? []).length);
+          console.log('[v0] LLM Response:', record.llmResponse);
+          console.log('[v0] Evaluation Scores:', result.evaluation.scores);
+
+          improvementsResult = await evaluationClient.getImprovements(
             record.applicationId,
             {
               user_prompt: record.userPrompt,
@@ -126,11 +139,20 @@ export function EnhancedEvaluationPanel({
           if (improvementsResult.improvements) {
             setImprovements(improvementsResult.improvements);
           }
+          
+          console.log('[v0] DeepEval Improvements received:', improvementsResult);
         } catch (err) {
           console.error('[v0] Error getting improvements:', err);
         } finally {
           setLoadingImprovements(false);
         }
+
+        // Call parent callback with full result including improvements and reasoning
+        onEvaluationComplete?.({
+          scores: result.evaluation.scores,
+          improvements: improvementsResult?.improvements,
+          reasoning: result.evaluation?.summary || 'Evaluation completed',
+        });
       }
     } catch (err: any) {
       console.error('[v0] Evaluation error:', err.message);

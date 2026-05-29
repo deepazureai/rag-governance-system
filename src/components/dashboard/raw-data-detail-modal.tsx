@@ -43,8 +43,21 @@ export function RawDataDetailModal({
       expectedImprovement: string;
     }>;
   } | null>(null);
+  const [deepEvalSuggestions, setDeepEvalSuggestions] = useState<string>('');
+  const [deepEvalReasoning, setDeepEvalReasoning] = useState<string>('');
 
   if (!isOpen) return null;
+
+  const handleDeepEvalComplete = (evalResult: any): void => {
+    console.log('[v0] DeepEval complete:', evalResult);
+    if (evalResult?.improvements) {
+      const suggestions = Object.values(evalResult.improvements)
+        .flat()
+        .map((imp: any) => `• ${imp.category}: ${imp.suggestion}`)
+        .join('\n');
+      setDeepEvalSuggestions(suggestions);
+    }
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
@@ -59,6 +72,12 @@ export function RawDataDetailModal({
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const contextContent = record.contextRetrieved?.map((ctx) => ctx.content) ?? [];
+      
+      // Log data sources
+      console.log('[v0] === GET LLM RECOMMENDATIONS ===');
+      console.log('[v0] User Prompt:', record.userPrompt);
+      console.log('[v0] Context Docs:', contextContent.length);
+      console.log('[v0] LLM Response:', record.llmResponse);
       
       const response = await fetch(`${apiUrl}/api/evaluation/end-to-end`, {
         method: 'POST',
@@ -83,14 +102,17 @@ export function RawDataDetailModal({
         };
       };
 
-      setLlmRecommendations({
+      const recommendations = {
         reasoning: data.evaluation?.hallucinationAnalysis?.reasoning ?? 'Analysis completed',
         suggestions: (data.evaluation?.improvedPrompt?.suggestions ?? []).map((suggestion: { issue?: string; suggestion?: string; expectedImprovement?: string }) => ({
           issue: suggestion.issue ?? 'N/A',
           suggestion: suggestion.suggestion ?? 'N/A',
           expectedImprovement: suggestion.expectedImprovement ?? 'N/A',
         })),
-      });
+      };
+
+      setLlmRecommendations(recommendations);
+      setDeepEvalReasoning(recommendations.reasoning);
 
       setExpandedSections((prev: Record<string, boolean>) => ({
         ...prev,
@@ -105,26 +127,41 @@ export function RawDataDetailModal({
     }
   };
 
-  const handleSubmitImprovement = (): void => {
+  const handleSubmitImprovement = async (): Promise<void> => {
     if (!improvedPrompt.trim() || !improvementReason.trim()) {
       alert('Please fill in both improved prompt and reason');
       return;
     }
 
-    const improvement: BAPromptImprovement = {
-      originalPrompt: record.userPrompt,
-      improvedPrompt: improvedPrompt.trim(),
-      reason: improvementReason.trim(),
-      baName: 'Current User', // Would be replaced with actual BA name
-      baEmail: 'ba@company.com', // Would be replaced with actual BA email
-      estimatedScoreImpact: 0.05,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      console.log('[v0] Saving improvement with sources - DeepEval:', !!deepEvalSuggestions, 'LLM:', !!llmRecommendations);
 
-    onAddImprovement?.(improvement);
-    setImprovedPrompt('');
-    setImprovementReason('');
-    setImprovementMode(false);
+      const response = await fetch(`${apiUrl}/api/ba-review/add-improvement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawDataRecordId: record._id,
+          improvedPrompt: improvedPrompt.trim(),
+          reason: improvementReason.trim(),
+          baEmail: 'ba@company.com',
+          baName: 'Current User',
+          estimatedScoreImpact: 0.05,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+      
+      setImprovedPrompt('');
+      setImprovementReason('');
+      setDeepEvalSuggestions('');
+      setDeepEvalReasoning('');
+      setImprovementMode(false);
+      alert('Improvement saved!');
+    } catch (error) {
+      console.error('[v0] Error:', error);
+      alert('Failed to save improvement');
+    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -410,7 +447,7 @@ export function RawDataDetailModal({
             record={record}
             onEvaluationComplete={(scores) => {
               console.log('[v0] Evaluation completed with scores:', scores);
-              // Scores are automatically saved to the record
+              handleDeepEvalComplete(scores);
             }}
           />
 
@@ -525,7 +562,21 @@ export function RawDataDetailModal({
                 {/* Add Improvement Button */}
                 {!improvementMode && (
                   <Button
-                    onClick={() => setImprovementMode(true)}
+                    onClick={() => {
+                      let combined = '';
+                      if (deepEvalSuggestions) {
+                        combined += 'DeepEval: ' + deepEvalSuggestions + '\n\n';
+                      }
+                      if (llmRecommendations?.suggestions.length) {
+                        combined += 'LLM: ' + llmRecommendations.suggestions.map(s => s.suggestion).join(' | ');
+                      }
+                      setImprovedPrompt(combined || 'Enter improved prompt...');
+                      const reason = (deepEvalReasoning && llmRecommendations?.reasoning) 
+                        ? `DeepEval: ${deepEvalReasoning}\nLLM: ${llmRecommendations.reasoning}`
+                        : deepEvalReasoning || llmRecommendations?.reasoning || '';
+                      setImprovementReason(reason || 'Enter reason...');
+                      setImprovementMode(true);
+                    }}
                     className="w-full mt-4 bg-green-900 hover:bg-green-800 text-green-100"
                   >
                     + Add Improvement
