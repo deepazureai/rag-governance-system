@@ -1,6 +1,6 @@
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { Document } from 'langchain/document';
+import { Document } from '@langchain/core/documents';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
@@ -86,11 +86,8 @@ export class VectorStoreService {
 
       this.embeddings = new OpenAIEmbeddings({
         apiKey: apiKey,
-        model: deploymentName, // For Azure, this is the deployment name
-        azureOpenAIApiVersion: apiVersion,
-        azureOpenAIApiInstanceName: endpoint.replace('https://', '').replace('.openai.azure.com/', ''),
-        azureOpenAIApiDeploymentName: deploymentName,
-      });
+        model: deploymentName,
+      } as any);
 
       if (!fs.existsSync(this.persistDir)) {
         fs.mkdirSync(this.persistDir, { recursive: true });
