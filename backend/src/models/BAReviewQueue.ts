@@ -1,5 +1,15 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+/**
+ * BA Approval Metadata
+ */
+export interface IApprovalMetadata {
+  approvedBy: string;      // BA email/name
+  approvedAt: Date;
+  reviewNotes?: string;
+  metricsValidation?: boolean;  // BA confirmed metrics are acceptable
+}
+
 export interface IBAReviewQueueItem extends Document {
   applicationId: string;
   rawDataRecordId: string;
@@ -20,7 +30,7 @@ export interface IBAReviewQueueItem extends Document {
   latency?: number;
   
   // Review status
-  status: 'pending' | 'in_progress' | 'reviewed' | 'approved' | 'archived';
+  status: 'pending' | 'in_progress' | 'reviewed' | 'approved' | 'rejected' | 'needs_revision' | 'archived';
   assignedToBA?: string;  // BA email/name
   
   // Timeline
@@ -33,9 +43,24 @@ export interface IBAReviewQueueItem extends Document {
   similarityScore?: number;  // Average similarity with grouped records
   groupId?: string;  // ID of the group for template creation
   
+  // Approval Workflow
+  approvalMetadata?: IApprovalMetadata;
+  rejectionReason?: string;
+  revisionNotes?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ApprovalMetadataSchema = new Schema<IApprovalMetadata>(
+  {
+    approvedBy: { type: String, required: true },
+    approvedAt: { type: Date, required: true },
+    reviewNotes: { type: String },
+    metricsValidation: { type: Boolean },
+  },
+  { _id: false }
+);
 
 const BAReviewQueueSchema = new Schema<IBAReviewQueueItem>(
   {
@@ -58,7 +83,12 @@ const BAReviewQueueSchema = new Schema<IBAReviewQueueItem>(
     userFeedback: { type: String, enum: ['positive', 'negative', 'neutral'] },
     latency: { type: Number },
     
-    status: { type: String, enum: ['pending', 'in_progress', 'reviewed', 'approved', 'archived'], default: 'pending', index: true },
+    status: { 
+      type: String, 
+      enum: ['pending', 'in_progress', 'reviewed', 'approved', 'rejected', 'needs_revision', 'archived'], 
+      default: 'pending', 
+      index: true 
+    },
     assignedToBA: { type: String },
     
     queuedAt: { type: Date, default: Date.now },
@@ -68,6 +98,13 @@ const BAReviewQueueSchema = new Schema<IBAReviewQueueItem>(
     similarRecordIds: [{ type: String }],
     similarityScore: { type: Number },
     groupId: { type: String },
+    
+    // Approval Workflow
+    approvalMetadata: {
+      type: ApprovalMetadataSchema,
+    },
+    rejectionReason: { type: String },
+    revisionNotes: { type: String },
   },
   { timestamps: true }
 );
@@ -77,5 +114,6 @@ BAReviewQueueSchema.index({ applicationId: 1, status: 1, priorityScore: -1 });  
 BAReviewQueueSchema.index({ applicationId: 1, assignedToBA: 1, status: 1 });  // BA's assigned items
 BAReviewQueueSchema.index({ applicationId: 1, groupId: 1 });  // Items grouped for template creation
 BAReviewQueueSchema.index({ applicationId: 1, queuedAt: -1 });  // Items by queue time
+BAReviewQueueSchema.index({ applicationId: 1, status: 1, 'approvalMetadata.approvedAt': -1 });  // Approved items
 
 export const BAReviewQueue = mongoose.model<IBAReviewQueueItem>('BAReviewQueue', BAReviewQueueSchema);
