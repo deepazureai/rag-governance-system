@@ -109,6 +109,11 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
           setIsSaving(false);
           return;
         }
+      } else if (!config.model?.trim()) {
+        // For other providers, model is required
+        setError('Model is required');
+        setIsSaving(false);
+        return;
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -206,24 +211,27 @@ export function LLMConfigTab({ applicationId }: LLMConfigTabProps) {
             <p className="text-xs text-gray-500 mt-1">Choose which LLM provider to use for recommendation generation</p>
           </div>
 
-          {/* Model Selection */}
-          <div>
-            <Label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-              Model
-            </Label>
-            <Select value={config.model || ''} onValueChange={(model) => setConfig({ ...config, model })}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_MODELS[config.provider]?.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Model Selection - Only for non-Azure providers */}
+          {config.provider !== 'azure-openai' && (
+            <div>
+              <Label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
+                Model
+              </Label>
+              <Select value={config.model || ''} onValueChange={(model) => setConfig({ ...config, model })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROVIDER_MODELS[config.provider]?.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">Select the model to use</p>
+            </div>
+          )}
 
           {/* API Key */}
           <div>

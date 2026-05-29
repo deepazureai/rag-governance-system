@@ -11,6 +11,13 @@ import { z } from 'zod';
 export const LLMConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
   provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
+  // Exact parameter names for Azure OpenAI
+  api_key: z.string().optional(),
+  azure_endpoint: z.string().optional(),
+  api_version: z.string().optional(),
+  deployment: z.string().optional(),
+  skipSslVerification: z.boolean().optional(),
+  // Legacy field names for backward compatibility
   azureEndpoint: z.string().optional(),
   azureApiKey: z.string().optional(),
   azureDeploymentName: z.string().optional(),
@@ -23,6 +30,7 @@ export const LLMConfigSchema = z.object({
   bedrockModelId: z.string().optional(),
   openaiApiKey: z.string().optional(),
   openaiModel: z.string().optional(),
+  model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
   topP: z.number().min(0).max(1).optional(),
@@ -37,6 +45,13 @@ export type LLMConfigInput = z.infer<typeof LLMConfigSchema>;
 export const KnowledgeBaseConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
   embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']),
+  // Exact parameter names for embedding (Azure OpenAI)
+  embedding_api_key: z.string().optional(),
+  embedding_azure_endpoint: z.string().optional(),
+  embedding_api_version: z.string().optional(),
+  embedding_deployment: z.string().optional(),
+  embedding_skipSslVerification: z.boolean().optional(),
+  // Legacy embedding fields
   embeddingAzureEndpoint: z.string().optional(),
   embeddingAzureApiKey: z.string().optional(),
   embeddingAzureDeploymentName: z.string().optional(),
@@ -46,6 +61,13 @@ export const KnowledgeBaseConfigSchema = z.object({
   embeddingAwsSecretAccessKey: z.string().optional(),
   embeddingBedrockModelId: z.string().optional(),
   kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
+  // Exact parameter names for KB LLM (Azure OpenAI)
+  kbllm_api_key: z.string().optional(),
+  kbllm_azure_endpoint: z.string().optional(),
+  kbllm_api_version: z.string().optional(),
+  kbllm_deployment: z.string().optional(),
+  kbllm_skipSslVerification: z.boolean().optional(),
+  // Legacy KB LLM fields
   kbLlmAzureEndpoint: z.string().optional(),
   kbLlmAzureApiKey: z.string().optional(),
   kbLlmAzureDeploymentName: z.string().optional(),
@@ -57,7 +79,7 @@ export const KnowledgeBaseConfigSchema = z.object({
   kbLlmBedrockModelId: z.string().optional(),
   kbLlmOpenaiApiKey: z.string().optional(),
   kbLlmOpenaiModel: z.string().optional(),
-  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate']),
+  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate', 'azure-search']),
   vectorStoreUrl: z.string().optional(),
   vectorStoreApiKey: z.string().optional(),
   chunkSize: z.number().positive('Chunk size must be positive'),
