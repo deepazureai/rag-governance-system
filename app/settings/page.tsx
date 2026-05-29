@@ -316,24 +316,12 @@ export default function SettingsPage() {
 
           {/* LLM Configuration Tab */}
           <TabsContent value="llm" className="space-y-6 mt-6">
-            {selectedAppId ? (
-              <LLMConfigTab applicationId={selectedAppId} />
-            ) : (
-              <Card className="p-6 bg-yellow-50 border border-yellow-200">
-                <p className="text-yellow-900">Please select an application from the Alert Thresholds tab first</p>
-              </Card>
-            )}
+            <LLMConfigTab />
           </TabsContent>
 
           {/* Knowledge Base Configuration Tab */}
           <TabsContent value="knowledge-base" className="space-y-6 mt-6">
-            {selectedAppId ? (
-              <KnowledgeBaseConfigTab applicationId={selectedAppId} />
-            ) : (
-              <Card className="p-6 bg-yellow-50 border border-yellow-200">
-                <p className="text-yellow-900">Please select an application from the Alert Thresholds tab first</p>
-              </Card>
-            )}
+            <KnowledgeBaseConfigTab />
           </TabsContent>
 
           {/* Security Tab */}

@@ -11,7 +11,13 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface KnowledgeBaseConfigTabProps {
-  applicationId: string;
+  applicationId?: string;
+}
+
+interface Application {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 interface KBConfig {
@@ -44,12 +50,15 @@ interface KBConfig {
   maxTokens?: number;
 }
 
-export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTabProps) {
+export function KnowledgeBaseConfigTab({ applicationId: initialAppId }: KnowledgeBaseConfigTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['general']));
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>(initialAppId || '');
+  const [appsLoading, setAppsLoading] = useState(true);
   const [config, setConfig] = useState<KBConfig>({
     embeddingProvider: 'openai',
     embeddingModel: 'text-embedding-3-large',
@@ -62,16 +71,44 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
     maxTokens: 1000,
   });
 
+  // Fetch available applications on mount
   useEffect(() => {
-    fetchKBConfig();
-  }, [applicationId]);
+    const fetchApplications = async () => {
+      try {
+        setAppsLoading(true);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        const response = await fetch(`${apiUrl}/api/applications`);
+        const data = await response.json() as { success: boolean; data?: Application[] };
+        if (data.success && data.data) {
+          setApplications(data.data);
+          // If no initial app selected, select first one
+          if (!selectedAppId && data.data.length > 0) {
+            setSelectedAppId(data.data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Error fetching applications:', err);
+      } finally {
+        setAppsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
+
+  // Fetch KB config when selected app changes
+  useEffect(() => {
+    if (selectedAppId) {
+      fetchKBConfig();
+    }
+  }, [selectedAppId]);
 
   const fetchKBConfig = async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${applicationId}`);
+      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${selectedAppId}`);
 
       if (!response.ok) {
         setError('Failed to fetch configuration');
@@ -159,7 +196,7 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${applicationId}`, {
+      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${selectedAppId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -206,6 +243,27 @@ export function KnowledgeBaseConfigTab({ applicationId }: KnowledgeBaseConfigTab
 
   return (
     <div className="space-y-6">
+      {/* Application Selector */}
+      <Card className="p-6 bg-white">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Application</h3>
+        <Select value={selectedAppId} onValueChange={setSelectedAppId} disabled={appsLoading}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select an application..." />
+          </SelectTrigger>
+          <SelectContent>
+            {applications.map((app) => (
+              <SelectItem key={app.id} value={app.id}>
+                {app.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500 mt-2">
+          Configure Knowledge Base credentials for individual applications. Each application&apos;s configuration is isolated for cost tracking.
+        </p>
+      </Card>
+
+      {/* KB Configuration */}
       <Card className="p-6 bg-white">
         <div className="flex items-center gap-2 mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Knowledge Base Configuration</h3>
