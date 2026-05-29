@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText } from 'lucide-react';
+import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
 interface ContextSource {
   documentId: string;
@@ -126,13 +127,14 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
         throw new Error('Failed to get response');
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
+      const data = validateResponse(ChatResponseSchema, rawData);
 
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: data.assistantMessage || 'No response generated',
-        contextUsed: data.contextUsed || [],
+        content: data.assistantMessage,
+        contextUsed: data.contextUsed,
         timestamp: new Date(),
       };
 
@@ -172,6 +174,9 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       if (!response.ok) {
         throw new Error('Failed to finalize');
       }
+
+      const rawData = await response.json();
+      validateResponse(DeleteResponseSchema, rawData);
 
       // Update thread state
       setThreads((prev) =>

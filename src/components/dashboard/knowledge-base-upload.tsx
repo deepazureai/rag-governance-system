@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { validateResponse, UploadResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
 interface UploadedDocument {
   documentId: string;
@@ -92,7 +93,8 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         throw new Error('Upload failed');
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
+      const data = validateResponse(UploadResponseSchema, rawData);
       console.log('[v0] Document uploaded successfully:', data);
 
       // Add document to list
@@ -146,6 +148,9 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         throw new Error('Failed to delete document');
       }
 
+      const rawData = await response.json();
+      validateResponse(DeleteResponseSchema, rawData);
+
       setDocuments((prev) => prev.filter((doc) => doc.documentId !== documentId));
       console.log('[v0] Document deleted:', fileName);
     } catch (err) {
@@ -177,7 +182,11 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         throw new Error('Failed to delete knowledge base');
       }
 
+      const rawData = await response.json();
+      validateResponse(DeleteResponseSchema, rawData);
+
       setDocuments([]);
+      console.log('[v0] All knowledge base data deleted');
       setShowDeleteConfirm(false);
       console.log('[v0] All knowledge base data deleted');
     } catch (err) {
