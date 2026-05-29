@@ -559,6 +559,70 @@ export function RawDataDetailModal({
                   <div className="text-xs text-gray-500">No improvements yet</div>
                 )}
 
+                {/* Unified Recommendations View - DeepEval + LLM Combined */}
+                {(deepEvalSuggestions || llmRecommendations) && (
+                  <div className="bg-gray-950 p-4 rounded border border-blue-800 mb-4">
+                    <h3 className="text-sm font-mono text-blue-300 mb-3">COMBINED RECOMMENDATIONS</h3>
+                    
+                    {/* DeepEval Suggestions */}
+                    {deepEvalSuggestions && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-mono text-blue-400">DeepEval Suggestions:</span>
+                          <span className="inline-block bg-blue-900 text-blue-200 text-xs px-2 py-1 rounded">DeepEval</span>
+                        </div>
+                        <div className="bg-black p-2 rounded border border-gray-700 text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                          {deepEvalSuggestions}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LLM Recommendations */}
+                    {llmRecommendations?.suggestions && llmRecommendations.suggestions.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-mono text-purple-400">LLM Recommendations:</span>
+                          <span className="inline-block bg-purple-900 text-purple-200 text-xs px-2 py-1 rounded">LLM</span>
+                        </div>
+                        <div className="space-y-2">
+                          {llmRecommendations.suggestions.map((sug, idx) => (
+                            <div key={idx} className="bg-black p-2 rounded border border-gray-700">
+                              <p className="text-xs text-gray-400 mb-1">• {sug.suggestion}</p>
+                              {sug.expectedImprovement && (
+                                <p className="text-xs text-cyan-400">Expected: {sug.expectedImprovement}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Combined Reasoning */}
+                    {(deepEvalReasoning || llmRecommendations?.reasoning) && (
+                      <div className="mt-3 pt-3 border-t border-gray-700">
+                        <p className="text-xs text-gray-400 mb-2">Analysis Reasoning:</p>
+                        {deepEvalReasoning && (
+                          <p className="text-xs text-gray-300 mb-2">
+                            <span className="text-blue-400">DeepEval:</span> {deepEvalReasoning}
+                          </p>
+                        )}
+                        {llmRecommendations?.reasoning && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-purple-400">LLM:</span> {llmRecommendations.reasoning}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No recommendations message */}
+                {!deepEvalSuggestions && !llmRecommendations && (
+                  <div className="text-xs text-gray-500 mb-4 p-3 rounded bg-gray-950 border border-gray-800">
+                    Click "Evaluate Now" or "Get LLM Recommendations" to generate suggestions for improvement
+                  </div>
+                )}
+
                 {/* Add Improvement Button */}
                 {!improvementMode && (
                   <Button
