@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, MessageSquare, Search } from 'lucide-react';
 import { KnowledgeBaseUpload } from './knowledge-base-upload';
+import { KnowledgeBaseChat } from './knowledge-base-chat';
 
 export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
   const [activeTab, setActiveTab] = useState<'upload' | 'chat' | 'search'>('upload');
@@ -34,10 +35,7 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
         </TabsContent>
 
         <TabsContent value="chat" className="mt-0">
-          <div className="text-center py-12 text-gray-500">
-            <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Knowledge Base Chat feature coming soon...</p>
-          </div>
+          <KnowledgeBaseChat applicationId={applicationId} />
         </TabsContent>
 
         <TabsContent value="search" className="mt-0">
