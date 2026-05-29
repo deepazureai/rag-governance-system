@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { ragSessionManager, CreateSessionRequest } from '../services/RAGSessionManager.js';
+import { asString, asStringTrimmed } from '../utils/queryParamUtils.js';
 
 export const ragSessionRouter: ExpressRouter = Router();
 
@@ -53,10 +54,10 @@ ragSessionRouter.post('/create', async (req: Request, res: Response): Promise<vo
  */
 ragSessionRouter.get('/app/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId } = req.params;
-    const { activeOnly } = req.query;
+    const applicationId = asStringTrimmed(req.params.applicationId);
+    const activeOnly = asString(req.query.activeOnly);
 
-    if (!applicationId?.trim()) {
+    if (!applicationId) {
       res.status(400).json({
         success: false,
         error: 'Application ID is required',

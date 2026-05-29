@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { AlertIntegrationLayerService } from '../services/AlertIntegrationLayerService.js';
 import { logger } from '../utils/logger.js';
+import { asString } from '../utils/queryParamUtils.js';
 
 export const alertIntegrationRouter: ExpressRouter = Router();
 
@@ -10,7 +11,7 @@ export const alertIntegrationRouter: ExpressRouter = Router();
  */
 alertIntegrationRouter.get('/app/:appId/thresholds', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
+    const appId = asString(req.params.appId);
     
     if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
@@ -46,7 +47,7 @@ alertIntegrationRouter.get('/app/:appId/thresholds', async (req: Request, res: R
  */
 alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
+    const appId = asString(req.params.appId);
     const { thresholds } = req.body;
 
     if (!appId) {
@@ -89,7 +90,7 @@ alertIntegrationRouter.post('/app/:appId/thresholds', async (req: Request, res: 
  */
 alertIntegrationRouter.get('/app/:appId/sla-compliance', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { appId } = req.params;
+    const appId = asString(req.params.appId);
 
     if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });

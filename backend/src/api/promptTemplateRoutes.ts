@@ -6,7 +6,7 @@ import { llmProviderService } from '../services/LLMProviderService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { llmConfigService } from '../services/LLMConfigService.js';
 import { logger } from '../utils/logger.js';
-import { getQueryString } from '../utils/queryParamUtils.js';
+import { getQueryString, asString, asStringTrimmed } from '../utils/queryParamUtils.js';
 import type { IPromptTemplate, TemplateSource } from '../models/PromptTemplate.js';
 import type { ApiResponse } from '../types/models.js';
 
@@ -224,10 +224,10 @@ Respond with JSON:
  */
 promptTemplateRouter.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = asStringTrimmed(req.params.id);
     const body = req.body as unknown;
 
-    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400).json({ success: false, message: 'Invalid template ID' });
       return;
     }
@@ -254,9 +254,9 @@ promptTemplateRouter.put('/:id', async (req: Request, res: Response): Promise<vo
  */
 promptTemplateRouter.post('/:id/publish', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = asStringTrimmed(req.params.id);
 
-    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400).json({ success: false, message: 'Invalid template ID' });
       return;
     }
@@ -290,9 +290,9 @@ promptTemplateRouter.post('/:id/publish', async (req: Request, res: Response): P
  */
 promptTemplateRouter.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = asStringTrimmed(req.params.id);
 
-    if (!id?.trim() || !Types.ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400).json({ success: false, message: 'Invalid template ID' });
       return;
     }

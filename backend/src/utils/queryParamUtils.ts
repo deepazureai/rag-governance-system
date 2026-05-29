@@ -45,3 +45,20 @@ export function getQueryParam(
       return stringValue;
   }
 }
+
+/**
+ * Type assertion helper - safely cast string | string[] to string
+ * Used for strict type checking with Express parameters
+ */
+export function asString(value: string | string[] | undefined): string {
+  if (!value) return '';
+  if (Array.isArray(value)) return value[0] || '';
+  return value;
+}
+
+/**
+ * Type assertion helper - safely cast to string and trim
+ */
+export function asStringTrimmed(value: string | string[] | undefined): string {
+  return asString(value).trim();
+}

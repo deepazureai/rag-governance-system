@@ -1,4 +1,5 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
+import { asString } from '../utils/queryParamUtils.js';
 import { getStringParam } from '../utils/paramParser.js';
 import { logger } from '../utils/logger.js';
 import { INDUSTRY_STANDARD_THRESHOLDS } from '../types/index.js';
@@ -14,7 +15,7 @@ const metricsService = new ApplicationMetricsService();
  */
 metricsRouter.get('/:applicationId', async (req: Request, res: Response) => {
   try {
-    const { applicationId } = req.params;
+    const applicationId = asString(req.params.applicationId);
     
     if (!applicationId) {
       return res.status(400).json({ success: false, error: 'applicationId is required' });

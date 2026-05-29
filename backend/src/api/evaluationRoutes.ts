@@ -3,6 +3,7 @@ import DeepEvalClient, { EvaluationRequest, EvaluationResponse } from '../servic
 import { RawDataRecord } from '../models/RawDataRecord.js';
 import { BAReviewQueue } from '../models/BAReviewQueue.js';
 import { llmConfigService } from '../services/LLMConfigService.js';
+import { asString } from '../utils/queryParamUtils.js';
 
 const router: ExpressRouter = Router();
 
@@ -20,7 +21,8 @@ const deepEvalClient = new DeepEvalClient(deepEvalServiceUrl, deepEvalApiKey);
 // POST /evaluate/:applicationId/:recordId - Evaluate a single record
 router.post('/evaluate/:applicationId/:recordId', async (req: Request, res: Response) => {
   try {
-    const { applicationId, recordId } = req.params;
+    const applicationId = asString(req.params.applicationId);
+    const recordId = asString(req.params.recordId);
 
     // Fetch the raw data record
     const record = await RawDataRecord.findById(recordId);
