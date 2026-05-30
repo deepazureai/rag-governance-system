@@ -71,9 +71,10 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
           averagePriority: Math.round(avgPriority),
         });
       }
-    } catch (err: any) {
-      console.error('[v0] Error fetching queue:', err);
-      setError(err.message || 'Failed to load review queue');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load review queue';
+      console.error('[v0] Error fetching queue:', message);
+      setError(message);
       setQueueItems([]); // Ensure queueItems is always an array
     } finally {
       setIsLoading(false);

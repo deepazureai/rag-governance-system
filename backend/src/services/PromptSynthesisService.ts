@@ -203,23 +203,106 @@ Return ONLY valid JSON (no markdown, no explanation):
    * Call LLM for synthesis
    */
   private async callLLMForSynthesis(synthesisPrompt: string): Promise<string> {
-    // TODO: Integrate with your LLM provider (OpenAI, Anthropic, etc.)
-    // This is a placeholder - replace with actual LLM call
+    const llmProvider = process.env.LLM_PROVIDER || 'openai';
+    const apiKey = process.env.LLM_API_KEY;
     
-    logger.warn('[PromptSynthesisService] LLM call not implemented - using mock response');
-    
-    // Mock response for demonstration
-    return JSON.stringify({
-      synthesized_prompt: 'Synthesized prompt placeholder',
-      crew_ai_template: {
-        actor: 'QA Analyst',
-        objective: 'Ensure data quality',
-        task: 'Review and validate data using provided criteria',
-        context: 'Quality standards and validation rules',
-        expected_output: 'Detailed quality report with findings',
+    if (!apiKey) {
+      logger.error('[PromptSynthesisService] LLM_API_KEY not configured');
+      throw new Error('LLM API key not configured. Set LLM_API_KEY environment variable.');
+    }
+
+    try {
+      if (llmProvider === 'openai') {
+        return await this.callOpenAI(synthesisPrompt, apiKey);
+      } else if (llmProvider === 'anthropic') {
+        return await this.callAnthropic(synthesisPrompt, apiKey);
+      } else {
+        throw new Error(`Unsupported LLM provider: ${llmProvider}`);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('[PromptSynthesisService] LLM call failed:', message);
+      throw new Error(`LLM synthesis failed: ${message}`);
+    }
+  }
+
+  /**
+   * Call OpenAI API for synthesis
+   */
+  private async callOpenAI(synthesisPrompt: string, apiKey: string): Promise<string> {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
-      synthesis_notes: 'Combined KB and recommendation prompts for optimal results',
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert prompt engineer. Synthesize the provided prompts into a structured CrewAI template.',
+          },
+          {
+            role: 'user',
+            content: synthesisPrompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    return content;
+  }
+
+  /**
+   * Call Anthropic API for synthesis
+   */
+  private async callAnthropic(synthesisPrompt: string, apiKey: string): Promise<string> {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-sonnet-20240229',
+        max_tokens: 2000,
+        system: 'You are an expert prompt engineer. Synthesize the provided prompts into a structured CrewAI template.',
+        messages: [
+          {
+            role: 'user',
+            content: synthesisPrompt,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API error: ${response.statusText}`);
+    }
+
+    const data = await response.json() as { content: Array<{ text: string }> };
+    const content = data.content?.[0]?.text;
+    
+    if (!content) {
+      throw new Error('Empty response from Anthropic');
+    }
+
+    return content;
   }
 
   /**
@@ -236,19 +319,138 @@ Return ONLY valid JSON (no markdown, no explanation):
     correctness: number;
     overall_score: number;
   }> {
-    // TODO: Calculate actual metrics using evaluation framework
-    // This is a placeholder - replace with actual metrics calculation
-    
-    logger.warn('[PromptSynthesisService] Metrics calculation not implemented - using mock values');
+    try {
+      // Compute basic metrics based on synthesis quality
+      const sourceContent = sourcePrompts.map(p => p.content).join('\n');
+      
+      // Faithfulness: How well synthesis adheres to source materials
+      const faithfulness = this.calculateFaithfulness(synthesizedPrompt, sourceContent);
+      
+      // Answer Relevancy: Relevance to problem statement
+      const answerRelevancy = this.calculateAnswerRelevancy(synthesizedPrompt);
+      
+      // Context Precision: Ratio of relevant context used
+      const contextPrecision = this.calculateContextPrecision(synthesizedPrompt, sourceContent);
+      
+      // Context Recall: Coverage of important source material
+      const contextRecall = this.calculateContextRecall(synthesizedPrompt, sourceContent);
+      
+      // Correctness: Grammatical and semantic correctness
+      const correctness = this.calculateCorrectness(synthesizedPrompt);
+      
+      // Overall score: Average of all metrics
+      const overall_score = Math.round(
+        (faithfulness + answerRelevancy + contextPrecision + contextRecall + correctness) / 5
+      );
 
-    return {
-      faithfulness: 85,
-      answer_relevancy: 82,
-      context_precision: 88,
-      context_recall: 80,
-      correctness: 84,
-      overall_score: 84,
-    };
+      logger.info('[PromptSynthesisService] Metrics calculated:', {
+        faithfulness,
+        answer_relevancy: answerRelevancy,
+        context_precision: contextPrecision,
+        context_recall: contextRecall,
+        correctness,
+        overall_score,
+      });
+
+      return {
+        faithfulness,
+        answer_relevancy: answerRelevancy,
+        context_precision: contextPrecision,
+        context_recall: contextRecall,
+        correctness,
+        overall_score,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('[PromptSynthesisService] Metrics calculation error:', message);
+      // Return conservative metrics on error
+      return {
+        faithfulness: 0,
+        answer_relevancy: 0,
+        context_precision: 0,
+        context_recall: 0,
+        correctness: 0,
+        overall_score: 0,
+      };
+    }
+  }
+
+  /**
+   * Calculate faithfulness score (how well synthesis adheres to sources)
+   */
+  private calculateFaithfulness(synthesizedPrompt: string, sourceContent: string): number {
+    if (!sourceContent || sourceContent.length === 0) return 50;
+    
+    // Simple heuristic: check if key terms from source appear in synthesis
+    const sourceWords = sourceContent.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+    const synthesisWords = synthesizedPrompt.toLowerCase().split(/\s+/);
+    
+    const matchedWords = sourceWords.filter(word => synthesisWords.some(w => w.includes(word)));
+    const score = Math.round((matchedWords.length / Math.max(sourceWords.length, 1)) * 100);
+    
+    return Math.min(100, Math.max(0, score));
+  }
+
+  /**
+   * Calculate answer relevancy score
+   */
+  private calculateAnswerRelevancy(synthesizedPrompt: string): number {
+    // Check for CrewAI structure completeness
+    const hasActor = /actor[:=\s]/.test(synthesizedPrompt);
+    const hasObjective = /objective[:=\s]/.test(synthesizedPrompt);
+    const hasTask = /task[:=\s]/.test(synthesizedPrompt);
+    const hasContext = /context[:=\s]/.test(synthesizedPrompt);
+    const hasOutput = /output|expected|deliverable/i.test(synthesizedPrompt);
+    
+    const structureScore = [hasActor, hasObjective, hasTask, hasContext, hasOutput].filter(Boolean).length * 20;
+    return Math.min(100, Math.max(0, structureScore));
+  }
+
+  /**
+   * Calculate context precision score
+   */
+  private calculateContextPrecision(synthesizedPrompt: string, sourceContent: string): number {
+    if (!sourceContent) return 50;
+    
+    // Check ratio of useful context vs noise
+    const synthesisLength = synthesizedPrompt.length;
+    const sourceLength = sourceContent.length;
+    
+    // Score higher if synthesis is concise relative to source
+    const ratio = Math.min(1, synthesisLength / sourceLength);
+    return Math.round(ratio * 100);
+  }
+
+  /**
+   * Calculate context recall score
+   */
+  private calculateContextRecall(synthesizedPrompt: string, sourceContent: string): number {
+    if (!sourceContent) return 50;
+    
+    // Check if major themes from source are covered
+    const sourceChunks = sourceContent.split(/[.!?]\s+/).filter(c => c.length > 20);
+    const coveredChunks = sourceChunks.filter(chunk => {
+      const keyWords = chunk.split(/\s+/).filter(w => w.length > 5);
+      return keyWords.some(w => synthesizedPrompt.toLowerCase().includes(w.toLowerCase()));
+    });
+    
+    const score = Math.round((coveredChunks.length / Math.max(sourceChunks.length, 1)) * 100);
+    return Math.min(100, Math.max(0, score));
+  }
+
+  /**
+   * Calculate correctness score
+   */
+  private calculateCorrectness(synthesizedPrompt: string): number {
+    // Basic checks for well-formed output
+    let score = 50;
+    
+    // Deduct for common issues
+    if (synthesizedPrompt.length < 50) score -= 20; // Too short
+    if (!/[.!?]$/.test(synthesizedPrompt)) score -= 10; // Missing punctuation
+    if (/\{|\}|\[|\]/.test(synthesizedPrompt) && !/json|object|array/i.test(synthesizedPrompt)) score -= 5; // Unmatched brackets
+    
+    return Math.min(100, Math.max(0, score));
   }
 
   /**

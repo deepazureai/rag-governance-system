@@ -83,6 +83,12 @@ baReviewRouter.get('/raw-data/:recordId', async (req: Request, res: Response): P
       return;
     }
 
+    // Validate recordId is valid MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(recordId)) {
+      res.status(400).json({ success: false, message: 'Invalid recordId format' });
+      return;
+    }
+
     logger.info(`[baReviewRoutes] Fetching raw data record: ${recordId}`);
 
     const RawDataCollection = mongoose.connection.collection('rawdatarecords');

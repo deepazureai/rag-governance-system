@@ -130,10 +130,13 @@ router.get('/', async (req: Request, res: Response) => {
 
 /**
  * GET /api/templates/:id
- * Get template details
+ * Get template details with permission check
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id || 'system';
+    const userRole = req.user?.role || 'business_user';
+    
     const templateId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     if (!templateId) {
       return res.status(400).json({ error: 'Template ID is required' });
@@ -143,6 +146,16 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
+    }
+
+    // Check permission: Admin sees all, others only see distributed or public templates
+    if (userRole !== 'admin') {
+      const hasAccess = template.isPublic || 
+        templateDistributionService.canUserEditTemplate(template, userId, userRole);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Access denied to this template' });
+      }
     }
 
     res.json(template);

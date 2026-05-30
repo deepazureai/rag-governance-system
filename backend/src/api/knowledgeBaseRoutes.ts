@@ -70,6 +70,10 @@ const upload = multer({
   }) as any,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
   fileFilter: (_req: any, file: any, cb: any): void => {
+    if (!file || !file.originalname) {
+      cb(new Error('File metadata missing'));
+      return;
+    }
     const allowedTypes = ['.pdf', '.txt', '.json', '.csv'];
     const fileExt = path.extname((file.originalname as string) ?? '').toLowerCase();
     if (allowedTypes.includes(fileExt)) {

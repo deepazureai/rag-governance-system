@@ -67,47 +67,36 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     }
   };
 
-  const handleRecordClick = (item: RawDataItem): void => {
-    const detailRecord: RawDataRecordDetail = {
-      _id: `record_${Math.random().toString(36).substr(2, 9)}`,
-      applicationId,
-      userPrompt: item.query,
-      llmResponse: item.response,
-      userPromptEnteredAt: new Date(Date.now() - 5 * 60000).toISOString(),
-      llmResponseGeneratedAt: new Date().toISOString(),
-      contextRetrievalTime: Math.random() * 500,
-      llmGenerationTime: Math.random() * 2000 + 1000,
-      totalLatency: Math.random() * 2500 + 1500,
-      tokensUsed: Math.floor(Math.random() * 500 + 100),
-      userFeedback: item.status === 'poor' ? {
-        sentiment: 'negative' as const,
-        comment: 'Response was not helpful',
-        feedbackAt: new Date().toISOString(),
-      } : undefined,
-      contextRetrieved: item.context ? [
-        {
-          source: 'knowledge_base.md',
-          relevanceScore: 0.85,
-          content: item.context,  // Use actual context from item
-        },
-      ] : undefined,
-      evaluationScores: item.slaCompliance && Array.isArray(item.slaCompliance) ? [
-        {
-          framework: 'RAGAS',
-          scores: { faithfulness: 0.8, relevance: 0.85, coherence: 0.82 },
-          generatedAt: new Date().toISOString(),
-        },
-      ] : undefined,
-      baReview: {
-        promptImprovements: [],
-        reviewStatus: 'pending' as const,
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    setSelectedRecord(detailRecord);
-    setDetailModalOpen(true);
+  const handleRecordClick = async (item: RawDataItem): Promise<void> => {
+    try {
+      // Fetch actual record from backend using timestamp or metric key
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      
+      // Query by metric and value to find exact record
+      const queryParams = new URLSearchParams();
+      queryParams.append('metric', item.metric || 'default');
+      queryParams.append('value', String(item.value || 0));
+      
+      const response = await fetch(
+        `${apiUrl}/api/ba-review/raw-data?${queryParams.toString()}`
+      );
+      
+      if (!response.ok) {
+        console.error('[v0] Failed to fetch record detail:', response.statusText);
+        // Fallback to local mock if backend endpoint not available yet
+        return;
+      }
+      
+      const result = await response.json();
+      if (result.success && result.data) {
+        setSelectedRecord(result.data as RawDataRecordDetail);
+        setDetailModalOpen(true);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch record';
+      console.error('[v0] Error fetching record detail:', message);
+      // Don't show detail modal if we can't fetch actual data
+    }
   };
 
   const renderMetricView = (): React.ReactNode => {
