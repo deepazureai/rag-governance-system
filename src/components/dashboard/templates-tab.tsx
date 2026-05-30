@@ -2,7 +2,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
 import { CrewAITemplate, DistributionTarget } from '@/types/templates';
+import { AlertCircle } from 'lucide-react';
 
 interface TemplatesTabProps {
   applicationId: string;
@@ -52,18 +54,36 @@ export function TemplatesTab({
 
         {/* Create Template Tab */}
         <TabsContent value="create" className="w-full mt-6">
-          <div className="space-y-6">
-            <div className="text-sm text-muted-foreground">
-              Template creation workflow coming soon - combining KB prompts with approved recommendations via LLM synthesis
+          <Card className="p-12 bg-blue-50 border border-blue-200">
+            <div className="flex flex-col items-center justify-center text-center gap-4">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <AlertCircle className="w-8 h-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">Create Template</h3>
+                <p className="text-sm text-blue-700 max-w-md">
+                  Template creation workflow coming soon. This feature will combine knowledge base prompts with approved recommendations via LLM synthesis to generate optimized evaluation templates.
+                </p>
+              </div>
             </div>
-          </div>
+          </Card>
         </TabsContent>
 
         {/* Template Library Tab */}
         <TabsContent value="library" className="w-full mt-6">
-          <div className="text-sm text-muted-foreground">
-            Template library and management interface coming soon
-          </div>
+          <Card className="p-12 bg-purple-50 border border-purple-200">
+            <div className="flex flex-col items-center justify-center text-center gap-4">
+              <div className="bg-purple-100 p-3 rounded-full">
+                <AlertCircle className="w-8 h-8 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-purple-900 mb-2">Template Library</h3>
+                <p className="text-sm text-purple-700 max-w-md">
+                  Template library and management interface coming soon. Browse, organize, and manage your saved templates with advanced search and filtering capabilities.
+                </p>
+              </div>
+            </div>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

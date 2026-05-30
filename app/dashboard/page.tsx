@@ -447,7 +447,7 @@ export default function DashboardPage() {
           totalUnresolved={unresolvedAlerts.length}
           criticalCount={criticalAlerts.length}
           warningCount={warningAlerts.length}
-          healthyCount={unresolvedAlerts.length === 0 ? selectedAppIds.length : 0}
+          healthyCount={healthyCount}
         />
 
         {/* Alerts Section */}
