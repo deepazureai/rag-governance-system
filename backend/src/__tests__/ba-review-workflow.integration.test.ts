@@ -1,6 +1,6 @@
-import { RawDataRecord } from '../../models/RawDataRecord';
-import { BAReviewQueue } from '../../models/BAReviewQueue';
-import { PromptTemplate } from '../../models/PromptTemplate';
+import { RawDataRecord } from '../../models/RawDataRecord.js';
+import { BAReviewQueue } from '../../models/BAReviewQueue.js';
+import { PromptTemplate } from '../../models/PromptTemplate.js';
 import mongoose from 'mongoose';
 
 describe('BA Review Workflow Integration Tests', () => {

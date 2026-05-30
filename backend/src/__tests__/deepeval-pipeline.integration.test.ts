@@ -1,5 +1,5 @@
-import { RawDataRecord } from '../../models/RawDataRecord';
-import { DeepEvalClient } from '../../services/DeepEvalClient';
+import { RawDataRecord } from '../../models/RawDataRecord.js';
+import { DeepEvalClient } from '../../services/DeepEvalClient.js';
 import mongoose from 'mongoose';
 
 describe('DeepEval Evaluation Pipeline Integration', () => {
