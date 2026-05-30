@@ -10,7 +10,7 @@ import {
   UpdateTemplateRequestSchema,
   DistributeTemplateRequestSchema,
   ListTemplatesQuerySchema,
-} from '../../utils/validation/templates-validation';
+} from '../../utils/validation/templates-validation.js';
 
 // Extend Express Request type to include user and role
 declare global {
