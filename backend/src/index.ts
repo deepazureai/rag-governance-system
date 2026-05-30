@@ -32,6 +32,7 @@ import hallucinationDetectionRouter from './api/hallucinationDetectionRoutes.js'
 import knowledgeBaseRouter from './api/knowledgeBaseRoutes.js';
 import llmConfigRouter from './api/llmConfigRoutes.js';
 import { ragSessionRouter } from './api/ragSessionRoutes.js';
+import templatesRouter from './routes/api/templates.js';
 import { getFrameworkRegistry } from './frameworks/registry.js';
 import { createDatabase } from './services/database.js';
 import { createEvaluationService } from './services/evaluation.js';
@@ -181,6 +182,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/governance-metrics', governanceMetricsRouter);
   app.use('/api/ba-review', baReviewRouter);
   app.use('/api/prompt-templates', promptTemplateRouter);
+  app.use('/api/templates', templatesRouter);
   app.use('/api/evaluation', hallucinationDetectionRouter);
   app.use('/api/knowledge-base', knowledgeBaseRouter);
   app.use('/api/llm-config', llmConfigRouter);

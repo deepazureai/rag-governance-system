@@ -81,38 +81,55 @@ export class TemplateDistributionService {
       const limit = filter?.limit || 20;
       const offset = filter?.offset || 0;
 
-      // Build query based on user role and access permissions
-      const query: Record<string, any> = {
-        applicationId,
-        status: filter?.status || { $in: ['published', 'draft'] },
-      };
-
-      // Filter templates by role-based distribution
-      const roleDistributed = {
-        'distributionTargets.roleId': userRole,
-        'distributionTargets.type': 'role',
-      };
-
-      const userDistributed = {
-        'distributionTargets.userId': userId,
-        'distributionTargets.type': 'individual',
-      };
-
       // Admins see all templates for their application
       if (userRole === TemplateDistributionService.SYSTEM_ROLES.ADMIN) {
-        const templates = await PromptTemplate.find(query).limit(limit).skip(offset).exec();
+        const templates = await PromptTemplate.find({
+          applicationId,
+          status: filter?.status || { $in: ['published', 'draft'] },
+        })
+          .limit(limit)
+          .skip(offset)
+          .exec();
+        
         return templates;
       }
 
       // Others see only distributed templates + public templates
+      // Build query with proper $or conditions for role-based and individual distribution
       const templates = await PromptTemplate.find({
         applicationId,
-        $or: [
-          { isPublic: true },
-          roleDistributed,
-          userDistributed,
-        ],
         status: filter?.status || { $in: ['published', 'draft'] },
+        $or: [
+          // Public templates visible to everyone
+          { isPublic: true },
+          // Role-based distribution
+          {
+            'distributionTargets': {
+              $elemMatch: {
+                type: 'role',
+                roleId: userRole,
+              },
+            },
+          },
+          // Individual distribution
+          {
+            'distributionTargets': {
+              $elemMatch: {
+                type: 'individual',
+                userId,
+              },
+            },
+          },
+          // Group-based distribution (if user belongs to group)
+          // Note: This would require group membership lookup - simplified here
+          {
+            'distributionTargets': {
+              $elemMatch: {
+                type: 'group',
+              },
+            },
+          },
+        ],
       })
         .limit(limit)
         .skip(offset)

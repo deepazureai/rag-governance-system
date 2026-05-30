@@ -71,10 +71,10 @@ router.post('/', validateRequest(CreateTemplateRequestSchema), async (req: Reque
       description: req.body.description,
       templateText: req.body.templateText,
       crewAITemplate: req.body.crewAITemplate,
-      sourceKBPromptIds: req.body.sourceKBThreadIds.map((id: string) => new Types.ObjectId(id)),
-      sourceRecommendationIds: req.body.sourceRecommendationIds.map((id: string) => new Types.ObjectId(id)),
+      sourceKBPromptIds: req.body.sourceKBThreadIds?.map((id: string) => new Types.ObjectId(id)) || [],
+      sourceRecommendationIds: req.body.sourceRecommendationIds?.map((id: string) => new Types.ObjectId(id)) || [],
       synthesisMetadata: req.body.synthesisMetadata,
-      distributionTargets: req.body.distributionTargets,
+      distributionTargets: req.body.distributionTargets || [],
       llmConfigUsedForRefinement: new Types.ObjectId(process.env.DEFAULT_LLM_CONFIG_ID || '000000000000000000000001'),
       status: 'draft',
       createdBy: userId,
@@ -103,7 +103,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Validate query params
     const query = await ListTemplatesQuerySchema.parseAsync(req.query);
 
-    const applicationId = query.applicationId || (req.query.applicationId as string);
+    const applicationId = query.applicationId;
     if (!applicationId) {
       return res.status(400).json({ error: 'applicationId is required' });
     }

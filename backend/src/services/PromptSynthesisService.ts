@@ -137,16 +137,19 @@ export class PromptSynthesisService {
     // Fetch recommendation prompts from BA review improvements
     if (recommendationIds.length > 0) {
       const recRecords = await RawDataRecord.find({
-        'baReview.promptImprovements._id': { $in: recommendationIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        'baReview.promptImprovements': { $exists: true },
       }).select('baReview.promptImprovements');
 
       for (const record of recRecords) {
         const improvements = record.baReview?.promptImprovements || [];
-        for (const improvement of improvements) {
-          const improvementId = (improvement as any)._id?.toString();
-          if (recommendationIds.includes(improvementId || '')) {
+        for (let i = 0; i < improvements.length; i++) {
+          const improvement = improvements[i];
+          if (!improvement) continue;
+          // Generate deterministic ID from position and record ID
+          const improvementId = `${record._id}-imp-${i}`;
+          if (recommendationIds.includes(improvementId)) {
             sourcePrompts.push({
-              id: improvementId || '',
+              id: improvementId,
               content: improvement.improvedPrompt,
               source: 'recommendation',
             });
