@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronRight, ChevronLeft, Sparkles, Save } from 'lucide-react';
+import { RecommendationSelector } from './recommendation-selector';
+import { KBPromptSelector } from './kb-prompt-selector';
+import { SynthesisConfig } from './synthesis-config';
 
 interface WizardStep {
   id: string;
@@ -16,8 +19,9 @@ interface WizardStep {
 const WIZARD_STEPS: WizardStep[] = [
   { id: '1', title: 'Template Details', description: 'Name and describe your template' },
   { id: '2', title: 'Framework Setup', description: 'Define the evaluation framework' },
-  { id: '3', title: 'Synthesis', description: 'Combine KB prompts with recommendations' },
-  { id: '4', title: 'Distribution', description: 'Set access and sharing preferences' },
+  { id: '3', title: 'Select Data Sources', description: 'Choose recommendations and KB prompts' },
+  { id: '4', title: 'Synthesis', description: 'Generate CrewAI template' },
+  { id: '5', title: 'Distribution', description: 'Set access and sharing preferences' },
 ];
 
 interface CreateTemplateWizardProps {
@@ -41,11 +45,14 @@ export function CreateTemplateWizard({
   // Step 2: Framework
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([]);
   
-  // Step 3: Synthesis
-  const [useKBPrompts, setUseKBPrompts] = useState(true);
-  const [useRecommendations, setUseRecommendations] = useState(true);
+  // Step 3: Data Source Selection
+  const [selectedRecommendationIds, setSelectedRecommendationIds] = useState<string[]>([]);
+  const [selectedKBPromptIds, setSelectedKBPromptIds] = useState<string[]>([]);
   
-  // Step 4: Distribution
+  // Step 4: Synthesis
+  const [synthesizedTemplate, setSynthesizedTemplate] = useState<{ crewaiTemplate: string; metadata: Record<string, unknown> } | null>(null);
+  
+  // Step 5: Distribution
   const [distributeTo, setDistributeTo] = useState<'private' | 'team' | 'public'>('private');
 
   const canProceed = useCallback((): boolean => {
@@ -55,13 +62,15 @@ export function CreateTemplateWizard({
       case 1:
         return selectedFrameworks.length > 0;
       case 2:
-        return useKBPrompts || useRecommendations;
+        return selectedRecommendationIds.length > 0 || selectedKBPromptIds.length > 0;
       case 3:
+        return synthesizedTemplate !== null;
+      case 4:
         return true;
       default:
         return false;
     }
-  }, [currentStep, templateName, selectedFrameworks, useKBPrompts, useRecommendations]);
+  }, [currentStep, templateName, selectedFrameworks, selectedRecommendationIds, selectedKBPromptIds, synthesizedTemplate]);
 
   const handleNext = useCallback((): void => {
     if (currentStep < WIZARD_STEPS.length - 1) {
@@ -84,8 +93,10 @@ export function CreateTemplateWizard({
         description: templateDescription,
         frameworks: selectedFrameworks,
         synthesis: {
-          useKBPrompts,
-          useRecommendations,
+          recommendationIds: selectedRecommendationIds,
+          kbPromptIds: selectedKBPromptIds,
+          crewaiTemplate: synthesizedTemplate?.crewaiTemplate,
+          metadata: synthesizedTemplate?.metadata,
         },
         distribution: distributeTo,
       };
@@ -113,8 +124,9 @@ export function CreateTemplateWizard({
       setTemplateName('');
       setTemplateDescription('');
       setSelectedFrameworks([]);
-      setUseKBPrompts(true);
-      setUseRecommendations(true);
+      setSelectedRecommendationIds([]);
+      setSelectedKBPromptIds([]);
+      setSynthesizedTemplate(null);
       setDistributeTo('private');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to save template';
@@ -123,7 +135,7 @@ export function CreateTemplateWizard({
     } finally {
       setIsSaving(false);
     }
-  }, [applicationId, templateName, templateDescription, selectedFrameworks, useKBPrompts, useRecommendations, distributeTo, onTemplateCreated]);
+  }, [applicationId, templateName, templateDescription, selectedFrameworks, selectedRecommendationIds, selectedKBPromptIds, synthesizedTemplate, distributeTo, onTemplateCreated]);
 
   const frameworks = ['groundedness', 'coherence', 'relevance', 'faithfulness', 'answerRelevancy'];
 
@@ -207,37 +219,43 @@ export function CreateTemplateWizard({
 
         {currentStep === 2 && (
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">LLM Synthesis Sources</h3>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 p-3 border border-blue-200 bg-blue-50 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useKBPrompts}
-                  onChange={(e) => setUseKBPrompts(e.target.checked)}
-                  className="w-4 h-4 rounded"
-                />
-                <div>
-                  <div className="font-medium text-gray-900">Knowledge Base Prompts</div>
-                  <div className="text-sm text-gray-600">Use curated KB prompts as synthesis input</div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 p-3 border border-green-200 bg-green-50 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useRecommendations}
-                  onChange={(e) => setUseRecommendations(e.target.checked)}
-                  className="w-4 h-4 rounded"
-                />
-                <div>
-                  <div className="font-medium text-gray-900">BA Review Recommendations</div>
-                  <div className="text-sm text-gray-600">Include approved improvements and insights</div>
-                </div>
-              </label>
+            <h3 className="font-semibold text-gray-900 mb-4">Select Data Sources for Synthesis</h3>
+            
+            {/* Recommendations Selector */}
+            <div className="mb-6">
+              <h4 className="font-medium text-gray-800 mb-3">BA Review Recommendations</h4>
+              <RecommendationSelector
+                applicationId={applicationId}
+                selectedIds={selectedRecommendationIds}
+                onSelectionChange={setSelectedRecommendationIds}
+              />
+            </div>
+
+            {/* KB Prompts Selector */}
+            <div>
+              <h4 className="font-medium text-gray-800 mb-3">Knowledge Base Prompts</h4>
+              <KBPromptSelector
+                applicationId={applicationId}
+                selectedIds={selectedKBPromptIds}
+                onSelectionChange={setSelectedKBPromptIds}
+              />
             </div>
           </div>
         )}
 
         {currentStep === 3 && (
+          <div>
+            <SynthesisConfig
+              selectedRecommendationIds={selectedRecommendationIds}
+              selectedKBPromptIds={selectedKBPromptIds}
+              selectedFrameworks={selectedFrameworks}
+              templateName={templateName}
+              onSynthesisComplete={(template) => setSynthesizedTemplate(template)}
+            />
+          </div>
+        )}
+
+        {currentStep === 4 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Template Distribution</h3>
             <div className="space-y-3">
