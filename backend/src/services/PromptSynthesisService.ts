@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
-import { PromptTemplate } from '../models/PromptTemplate';
-import { RawDataRecord } from '../models/RawDataRecord';
-import { logger } from '../utils/logger';
+import { PromptTemplate } from '../models/PromptTemplate.js';
+import { RawDataRecord } from '../models/RawDataRecord.js';
+import { logger } from '../utils/logger.js';
 import { 
   CrewAITemplate, 
   PromptSynthesisRequest,
   PromptSynthesisResponse 
-} from '../utils/validation/templates-validation';
+} from '../utils/validation/templates-validation.js';
 
 /**
  * LLM Synthesis Service

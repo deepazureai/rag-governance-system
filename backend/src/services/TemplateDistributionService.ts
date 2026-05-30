@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
-import { PromptTemplate, IPromptTemplate, IDistributionTarget } from '../models/PromptTemplate';
-import { logger } from '../utils/logger';
-import { DistributeTemplateRequest } from '../utils/validation/templates-validation';
+import { PromptTemplate, IPromptTemplate, IDistributionTarget } from '../models/PromptTemplate.js';
+import { logger } from '../utils/logger.js';
+import { DistributeTemplateRequest } from '../utils/validation/templates-validation.js';
 
 /**
  * Template Distribution Service
