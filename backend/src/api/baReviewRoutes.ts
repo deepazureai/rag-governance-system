@@ -11,29 +11,31 @@ const baReviewRouter: ExpressRouter = Router();
  * Populate BA review queue from raw data records
  * POST /api/ba-review/populate-queue
  */
-baReviewRouter.post('/populate-queue', async (req: Request, res: Response) => {
+baReviewRouter.post('/populate-queue', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId, limit } = req.body;
+    const { applicationId, limit } = req.body as { applicationId?: string; limit?: number };
 
-    if (!applicationId) {
-      return res.status(400).json({ success: false, message: 'applicationId is required' });
+    if (!applicationId || typeof applicationId !== 'string') {
+      res.status(400).json({ success: false, message: 'applicationId is required' });
+      return;
     }
 
     logger.info(`[baReviewRoutes] Populating queue for app ${applicationId}`);
 
     const result = await baReviewQueueService.populateReviewQueue(applicationId, limit || 50);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'Review queue populated successfully',
       data: result,
     });
-  } catch (error: any) {
-    logger.error(`[baReviewRoutes] Error populating queue:`, error.message);
-    return res.status(500).json({
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[baReviewRoutes] Error populating queue: ${message}`);
+    res.status(500).json({
       success: false,
       message: 'Failed to populate review queue',
-      error: error.message,
+      error: message,
     });
   }
 });

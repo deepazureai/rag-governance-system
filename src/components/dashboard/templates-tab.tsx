@@ -28,9 +28,16 @@ export function TemplatesTab({
   const [crewAIData, setCrewAIData] = useState<CrewAITemplate | null>(null);
 
   // Handle successful synthesis
-  const handleSynthesisComplete = useCallback((data: any) => {
-    setSynthesizedPrompt(data.synthesizedPrompt);
-    setCrewAIData(data.crewAITemplate);
+  const handleSynthesisComplete = useCallback((data: unknown): void => {
+    if (data && typeof data === 'object') {
+      const synthesisData = data as { synthesizedPrompt?: string; crewAITemplate?: CrewAITemplate };
+      if (typeof synthesisData.synthesizedPrompt === 'string') {
+        setSynthesizedPrompt(synthesisData.synthesizedPrompt);
+      }
+      if (synthesisData.crewAITemplate) {
+        setCrewAIData(synthesisData.crewAITemplate);
+      }
+    }
   }, []);
 
   // Handle template finalization

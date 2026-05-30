@@ -48,14 +48,23 @@ export function RawDataDetailModal({
 
   if (!isOpen) return null;
 
-  const handleDeepEvalComplete = (evalResult: any): void => {
+  const handleDeepEvalComplete = (evalResult: unknown): void => {
     console.log('[v0] DeepEval complete:', evalResult);
-    if (evalResult?.improvements) {
-      const suggestions = Object.values(evalResult.improvements)
-        .flat()
-        .map((imp: any) => `• ${imp.category}: ${imp.suggestion}`)
-        .join('\n');
-      setDeepEvalSuggestions(suggestions);
+    if (evalResult && typeof evalResult === 'object' && 'improvements' in evalResult) {
+      const improvements = evalResult.improvements as Record<string, unknown[]> | undefined;
+      if (improvements) {
+        const suggestions = Object.values(improvements)
+          .flat()
+          .map((imp: unknown) => {
+            if (imp && typeof imp === 'object' && 'category' in imp && 'suggestion' in imp) {
+              const imp_obj = imp as { category?: string; suggestion?: string };
+              return `• ${imp_obj.category ?? 'Unknown'}: ${imp_obj.suggestion ?? 'N/A'}`;
+            }
+            return '• Unknown suggestion';
+          })
+          .join('\n');
+        setDeepEvalSuggestions(suggestions);
+      }
     }
   };
 
@@ -95,20 +104,44 @@ export function RawDataDetailModal({
         throw new Error('Failed to get recommendations');
       }
 
-      const data = await response.json() as {
-        evaluation?: {
-          hallucinationAnalysis?: { reasoning?: string };
-          improvedPrompt?: { suggestions?: Array<{ issue?: string; suggestion?: string; expectedImprovement?: string }> };
-        };
-      };
+      const data = await response.json() as unknown;
+      
+      // Type guard for API response
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response format from recommendations endpoint');
+      }
+
+      const apiResponse = data as Record<string, unknown>;
+      const evaluation = apiResponse.evaluation as Record<string, unknown> | undefined;
+      
+      const hallucinationAnalysis = evaluation?.hallucinationAnalysis as Record<string, unknown> | undefined;
+      const improvedPromptObj = evaluation?.improvedPrompt as Record<string, unknown> | undefined;
+      
+      const reasoning = typeof hallucinationAnalysis?.reasoning === 'string' 
+        ? hallucinationAnalysis.reasoning 
+        : 'Analysis completed';
+      
+      const suggestionsArray = Array.isArray(improvedPromptObj?.suggestions) 
+        ? improvedPromptObj.suggestions 
+        : [];
 
       const recommendations = {
-        reasoning: data.evaluation?.hallucinationAnalysis?.reasoning ?? 'Analysis completed',
-        suggestions: (data.evaluation?.improvedPrompt?.suggestions ?? []).map((suggestion: { issue?: string; suggestion?: string; expectedImprovement?: string }) => ({
-          issue: suggestion.issue ?? 'N/A',
-          suggestion: suggestion.suggestion ?? 'N/A',
-          expectedImprovement: suggestion.expectedImprovement ?? 'N/A',
-        })),
+        reasoning,
+        suggestions: suggestionsArray.map((suggestion: unknown) => {
+          if (suggestion && typeof suggestion === 'object') {
+            const sug = suggestion as Record<string, unknown>;
+            return {
+              issue: typeof sug.issue === 'string' ? sug.issue : 'N/A',
+              suggestion: typeof sug.suggestion === 'string' ? sug.suggestion : 'N/A',
+              expectedImprovement: typeof sug.expectedImprovement === 'string' ? sug.expectedImprovement : 'N/A',
+            };
+          }
+          return {
+            issue: 'N/A',
+            suggestion: 'N/A',
+            expectedImprovement: 'N/A',
+          };
+        }),
       };
 
       setLlmRecommendations(recommendations);
@@ -158,9 +191,10 @@ export function RawDataDetailModal({
       setDeepEvalReasoning('');
       setImprovementMode(false);
       alert('Improvement saved!');
-    } catch (error) {
-      console.error('[v0] Error:', error);
-      alert('Failed to save improvement');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save improvement';
+      console.error('[v0] Error:', message);
+      alert(message);
     }
   };
 
