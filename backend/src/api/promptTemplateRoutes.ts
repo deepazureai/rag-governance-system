@@ -463,14 +463,28 @@ promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Pr
   try {
     const body = req.body as Record<string, unknown>;
 
-    const templateName = asString(body.templateName);
-    const recommendationIds = Array.isArray(body.recommendationIds) ? (body.recommendationIds as string[]) : [];
-    const kbPromptIds = Array.isArray(body.kbPromptIds) ? (body.kbPromptIds as string[]) : [];
-    const frameworks = Array.isArray(body.frameworks) ? (body.frameworks as string[]) : [];
-    const synthesisStrategy = asString(body.synthesisStrategy) || 'equal_weight';
-    const templateFormat = asString(body.templateFormat) || 'crewai_task';
+    const templateNameValue = body.templateName;
+    const recommendationIdsValue = body.recommendationIds;
+    const kbPromptIdsValue = body.kbPromptIds;
+    const frameworksValue = body.frameworks;
+    const synthesisStrategyValue = body.synthesisStrategy;
+    const templateFormatValue = body.templateFormat;
 
-    if (!templateName) {
+    // Validate and convert to typed values
+    const templateName = typeof templateNameValue === 'string' ? templateNameValue : '';
+    const recommendationIds: string[] = Array.isArray(recommendationIdsValue) 
+      ? recommendationIdsValue.filter((id): id is string => typeof id === 'string')
+      : [];
+    const kbPromptIds: string[] = Array.isArray(kbPromptIdsValue)
+      ? kbPromptIdsValue.filter((id): id is string => typeof id === 'string')
+      : [];
+    const frameworks: string[] = Array.isArray(frameworksValue)
+      ? frameworksValue.filter((fw): fw is string => typeof fw === 'string')
+      : [];
+    const synthesisStrategy = typeof synthesisStrategyValue === 'string' ? synthesisStrategyValue : 'equal_weight';
+    const templateFormat = typeof templateFormatValue === 'string' ? templateFormatValue : 'crewai_task';
+
+    if (!templateName.trim()) {
       res.status(400).json({ success: false, message: 'Template name is required' });
       return;
     }
@@ -502,15 +516,10 @@ For CrewAI format, include:
 Generate the complete template in YAML format that can be directly used in production.
     `;
 
-    // Call LLM to generate template
-    const llmConfig = await llmConfigService.getDefaultLLMConfig();
-    if (!llmConfig) {
-      res.status(400).json({ success: false, message: 'No LLM configuration available' });
-      return;
-    }
-
-    const provider = await llmProviderService.getProvider(llmConfig.provider);
-    const generatedTemplate = await provider.generateResponse(synthesisPrompt, {
+    // Call LLM to generate template using the recommendation provider
+    const { provider: llmProvider } = await llmProviderService.getRecommendationLLMProvider('default-app');
+    
+    const generatedTemplate = await llmProvider.generate(synthesisPrompt, {
       temperature: 0.7,
       maxTokens: 2000,
     });
@@ -518,7 +527,16 @@ Generate the complete template in YAML format that can be directly used in produ
     // Format the response
     const crewaiTemplate = generatedTemplate.trim();
 
-    const synthesisMetadata = {
+    interface SynthesisMetadata {
+      strategy: string;
+      format: string;
+      frameworks: string[];
+      recommendationIds: string[];
+      kbPromptIds: string[];
+      timestamp: string;
+    }
+
+    const synthesisMetadata: SynthesisMetadata = {
       strategy: synthesisStrategy,
       format: templateFormat,
       frameworks: frameworks,
