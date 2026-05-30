@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { PromptTemplate } from '../../models/PromptTemplate';
-import { promptSynthesisService } from '../../services/PromptSynthesisService';
-import { templateDistributionService } from '../../services/TemplateDistributionService';
-import { logger } from '../../utils/logger';
+import { PromptTemplate } from '../../models/PromptTemplate.js';
+import { promptSynthesisService } from '../../services/PromptSynthesisService.js';
+import { templateDistributionService } from '../../services/TemplateDistributionService.js';
+import { logger } from '../../utils/logger.js';
 import {
   PromptSynthesisRequestSchema,
   CreateTemplateRequestSchema,
