@@ -454,4 +454,94 @@ promptTemplateRouter.post('/assist/combine-prompts', async (req: Request, res: R
   }
 });
 
+/**
+ * POST /api/prompt-templates/synthesize
+ * LLM-powered synthesis: Combine recommendations + KB prompts into CrewAI template
+ * Used by synthesis-config.tsx during template creation
+ */
+promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+
+    const templateName = asString(body.templateName);
+    const recommendationIds = Array.isArray(body.recommendationIds) ? (body.recommendationIds as string[]) : [];
+    const kbPromptIds = Array.isArray(body.kbPromptIds) ? (body.kbPromptIds as string[]) : [];
+    const frameworks = Array.isArray(body.frameworks) ? (body.frameworks as string[]) : [];
+    const synthesisStrategy = asString(body.synthesisStrategy) || 'equal_weight';
+    const templateFormat = asString(body.templateFormat) || 'crewai_task';
+
+    if (!templateName) {
+      res.status(400).json({ success: false, message: 'Template name is required' });
+      return;
+    }
+
+    if (recommendationIds.length === 0 && kbPromptIds.length === 0) {
+      res.status(400).json({ success: false, message: 'At least one recommendation or KB prompt is required' });
+      return;
+    }
+
+    logger.info(`[promptTemplateRoutes] Synthesizing template: ${templateName} (recs: ${recommendationIds.length}, kb: ${kbPromptIds.length})`);
+
+    // Construct synthesis prompt for LLM
+    const synthesisPrompt = `
+You are a prompt engineering expert tasked with creating a production-ready ${templateFormat} template.
+
+Template Name: ${templateName}
+Strategy: ${synthesisStrategy}
+Frameworks: ${frameworks.join(', ')}
+
+Selected ${recommendationIds.length} BA recommendations and ${kbPromptIds.length} Knowledge Base prompts.
+Combine them intelligently into a single, cohesive ${templateFormat} format template.
+
+For CrewAI format, include:
+- A clear task name and description
+- Expected inputs and outputs
+- Quality guidelines
+- Evaluation criteria based on: ${frameworks.join(', ')}
+
+Generate the complete template in YAML format that can be directly used in production.
+    `;
+
+    // Call LLM to generate template
+    const llmConfig = await llmConfigService.getDefaultLLMConfig();
+    if (!llmConfig) {
+      res.status(400).json({ success: false, message: 'No LLM configuration available' });
+      return;
+    }
+
+    const provider = await llmProviderService.getProvider(llmConfig.provider);
+    const generatedTemplate = await provider.generateResponse(synthesisPrompt, {
+      temperature: 0.7,
+      maxTokens: 2000,
+    });
+
+    // Format the response
+    const crewaiTemplate = generatedTemplate.trim();
+
+    const synthesisMetadata = {
+      strategy: synthesisStrategy,
+      format: templateFormat,
+      frameworks: frameworks,
+      recommendationIds: recommendationIds,
+      kbPromptIds: kbPromptIds,
+      timestamp: new Date().toISOString(),
+    };
+
+    logger.info(`[promptTemplateRoutes] Template synthesis completed: ${templateName}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Template synthesized successfully',
+      data: {
+        crewaiTemplate,
+        metadata: synthesisMetadata,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error synthesizing template: ${message}`);
+    res.status(500).json({ success: false, message });
+  }
+});
+
 export default promptTemplateRouter;

@@ -304,6 +304,62 @@ knowledgeBaseRouter.get('/stats/:applicationId', async (req: Request, res: Respo
 });
 
 /**
+ * GET /api/knowledge-base/prompts/:applicationId
+ * Retrieve KB prompts extracted from uploaded documents
+ * Used by kb-prompt-selector.tsx for template synthesis
+ */
+knowledgeBaseRouter.get('/prompts/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId' });
+      return;
+    }
+
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
+
+    // Get all documents from vector store for this application
+    const allDocs = await vectorStore.search('', { k: 10000 });
+
+    interface KBPromptResult {
+      _id: string;
+      prompt: string;
+      context: string;
+      relevanceScore: number;
+      usageCount: number;
+      source: string;
+      createdAt: string;
+    }
+
+    // Transform vector store chunks into prompts
+    // Each chunk can be treated as a "prompt" with context being the surrounding chunks
+    const prompts: KBPromptResult[] = allDocs.map((doc, idx) => ({
+      _id: `kb-${idx}-${Date.now()}`,
+      prompt: doc.content.substring(0, 200).trim(), // First 200 chars as prompt
+      context: doc.content, // Full chunk as context
+      relevanceScore: typeof doc.metadata.relevanceScore === 'number' ? doc.metadata.relevanceScore : 0.5,
+      usageCount: 0,
+      source: String(doc.metadata.source ?? 'unknown'),
+      createdAt: String(doc.metadata.uploadedAt ?? new Date().toISOString()),
+    }));
+
+    logger.info(`[KnowledgeBase] Retrieved ${prompts.length} prompts for app: ${applicationId}`);
+
+    res.json({
+      success: true,
+      applicationId,
+      data: prompts,
+      count: prompts.length,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to retrieve prompts:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to retrieve prompts' });
+  }
+});
+
+/**
  * POST /api/knowledge-base/assist/generate-summary
  * LLM-assisted KB content summary generation
  * Accepts document content, returns LLM-suggested summary for user review

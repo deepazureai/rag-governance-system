@@ -412,4 +412,76 @@ baReviewRouter.get('/app/:applicationId', async (req: Request, res: Response): P
   }
 });
 
+/**
+ * GET /api/ba-review/recommendations/:applicationId
+ * Fetch BA-approved recommendations for template synthesis
+ * Returns formatted recommendations for recommendation-selector.tsx
+ */
+baReviewRouter.get('/recommendations/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+
+    if (!applicationId) {
+      res.status(400).json({ success: false, error: 'Missing applicationId' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching recommendations for template synthesis: ${applicationId}`);
+
+    // Fetch BA improvements/recommendations for this application
+    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+    const improvements = await BAImprovementCollection.find({
+      applicationId: applicationId,
+      status: { $in: ['approved', 'suggested'] }
+    })
+      .limit(100)
+      .toArray();
+
+    if (!improvements || improvements.length === 0) {
+      logger.info(`[baReviewRoutes] No approved improvements found for app ${applicationId}`);
+      res.json({
+        success: true,
+        data: [],
+        count: 0,
+      });
+      return;
+    }
+
+    // Format recommendations for frontend selector
+    interface FormattedRecommendation {
+      _id: string;
+      userPrompt: string;
+      llmResponse: string;
+      suggestion: string;
+      priority: string;
+      priorityScore: number;
+    }
+
+    const recommendations: FormattedRecommendation[] = improvements.map((imp: any) => ({
+      _id: imp._id?.toString(),
+      userPrompt: imp.originalPrompt || '',
+      llmResponse: imp.improvedPrompt || '',
+      suggestion: imp.reason || '',
+      priority: imp.priority || 'medium',
+      priorityScore: imp.estimatedScoreImpact || 0,
+    }));
+
+    logger.info(`[baReviewRoutes] Retrieved ${recommendations.length} approved recommendations`);
+
+    res.json({
+      success: true,
+      data: recommendations,
+      count: recommendations.length,
+      applicationId,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching recommendations: ${message}`);
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
 export default baReviewRouter;
