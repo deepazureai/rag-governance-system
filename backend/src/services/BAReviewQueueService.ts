@@ -330,6 +330,112 @@ export class BAReviewQueueService {
   }
 
   /**
+   * Get queue statistics: critical count, pending count, average priority
+   * Uses MongoDB aggregation pipeline for efficiency
+   */
+  async getQueueStats(applicationId: string): Promise<{
+    criticalCount: number;
+    pendingCount: number;
+    totalItems: number;
+    averagePriorityScore: number;
+    statusBreakdown: Record<string, number>;
+    priorityBreakdown: Record<string, number>;
+  }> {
+    try {
+      const BAReviewQueueCollection = mongoose.connection.collection('bareviewqueue');
+
+      // Use aggregation pipeline for efficient stat calculation
+      const stats = await BAReviewQueueCollection.aggregate([
+        {
+          $match: { applicationId },
+        },
+        {
+          $group: {
+            _id: null,
+            totalItems: { $sum: 1 },
+            criticalCount: {
+              $sum: { $cond: [{ $eq: ['$priority', 'critical'] }, 1, 0] },
+            },
+            pendingCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+            },
+            inProgressCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] },
+            },
+            reviewedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'reviewed'] }, 1, 0] },
+            },
+            approvedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] },
+            },
+            rejectedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] },
+            },
+            archivedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'archived'] }, 1, 0] },
+            },
+            highCount: {
+              $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] },
+            },
+            mediumCount: {
+              $sum: { $cond: [{ $eq: ['$priority', 'medium'] }, 1, 0] },
+            },
+            lowCount: {
+              $sum: { $cond: [{ $eq: ['$priority', 'low'] }, 1, 0] },
+            },
+            totalPriorityScore: { $sum: '$priorityScore' },
+            averagePriority: { $avg: '$priorityScore' },
+          },
+        },
+      ]).toArray();
+
+      if (!stats || stats.length === 0) {
+        logger.info(`[BAReviewQueueService] No queue items found for app ${applicationId}`);
+        return {
+          criticalCount: 0,
+          pendingCount: 0,
+          totalItems: 0,
+          averagePriorityScore: 0,
+          statusBreakdown: {},
+          priorityBreakdown: {},
+        };
+      }
+
+      const result = stats[0] as Record<string, number>;
+
+      logger.info(
+        `[BAReviewQueueService] Queue stats for app ${applicationId}: ` +
+        `critical=${result.criticalCount}, pending=${result.pendingCount}, total=${result.totalItems}`
+      );
+
+      return {
+        criticalCount: result.criticalCount || 0,
+        pendingCount: result.pendingCount || 0,
+        totalItems: result.totalItems || 0,
+        averagePriorityScore: result.averagePriority ? Math.round(result.averagePriority) : 0,
+        statusBreakdown: {
+          pending: result.pendingCount || 0,
+          in_progress: result.inProgressCount || 0,
+          reviewed: result.reviewedCount || 0,
+          approved: result.approvedCount || 0,
+          rejected: result.rejectedCount || 0,
+          archived: result.archivedCount || 0,
+        },
+        priorityBreakdown: {
+          critical: result.criticalCount || 0,
+          high: result.highCount || 0,
+          medium: result.mediumCount || 0,
+          low: result.lowCount || 0,
+        },
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`[BAReviewQueueService] Error getting queue stats:`, message);
+      throw new Error(`Failed to get queue stats: ${message}`);
+    }
+  }
+
+  /**
    * Find similar records for template creation
    */
   async findSimilarRecords(
@@ -360,8 +466,9 @@ export class BAReviewQueueService {
         records: similarRecords,
         count: similarRecords.length,
       };
-    } catch (error: any) {
-      logger.error(`[BAReviewQueueService] Error finding similar records:`, error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`[BAReviewQueueService] Error finding similar records:`, message);
       throw error;
     }
   }

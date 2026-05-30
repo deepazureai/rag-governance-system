@@ -39,6 +39,38 @@ baReviewRouter.post('/populate-queue', async (req: Request, res: Response) => {
 });
 
 /**
+ * Get BA review queue statistics
+ * GET /api/ba-review/stats/:applicationId
+ */
+baReviewRouter.get('/stats/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+
+    if (!applicationId) {
+      res.status(400).json({ success: false, message: 'applicationId is required' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Getting queue stats for app ${applicationId}`);
+
+    const stats = await baReviewQueueService.getQueueStats(applicationId);
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[baReviewRoutes] Error getting queue stats: ${message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get queue statistics',
+      error: message,
+    });
+  }
+});
+
+/**
  * Get BA's review queue - paginated and prioritized
  * GET /api/ba-review/queue/:applicationId?page=1&pageSize=10
  */
