@@ -71,67 +71,28 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       
-      // First try to fetch from backend
+      // Fetch actual record from backend using metric and value
       const queryParams = new URLSearchParams();
       queryParams.append('metric', item.metric || 'default');
       queryParams.append('value', String(item.value || 0));
       
-      try {
-        const response = await fetch(
-          `${apiUrl}/api/ba-review/raw-data?${queryParams.toString()}`
-        );
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setSelectedRecord(result.data as RawDataRecordDetail);
-            setDetailModalOpen(true);
-            return;
-          }
-        }
-      } catch (fetchError) {
-        console.error('[v0] Backend fetch failed, using local data:', fetchError);
+      const response = await fetch(
+        `${apiUrl}/api/ba-review/raw-data?${queryParams.toString()}`
+      );
+      
+      if (!response.ok) {
+        console.error('[v0] Failed to fetch record detail:', response.statusText);
+        return;
       }
       
-      // Fallback: Create record from local data if backend not available
-      const now = new Date().toISOString();
-      const mockRecord: RawDataRecordDetail = {
-        _id: `record-${Date.now()}`,
-        applicationId: applicationId,
-        userPrompt: item.query,
-        llmResponse: item.response,
-        userPromptEnteredAt: now,
-        llmResponseGeneratedAt: now,
-        contextRetrieved: item.context
-          ? [
-              {
-                source: 'knowledge-base',
-                relevanceScore: 0.85,
-                content: item.context,
-              },
-            ]
-          : undefined,
-        evaluationScores: [
-          {
-            framework: 'groundedness',
-            scores: { score: 0.8 },
-            generatedAt: now,
-          },
-          {
-            framework: 'relevance',
-            scores: { score: 0.75 },
-            generatedAt: now,
-          },
-        ],
-        createdAt: now,
-        updatedAt: now,
-      };
-      
-      setSelectedRecord(mockRecord);
-      setDetailModalOpen(true);
+      const result = await response.json();
+      if (result.success && result.data) {
+        setSelectedRecord(result.data as RawDataRecordDetail);
+        setDetailModalOpen(true);
+      }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to open record';
-      console.error('[v0] Error handling record click:', message);
+      const message = error instanceof Error ? error.message : 'Failed to fetch record';
+      console.error('[v0] Error fetching record detail:', message);
     }
   };
 
