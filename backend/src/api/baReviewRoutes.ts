@@ -823,7 +823,15 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
 
     const record = records[0] as any;
 
-    // Format the response with available data
+    // Build complete evaluation scores from all available metrics in the record
+    const allEvaluationScores = record.evaluation || {};
+    const evaluationScoresArray = Object.entries(allEvaluationScores).map(([metricName, value]: [string, unknown]) => ({
+      metricName,
+      value: typeof value === 'number' ? value : 0,
+      timestamp: record.timestamp || record.createdAt,
+    }));
+
+    // Format the response with all available data
     const response = {
       _id: record._id?.toString(),
       applicationId: record.applicationId,
@@ -831,15 +839,25 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
       llmResponse: record.llmResponse || record.response || '',
       context: record.context || '',
       contextRetrieved: record.contextRetrieved || [],
-      evaluationScores: [
+      
+      // Include ALL evaluation scores, not just one
+      evaluationScores: evaluationScoresArray.length > 0 ? evaluationScoresArray : [
         {
           metricName: metric,
           value: value,
-          timestamp: record.timestamp,
+          timestamp: record.timestamp || record.createdAt,
         },
       ],
-      userFeedback: record.userFeedback,
+      
+      // Timing information for LLM and context retrieval
+      userPromptEnteredAt: record.userPromptEnteredAt || record.createdAt,
+      llmResponseGeneratedAt: record.llmResponseGeneratedAt || record.updatedAt,
+      contextRetrievalTime: record.contextRetrievalTime,
+      llmGenerationTime: record.llmGenerationTime,
       totalLatency: record.totalLatency,
+      tokensUsed: record.tokensUsed,
+      
+      userFeedback: record.userFeedback,
       baReview: record.baReview || {
         promptImprovements: [],
         reviewStatus: 'pending',
@@ -848,8 +866,17 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
       updatedAt: record.updatedAt,
     };
 
+    console.log('[v0] Response data structure:', {
+      prompt: response.userPrompt?.substring(0, 50),
+      response: response.llmResponse?.substring(0, 50),
+      contextCount: response.contextRetrieved?.length || 0,
+      metricsCount: response.evaluationScores?.length || 0,
+      metricsNames: response.evaluationScores?.map((s: any) => s.metricName),
+    });
+
     logger.info(
-      `[baReviewRoutes] Successfully retrieved record ${record._id?.toString()} with metric ${metric}`
+      `[baReviewRoutes] Successfully retrieved record ${record._id?.toString()} with metric ${metric}. ` +
+      `Evaluation scores: ${evaluationScoresArray.map((s: any) => `${s.metricName}=${s.value}`).join(', ')}`
     );
 
     res.status(200).json({
