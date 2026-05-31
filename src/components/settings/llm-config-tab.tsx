@@ -138,7 +138,7 @@ export function LLMConfigTab({ applicationId: initialAppId }: LLMConfigTabProps)
           return;
         }
         if (!config.api_version?.trim()) {
-          setError('API Version is required for Azure OpenAI (e.g., 2024-02-15-preview)');
+          setError('API Version is required for Azure OpenAI (e.g., 2025-04-16)');
           setIsSaving(false);
           return;
         }
@@ -154,27 +154,53 @@ export function LLMConfigTab({ applicationId: initialAppId }: LLMConfigTabProps)
         return;
       }
 
+      // Build request payload
+      const payload = {
+        provider: config.provider,
+        api_key: config.api_key,
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+        ...(config.provider === 'azure-openai' && {
+          azure_endpoint: config.azure_endpoint,
+          api_version: config.api_version,
+          deployment: config.deployment,
+          skipSslVerification: config.skipSslVerification || false,
+        }),
+        ...(config.provider !== 'azure-openai' && {
+          model: config.model,
+        }),
+      };
+
+      console.log('[v0] Saving LLM config:', {
+        appId: selectedAppId,
+        ...payload,
+      });
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${apiUrl}/api/llm-config/app/${selectedAppId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json() as Record<string, unknown>;
+
       if (!response.ok) {
-        setError('Failed to save configuration');
+        const errorMsg = (data?.error as string) || 'Failed to save configuration';
+        console.error('[v0] Save failed:', errorMsg, data);
+        setError(errorMsg);
         setIsSaving(false);
         return;
       }
 
-      const data = await response.json() as { success: boolean; data?: LLMConfig; message?: string };
-      if (data.success && data.data && data.message) {
-        setSuccess(data.message);
-        setConfig(data.data);
+      if ((data?.success) && (data?.data as LLMConfig)) {
+        setSuccess('Configuration saved successfully!');
+        setConfig(data.data as LLMConfig);
+        setTimeout(() => setSuccess(null), 5000);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('[v0] Error saving LLM config:', message);
+      console.error('[v0] Error saving LLM config:', message, error);
       setError(message);
     } finally {
       setIsSaving(false);

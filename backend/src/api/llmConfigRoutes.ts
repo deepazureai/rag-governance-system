@@ -61,38 +61,50 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 
     const body = req.body as Record<string, unknown>;
 
+    // Log incoming request for debugging
+    console.error('[v0] LLM Config POST request body:', JSON.stringify(body, null, 2));
+
     // Validate request body
     const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId });
     if (!validation.success) {
+      const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
+      console.error('[v0] LLM Config validation errors:', errorDetails);
       res.status(400).json({
         success: false,
-        error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
+        error: `Validation failed: ${errorDetails}`,
       } as ApiResponse<ILLMConfig>);
       return;
     }
 
-    // Validate provider configuration
-    const configValidation = llmConfigService['validateConfig'](validation.data);
-    if (!configValidation.valid) {
-      res.status(400).json({
-        success: false,
-        error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
-      } as ApiResponse<ILLMConfig>);
-      return;
+    const configData = validation.data;
+
+    // Validate provider-specific required fields
+    if (configData.provider === 'azure-openai') {
+      const requiredFields = ['api_key', 'azure_endpoint', 'api_version', 'deployment'];
+      const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
+      if (missing.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: `For Azure OpenAI, these fields are required: ${missing.join(', ')}`,
+        } as ApiResponse<ILLMConfig>);
+        return;
+      }
     }
 
-    const config = await llmConfigService.upsertConfig(validation.data);
+    console.error('[v0] LLM Config validation passed, upserting config');
+    const config = await llmConfigService.upsertConfig(configData);
 
     res.json({
       success: true,
       data: config,
+      message: 'Configuration saved successfully',
     } as ApiResponse<ILLMConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/llm-config/app/:appId Error:', message);
+    console.error('[v0] POST /api/llm-config/app/:appId Error:', message, error);
     res.status(500).json({
       success: false,
-      error: message,
+      error: `Server error: ${message}`,
     } as ApiResponse<ILLMConfig>);
   }
 });
