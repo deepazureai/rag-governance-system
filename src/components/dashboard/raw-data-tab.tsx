@@ -67,15 +67,24 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     }
   };
 
-  const handleRecordClick = async (item: RawDataItem): Promise<void> => {
+  const handleRecordClick = async (item: RawDataItem, metricName?: string): Promise<void> => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      
+      // Determine the metric name - use metricName param first, then item.metric, then selectedMetric
+      const metric = metricName || item.metric || selectedMetric;
+      
+      if (!metric) {
+        throw new Error('Metric name is required but not available');
+      }
       
       // Fetch actual record from backend using applicationId, metric, and value
       const queryParams = new URLSearchParams();
       queryParams.append('applicationId', applicationId);
-      queryParams.append('metric', item.metric || 'default');
+      queryParams.append('metric', metric);
       queryParams.append('value', String(item.value || 0));
+      
+      console.log('[v0] Fetching record with metric:', metric, 'value:', item.value);
       
       const response = await fetch(
         `${apiUrl}/api/ba-review/raw-data-by-metric?${queryParams.toString()}`
@@ -139,7 +148,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               <Card 
                 key={idx} 
                 className="p-4 border-l-4 border-l-blue-400 hover:shadow-md cursor-pointer transition-all"
-                onClick={() => handleRecordClick(item)}
+                onClick={() => handleRecordClick(item, selectedMetric)}
               >
                 <div className="flex items-center justify-between mb-3">
                   <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
