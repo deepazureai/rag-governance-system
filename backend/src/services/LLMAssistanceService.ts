@@ -302,6 +302,118 @@ ${truncatedContent}`;
    * @throws Error if LLM config missing or generation fails
    */
 
+  /**
+   * Generate LLM-powered recommendations based on DeepEval analysis
+   * 
+   * @param userPrompt - Original user query
+   * @param llmResponse - LLM-generated response
+   * @param contextRetrieved - Retrieved context chunks
+   * @param deepevalAnalysis - DeepEval metrics analysis result
+   * @returns LLM suggestions for improving prompt/context/response
+   */
+  async generateRecommendations(
+    userPrompt: string,
+    llmResponse: string,
+    contextRetrieved: string[],
+    deepevalAnalysis: any
+  ): Promise<string> {
+    try {
+      // Validate inputs
+      if (!userPrompt?.trim() || !llmResponse?.trim() || !deepevalAnalysis) {
+        throw new Error('userPrompt, llmResponse, and deepevalAnalysis are required');
+      }
+
+      // Get LLM config from environment - recommendations can work without user-specific config
+      // by using Azure OpenAI from environment
+      const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
+      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'o4-mini';
+      const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-04-01-preview';
+
+      if (!azureApiKey || !azureEndpoint) {
+        throw new Error('Azure OpenAI credentials not configured in environment');
+      }
+
+      // Create LLM client with environment config
+      const llmClient = LLMClientFactory.create({
+        provider: 'azure-openai',
+        api_key: azureApiKey,
+        azure_endpoint: azureEndpoint,
+        deployment: deploymentName,
+        api_version: apiVersion,
+        applicationId: 'system-recommendations',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      // Validate LLM connection
+      console.log('[LLMAssistanceService] Validating LLM connection for recommendations');
+      const connectionTest = await llmClient.validate();
+      if (!connectionTest.valid) {
+        throw new Error(`LLM connection validation failed: ${connectionTest.error}`);
+      }
+
+      // Build comprehensive recommendation prompt
+      const systemPrompt = `You are an expert RAG (Retrieval-Augmented Generation) system improvement specialist. Your task is to analyze evaluation metrics and generate specific, actionable recommendations to improve the RAG system.
+
+Based on the DeepEval analysis, user prompt, LLM response, and retrieved context, provide:
+1. Root cause analysis of metric issues
+2. Specific improvements for prompt engineering
+3. Context retrieval optimization suggestions
+4. Response generation improvements
+
+Format your response as clear, numbered recommendations. Each recommendation should be specific and actionable.`;
+
+      const metricsAnalysisSummary = deepevalAnalysis.deepevalFindings || 'No analysis available';
+      const contextSummary = contextRetrieved
+        .slice(0, 3)
+        .map((c, i) => `Context ${i + 1}: ${c.substring(0, 200)}...`)
+        .join('\n') || 'No context provided';
+
+      const userRecommendationPrompt = `Analyze this RAG system evaluation and provide specific recommendations:
+
+## User Query
+${userPrompt}
+
+## LLM Response
+${llmResponse}
+
+## Retrieved Context
+${contextSummary}
+
+## DeepEval Analysis
+${metricsAnalysisSummary}
+
+## Overall System Health
+${deepevalAnalysis.overallHealth}
+
+## Critical Issues
+${deepevalAnalysis.criticalIssues.length > 0 ? deepevalAnalysis.criticalIssues.join('\n') : 'None'}
+
+## Warnings
+${deepevalAnalysis.warnings.length > 0 ? deepevalAnalysis.warnings.join('\n') : 'None'}
+
+Based on this analysis, provide 3-5 specific, actionable recommendations to improve the RAG system.`;
+
+      console.log('[LLMAssistanceService] Generating LLM recommendations for RAG improvement');
+
+      // Generate recommendations
+      const recommendations = await llmClient.generate(userRecommendationPrompt, {
+        temperature: 0.7,
+        maxTokens: 2048,
+        systemPrompt,
+      });
+
+      if (!recommendations?.trim()) {
+        throw new Error('No recommendations generated from LLM');
+      }
+
+      return recommendations;
+    } catch (error: unknown) {
+      throw this.handleError('generateRecommendations', error);
+    }
+  }
+
   // ===== PRIVATE HELPER METHODS =====
 
   /**

@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter, Request, Response } from 'express
 import { asString } from '../utils/queryParamUtils.js';
 import { baReviewQueueService } from '../services/BAReviewQueueService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
+import { metricsAnalysisService } from '../services/MetricsAnalysisService.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 
@@ -889,6 +890,86 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
     res.status(500).json({
       success: false,
       message: 'Failed to fetch raw data record',
+      error: message,
+    });
+  }
+});
+
+/**
+ * POST /api/ba-review/get-recommendations
+ * Generate LLM recommendations based on raw data record and DeepEval analysis
+ * Requires: recordId and applicationId in body, or metric-based query params
+ * Returns: DeepEval findings + LLM-generated recommendations
+ */
+baReviewRouter.post('/get-recommendations', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { recordId, applicationId, userPrompt, llmResponse, contextRetrieved, evaluationScores } = req.body as {
+      recordId?: string;
+      applicationId?: string;
+      userPrompt?: string;
+      llmResponse?: string;
+      contextRetrieved?: string[];
+      evaluationScores?: Array<{ metricName: string; value: number }>;
+    };
+
+    if (!applicationId) {
+      res.status(400).json({ success: false, message: 'applicationId is required' });
+      return;
+    }
+
+    if (!userPrompt || !llmResponse || !evaluationScores || evaluationScores.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'userPrompt, llmResponse, and evaluationScores are required',
+      });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Generating recommendations for app ${applicationId}, record ${recordId || 'new'}`);
+
+    // Convert evaluation scores to metrics object for analysis
+    const metricsObject: Record<string, number> = {};
+    evaluationScores.forEach(score => {
+      metricsObject[score.metricName] = score.value;
+    });
+
+    // Analyze metrics using DeepEval
+    const deepevalAnalysis = metricsAnalysisService.analyzeMetrics(metricsObject);
+
+    console.log('[v0] DeepEval analysis completed:', {
+      overallHealth: deepevalAnalysis.overallHealth,
+      criticalIssuesCount: deepevalAnalysis.criticalIssues.length,
+      warningsCount: deepevalAnalysis.warnings.length,
+    });
+
+    // Generate LLM recommendations using Azure OpenAI
+    const llmRecommendations = await llmAssistanceService.generateRecommendations(
+      userPrompt,
+      llmResponse,
+      contextRetrieved || [],
+      deepevalAnalysis
+    );
+
+    const response = {
+      success: true,
+      data: {
+        recordId: recordId || 'direct',
+        applicationId,
+        deepevalAnalysis,
+        llmRecommendations,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+
+    logger.info(`[baReviewRoutes] Successfully generated recommendations for app ${applicationId}`);
+
+    res.status(200).json(response);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error generating recommendations: ${message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate recommendations',
       error: message,
     });
   }
