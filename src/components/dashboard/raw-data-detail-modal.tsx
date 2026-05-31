@@ -79,52 +79,41 @@ export function RawDataDetailModal({
     setIsGeneratingRecommendations(true);
 
     try {
-      // First check if LLM settings are configured
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const settingsResponse = await fetch(`${apiUrl}/api/settings/llm`);
       
-      if (!settingsResponse.ok) {
-        setIsGeneratingRecommendations(false);
-        alert('LLM settings are not configured. Please go to Settings → LLM tab and configure your LLM provider (Azure OpenAI, OpenAI, Claude, etc.)');
-        return;
-      }
-
-      const settingsData = await settingsResponse.json() as unknown;
-      if (!settingsData || typeof settingsData !== 'object') {
-        setIsGeneratingRecommendations(false);
-        alert('LLM settings not found. Please configure in Settings → LLM tab.');
-        return;
-      }
-
-      const settings = settingsData as Record<string, unknown>;
-      if (!settings.provider || !settings.apiKey) {
-        setIsGeneratingRecommendations(false);
-        alert('LLM provider or API key not configured. Please go to Settings → LLM tab and complete the setup.');
-        return;
-      }
-
-      const contextContent = record.contextRetrieved?.map((ctx) => ctx.content) ?? [];
+      // Prepare evaluation scores from record
+      const evaluationScores = record.evaluationScores || [];
       
-      // Log data sources
+      if (evaluationScores.length === 0) {
+        alert('No evaluation metrics available. Please ensure evaluation data is loaded.');
+        setIsGeneratingRecommendations(false);
+        return;
+      }
+
       console.log('[v0] === GET LLM RECOMMENDATIONS ===');
-      console.log('[v0] User Prompt:', record.userPrompt);
-      console.log('[v0] Context Docs:', contextContent.length);
-      console.log('[v0] LLM Response:', record.llmResponse);
+      console.log('[v0] User Prompt:', record.userPrompt?.substring(0, 100));
+      console.log('[v0] Context chunks:', record.contextRetrieved?.length || 0);
+      console.log('[v0] Evaluation metrics:', evaluationScores.length);
       
-      const response = await fetch(`${apiUrl}/api/evaluation/end-to-end`, {
+      // Call new backend endpoint for recommendations
+      const response = await fetch(`${apiUrl}/api/ba-review/get-recommendations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sourceDocuments: contextContent,
-          userPrompt: record.userPrompt,
-          llmResponse: record.llmResponse,
           recordId: record._id,
           applicationId: record.applicationId,
+          userPrompt: record.userPrompt,
+          llmResponse: record.llmResponse,
+          contextRetrieved: record.contextRetrieved?.map((ctx) => 
+            typeof ctx === 'string' ? ctx : (ctx as any)?.content || JSON.stringify(ctx)
+          ) || [],
+          evaluationScores: evaluationScores,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get recommendations');
+        const errorData = await response.json() as Record<string, unknown>;
+        throw new Error((errorData?.error as string) || 'Failed to generate recommendations');
       }
 
       const data = await response.json() as unknown;
@@ -135,40 +124,40 @@ export function RawDataDetailModal({
       }
 
       const apiResponse = data as Record<string, unknown>;
-      const evaluation = apiResponse.evaluation as Record<string, unknown> | undefined;
+      const responseData = apiResponse.data as Record<string, unknown> | undefined;
       
-      const hallucinationAnalysis = evaluation?.hallucinationAnalysis as Record<string, unknown> | undefined;
-      const improvedPromptObj = evaluation?.improvedPrompt as Record<string, unknown> | undefined;
-      
-      const reasoning = typeof hallucinationAnalysis?.reasoning === 'string' 
-        ? hallucinationAnalysis.reasoning 
-        : 'Analysis completed';
-      
-      const suggestionsArray = Array.isArray(improvedPromptObj?.suggestions) 
-        ? improvedPromptObj.suggestions 
-        : [];
+      if (!responseData) {
+        throw new Error('No recommendation data in response');
+      }
 
+      // Extract DeepEval analysis and LLM recommendations
+      const deepevalAnalysis = responseData.deepevalAnalysis as Record<string, unknown> | undefined;
+      const llmRecommendationsText = typeof responseData.llmRecommendations === 'string' 
+        ? responseData.llmRecommendations 
+        : '';
+
+      console.log('[v0] Recommendations received:', {
+        deepevalHealth: deepevalAnalysis?.overallHealth,
+        hasLLMRecommendations: !!llmRecommendationsText,
+      });
+
+      // Set DeepEval findings and LLM recommendations
+      setDeepEvalReasoning(deepevalAnalysis?.deepevalFindings as string || '');
+      setDeepEvalSuggestions(llmRecommendationsText);
+      
+      // Format recommendations for display
       const recommendations = {
-        reasoning,
-        suggestions: suggestionsArray.map((suggestion: unknown) => {
-          if (suggestion && typeof suggestion === 'object') {
-            const sug = suggestion as Record<string, unknown>;
-            return {
-              issue: typeof sug.issue === 'string' ? sug.issue : 'N/A',
-              suggestion: typeof sug.suggestion === 'string' ? sug.suggestion : 'N/A',
-              expectedImprovement: typeof sug.expectedImprovement === 'string' ? sug.expectedImprovement : 'N/A',
-            };
-          }
-          return {
-            issue: 'N/A',
-            suggestion: 'N/A',
-            expectedImprovement: 'N/A',
-          };
-        }),
+        reasoning: deepevalAnalysis?.deepevalFindings as string || 'Analysis completed',
+        suggestions: [
+          {
+            issue: `System Health: ${(deepevalAnalysis?.overallHealth as string) || 'Unknown'}`,
+            suggestion: llmRecommendationsText,
+            expectedImprovement: 'Follow LLM recommendations to improve system metrics',
+          },
+        ],
       };
 
       setLlmRecommendations(recommendations);
-      setDeepEvalReasoning(recommendations.reasoning);
 
       setExpandedSections((prev: Record<string, boolean>) => ({
         ...prev,
