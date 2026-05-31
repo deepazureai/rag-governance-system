@@ -79,7 +79,30 @@ export function RawDataDetailModal({
     setIsGeneratingRecommendations(true);
 
     try {
+      // First check if LLM settings are configured
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const settingsResponse = await fetch(`${apiUrl}/api/settings/llm`);
+      
+      if (!settingsResponse.ok) {
+        setIsGeneratingRecommendations(false);
+        alert('LLM settings are not configured. Please go to Settings → LLM tab and configure your LLM provider (Azure OpenAI, OpenAI, Claude, etc.)');
+        return;
+      }
+
+      const settingsData = await settingsResponse.json() as unknown;
+      if (!settingsData || typeof settingsData !== 'object') {
+        setIsGeneratingRecommendations(false);
+        alert('LLM settings not found. Please configure in Settings → LLM tab.');
+        return;
+      }
+
+      const settings = settingsData as Record<string, unknown>;
+      if (!settings.provider || !settings.apiKey) {
+        setIsGeneratingRecommendations(false);
+        alert('LLM provider or API key not configured. Please go to Settings → LLM tab and complete the setup.');
+        return;
+      }
+
       const contextContent = record.contextRetrieved?.map((ctx) => ctx.content) ?? [];
       
       // Log data sources

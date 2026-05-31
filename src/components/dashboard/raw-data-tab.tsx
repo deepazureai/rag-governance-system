@@ -97,7 +97,19 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch record';
       console.error('[v0] Error fetching record detail:', message);
-      alert(`Failed to view recommendations: ${message}`);
+      
+      // Provide context-aware error messages
+      let userMessage = message;
+      if (message.includes('Not Found')) {
+        userMessage = 'No evaluation data found for this metric. Please check that:\n' +
+          '1. Raw data has been uploaded to the system\n' +
+          '2. DeepEval metrics have been calculated\n' +
+          '3. LLM settings are configured in Settings → LLM tab';
+      } else if (message.includes('fetch record')) {
+        userMessage = 'Failed to load recommendation data. Please try again or check the console for details.';
+      }
+      
+      alert(`Failed to view recommendations:\n\n${userMessage}`);
     }
   };
 
