@@ -71,12 +71,25 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       
-      // Determine the metric name - use metricName param first, then item.metric, then selectedMetric
-      const metric = metricName || item.metric || selectedMetric;
+      // Determine the metric name with proper fallback chain
+      let metric = metricName;
       
       if (!metric) {
+        // Try to get from item
+        metric = item.metric;
+      }
+      
+      if (!metric) {
+        // Try to get from selected state
+        metric = selectedMetric || undefined;
+      }
+      
+      if (!metric) {
+        console.error('[v0] No metric name available', { metricName, itemMetric: item.metric, selectedMetric });
         throw new Error('Metric name is required but not available');
       }
+      
+      console.log('[v0] handleRecordClick - metric:', metric, 'value:', item.value);
       
       // Fetch actual record from backend using applicationId, metric, and value
       const queryParams = new URLSearchParams();
@@ -84,7 +97,8 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
       queryParams.append('metric', metric);
       queryParams.append('value', String(item.value || 0));
       
-      console.log('[v0] Fetching record with metric:', metric, 'value:', item.value);
+      const url = `${apiUrl}/api/ba-review/raw-data-by-metric?${queryParams.toString()}`;
+      console.log('[v0] Fetching from URL:', url);
       
       const response = await fetch(
         `${apiUrl}/api/ba-review/raw-data-by-metric?${queryParams.toString()}`
@@ -209,7 +223,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
               <Card 
                 key={idx} 
                 className={`p-3 border-l-4 hover:shadow-md cursor-pointer transition-all ${item.status === 'critical' ? 'border-l-red-400' : item.status === 'warning' ? 'border-l-yellow-400' : 'border-l-green-400'}`}
-                onClick={() => handleRecordClick(item)}
+                onClick={() => handleRecordClick(item, item.metric)}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-700">{item.metric}</span>
@@ -241,7 +255,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
                 <Card 
                   key={idx} 
                   className="p-3 bg-white text-sm border border-slate-200 hover:shadow-md hover:bg-slate-50 cursor-pointer transition-all"
-                  onClick={() => handleRecordClick(item)}
+                  onClick={() => handleRecordClick(item, item.metric)}
                 >
                   <p className="text-gray-600 line-clamp-2"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 line-clamp-2"><span className="font-medium">A:</span> {item.response}</p>
@@ -270,7 +284,7 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
                 <Card 
                   key={idx} 
                   className="p-3 bg-white text-sm border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => handleRecordClick(item)}
+                  onClick={() => handleRecordClick(item, item.metric)}
                 >
                   <p className="text-gray-600 truncate"><span className="font-medium">Q:</span> {item.query}</p>
                   <p className="text-gray-600 truncate"><span className="font-medium">A:</span> {item.response}</p>
