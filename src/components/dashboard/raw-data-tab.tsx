@@ -137,9 +137,18 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   };
 
   const renderMetricView = (): React.ReactNode => {
-    if (!rawData || typeof rawData !== 'object') return null;
+    if (!rawData || typeof rawData !== 'object') {
+      return <div className="text-center py-8 text-gray-500">Loading metrics...</div>;
+    }
 
-    const metrics = Object.keys(rawData).filter(key => Array.isArray(rawData?.[key]));
+    const metrics = Object.keys(rawData).filter((key: string) => {
+      const value = rawData[key];
+      return Array.isArray(value) && value.length > 0;
+    });
+    
+    if (metrics.length === 0) {
+      return <div className="text-center py-8 text-gray-500">No metrics available</div>;
+    }
     
     return (
       <div className="space-y-4">
@@ -198,9 +207,15 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   };
 
   const renderStatusView = () => {
-    if (!rawData || typeof rawData !== 'object') return null;
+    if (!rawData || typeof rawData !== 'object') {
+      return <div className="text-center py-8 text-gray-500">Loading status data...</div>;
+    }
 
     const statuses = Object.keys(rawData);
+    
+    if (statuses.length === 0) {
+      return <div className="text-center py-8 text-gray-500">No status data available</div>;
+    }
     
     return (
       <div className="space-y-4">
@@ -241,9 +256,15 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   };
 
   const renderFrameworkView = () => {
-    if (!rawData || typeof rawData !== 'object') return null;
+    if (!rawData || typeof rawData !== 'object') {
+      return <div className="text-center py-8 text-gray-500">Loading framework data...</div>;
+    }
 
     const frameworks = Object.keys(rawData);
+    
+    if (frameworks.length === 0) {
+      return <div className="text-center py-8 text-gray-500">No framework data available</div>;
+    }
     
     return (
       <div className="space-y-3">
@@ -270,9 +291,15 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
   };
 
   const renderDateView = () => {
-    if (!rawData || typeof rawData !== 'object') return null;
+    if (!rawData || typeof rawData !== 'object') {
+      return <div className="text-center py-8 text-gray-500">Loading date data...</div>;
+    }
 
     const dates = Object.keys(rawData).sort().reverse();
+    
+    if (dates.length === 0) {
+      return <div className="text-center py-8 text-gray-500">No date data available</div>;
+    }
     
     return (
       <div className="space-y-3">
