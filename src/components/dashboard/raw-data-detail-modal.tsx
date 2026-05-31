@@ -531,33 +531,52 @@ export function RawDataDetailModal({
               )}
             </button>
             {expandedSections['recommendations'] && (
-              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
+              <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-4">
                 {llmRecommendations ? (
                   <>
-                    <div className="bg-black p-4 rounded border border-purple-800">
-                      <p className="text-xs font-mono text-purple-400 mb-2">Analysis Reasoning:</p>
-                      <p className="text-xs text-gray-300 whitespace-pre-wrap break-words">
-                        {llmRecommendations.reasoning}
-                      </p>
-                    </div>
+                    {/* DeepEval Findings Section */}
+                    {deepEvalReasoning && (
+                      <div className="bg-black p-4 rounded border-l-4 border-l-cyan-500">
+                        <div className="flex items-center mb-2">
+                          <span className="text-xs font-mono text-cyan-400 uppercase font-bold">DeepEval Analysis</span>
+                        </div>
+                        <div className="text-xs text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                          {deepEvalReasoning}
+                        </div>
+                      </div>
+                    )}
 
+                    {/* LLM Recommendations Section */}
+                    {deepEvalSuggestions && (
+                      <div className="bg-black p-4 rounded border-l-4 border-l-purple-500">
+                        <div className="flex items-center mb-2">
+                          <span className="text-xs font-mono text-purple-400 uppercase font-bold">LLM Recommendations</span>
+                        </div>
+                        <div className="text-xs text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                          {deepEvalSuggestions}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Original Recommendations Format */}
                     {llmRecommendations.suggestions.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-mono text-purple-400">Suggestions:</p>
+                        <p className="text-xs font-mono text-purple-400 uppercase font-bold">Implementation Steps:</p>
                         {llmRecommendations.suggestions.map((sug, idx) => (
-                          <div key={idx} className="bg-black p-3 rounded border border-gray-800">
-                            <p className="text-xs text-gray-400 mb-1">Issue: {sug.issue}</p>
-                            <p className="text-xs text-gray-300 mb-2">Suggestion: {sug.suggestion}</p>
-                            <p className="text-xs text-green-400">
-                              Expected Improvement: {sug.expectedImprovement}
-                            </p>
+                          <div key={idx} className="bg-gray-900 p-3 rounded border border-gray-700">
+                            <p className="text-xs text-amber-400 mb-1 font-mono">{sug.issue}</p>
+                            <p className="text-xs text-gray-300 mb-2">{sug.suggestion}</p>
+                            <p className="text-xs text-green-400">→ {sug.expectedImprovement}</p>
                           </div>
                         ))}
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-6">
+                  <div className="text-center py-8">
+                    <p className="text-xs text-gray-400 mb-4">
+                      Click button below to analyze metrics and generate recommendations using DeepEval and LLM
+                    </p>
                     <Button
                       onClick={handleGetRecommendations}
                       disabled={isGeneratingRecommendations}
@@ -566,10 +585,10 @@ export function RawDataDetailModal({
                       {isGeneratingRecommendations ? (
                         <>
                           <Spinner className="w-4 h-4 mr-2" />
-                          Analyzing...
+                          Generating Recommendations...
                         </>
                       ) : (
-                        'Get LLM Recommendations'
+                        'Generate Recommendations'
                       )}
                     </Button>
                   </div>
