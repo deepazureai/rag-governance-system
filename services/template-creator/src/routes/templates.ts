@@ -15,6 +15,16 @@ import {
 import { TemplateService } from '../services/TemplateService.js';
 import { successResponse, errorResponse, isSuccess } from '../utils/apiResponse.js';
 
+/**
+ * Helper to safely extract string from query/param (handles string | string[])
+ */
+function asString(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] || '';
+  }
+  return value || '';
+}
+
 export function createTemplateRoutes(templateService: TemplateService): Router {
   const router = Router();
 
@@ -73,7 +83,7 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
   router.get('/:templateId', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { templateId } = req.params;
-      const template = await templateService.getTemplate(templateId);
+      const template = await templateService.getTemplate(templateId as string);
 
       if (!template) {
         return res.status(404).json(errorResponse('NOT_FOUND', 'Template not found'));
@@ -99,7 +109,7 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
           return res.status(401).json(errorResponse('AUTHENTICATION_ERROR'));
         }
 
-        const updated = await templateService.updateTemplate(templateId, validated, userId);
+        const updated = await templateService.updateTemplate(templateId as string, validated, userId);
 
         if (!updated) {
           return res.status(404).json(errorResponse('NOT_FOUND', 'Template not found'));
@@ -116,7 +126,7 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
   router.delete('/:templateId', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { templateId } = req.params;
-      const deleted = await templateService.deleteTemplate(templateId);
+      const deleted = await templateService.deleteTemplate(templateId as string);
 
       if (!deleted) {
         return res.status(404).json(errorResponse('NOT_FOUND', 'Template not found'));
@@ -143,9 +153,9 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
         }
 
         const cloned = await templateService.cloneTemplate(
-          templateId,
+          templateId as string,
           validated.newName,
-          validated.appId,
+          validated.appId as string,
           userId
         );
 
@@ -175,9 +185,9 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
         }
 
         const forked = await templateService.forkTemplate(
-          templateId,
+          templateId as string,
           validated.newName,
-          validated.appId,
+          validated.appId as string,
           userId,
           validated.customizations
         );
@@ -220,7 +230,7 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { appId } = req.params;
-        const templates = await templateService.getAppTemplates(appId);
+        const templates = await templateService.getAppTemplates(appId as string);
 
         res.json(
           successResponse(
@@ -279,7 +289,7 @@ export function createTemplateRoutes(templateService: TemplateService): Router {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { appId } = req.params;
-        const metrics = await templateService.getMetrics(appId);
+        const metrics = await templateService.getMetrics(appId as string);
 
         res.json(successResponse(metrics, 'Metrics retrieved successfully'));
       } catch (error) {

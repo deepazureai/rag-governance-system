@@ -9,6 +9,16 @@ import { DebugAnalyzer } from '../services/DebugAnalyzer.js';
 import { DebugRepository } from '../persistence/DebugRepository.js';
 import { PromptAnalysisRequestSchema } from '../schemas/validation.js';
 
+/**
+ * Helper to safely extract string from query/param (handles string | string[])
+ */
+function asString(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] || '';
+  }
+  return value || '';
+}
+
 interface ValidatedRequest<T> extends Request {
   validatedBody?: T;
 }
@@ -113,7 +123,7 @@ export function createDebugRoutes(
           return;
         }
 
-        const analysis = await debugRepository.getDebugAnalysis(promptId, appId);
+        const analysis = await debugRepository.getDebugAnalysis(promptId as string, appId as string);
 
         if (!analysis) {
           res.status(404).json({ error: { message: 'Analysis not found', code: 'NOT_FOUND' } });
@@ -146,7 +156,7 @@ export function createDebugRoutes(
           return;
         }
 
-        const analyses = await debugRepository.getRecentAnalyses(appId, Math.min(limit, 100));
+        const analyses = await debugRepository.getRecentAnalyses(appId as string, Math.min(limit, 100));
 
         res.status(200).json({
           success: true,
