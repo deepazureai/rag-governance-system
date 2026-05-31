@@ -18,9 +18,11 @@ interface BAReviewDashboardProps {
 }
 
 export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'queue' | 'templates'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'kb' | 'templates'>('queue');
   const [queueItems, setQueueItems] = useState<BAReviewQueueItem[]>([]);
+  const [kbPrompts, setKBPrompts] = useState<any[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [isLoadingKB, setIsLoadingKB] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<BAReviewQueueItem | null>(null);
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -65,7 +67,38 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
   // Load queue items on mount
   React.useEffect(() => {
     fetchQueueItems();
+    fetchKBPrompts();
   }, [applicationId]);
+
+  const fetchKBPrompts = async (): Promise<void> => {
+    try {
+      setIsLoadingKB(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/knowledge-base/badged-prompts/${applicationId}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('[v0] KB badged prompts endpoint not yet implemented');
+          setKBPrompts([]);
+          return;
+        }
+        throw new Error('Failed to fetch badged prompts');
+      }
+
+      const data = await response.json();
+      const prompts = Array.isArray(data.data) ? data.data : [];
+
+      if (data.success) {
+        setKBPrompts(prompts);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load KB prompts';
+      console.error('[v0] Error fetching KB prompts:', message);
+      setKBPrompts([]);
+    } finally {
+      setIsLoadingKB(false);
+    }
+  };
 
   const getPriorityColor = (priority: string): string => {
     switch (priority) {
@@ -97,10 +130,11 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as 'queue' | 'templates')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as 'queue' | 'kb' | 'templates')} className="w-full">
         <div className="flex items-center justify-between mb-4">
-          <TabsList className="grid w-full max-w-xs grid-cols-2">
-            <TabsTrigger value="queue">Review Queue</TabsTrigger>
+          <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsTrigger value="queue">Recommendations</TabsTrigger>
+            <TabsTrigger value="kb">KB Prompts</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
           {activeTab === 'templates' && (
@@ -256,6 +290,81 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
                         }}
                       >
                         Review
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="kb" className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Badged KB Prompts</h2>
+            <p className="text-sm text-gray-600 mb-4">Review and manage knowledge base prompts that have been approved by testers</p>
+
+            {isLoadingKB ? (
+              <Card className="p-8 text-center bg-gray-50 border-gray-200">
+                <Spinner className="w-6 h-6 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">Loading KB prompts...</p>
+              </Card>
+            ) : kbPrompts.length === 0 ? (
+              <Card className="p-8 text-center bg-gray-50 border-gray-200">
+                <CheckCircle className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">No badged prompts yet</p>
+                <p className="text-gray-500 text-sm mt-1">Testers can badge prompts in the Knowledge Base chat</p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {kbPrompts.map((prompt) => (
+                  <Card
+                    key={prompt._id}
+                    className="p-4 border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        {/* Source Badge */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                            KB Prompt
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            Relevance: {(prompt.relevanceScore * 100).toFixed(0)}%
+                          </span>
+                        </div>
+
+                        {/* Prompt Preview */}
+                        <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
+                          {prompt.prompt}
+                        </p>
+
+                        {/* Context Preview */}
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                          Context: {prompt.context.substring(0, 100)}...
+                        </p>
+
+                        {/* Source */}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>Source: {prompt.source}</span>
+                          {prompt.badgedAt && (
+                            <span>
+                              Badged:{' '}
+                              <span className="font-semibold text-gray-700">
+                                {new Date(prompt.badgedAt).toLocaleDateString()}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Use in Template Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-4 flex-shrink-0 bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                      >
+                        Use in Template
                       </Button>
                     </div>
                   </Card>

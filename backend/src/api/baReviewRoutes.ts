@@ -554,4 +554,198 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
   }
 });
 
+/**
+ * POST /api/ba-review/curate-recommendation
+ * Use Settings LLM to curate/refine recommendation based on metrics and initial suggestion
+ */
+baReviewRouter.post('/curate-recommendation', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+
+    const applicationId = typeof body.applicationId === 'string' ? body.applicationId : '';
+    const originalPrompt = typeof body.originalPrompt === 'string' ? body.originalPrompt : '';
+    const improvedPrompt = typeof body.improvedPrompt === 'string' ? body.improvedPrompt : '';
+    const initialReason = typeof body.initialReason === 'string' ? body.initialReason : '';
+    const priority = typeof body.priority === 'string' ? body.priority : 'medium';
+    const metrics = typeof body.metrics === 'object' && body.metrics !== null ? body.metrics : {};
+
+    if (!applicationId || !originalPrompt || !improvedPrompt) {
+      res.status(400).json({ success: false, error: 'Missing required fields' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Curating recommendation for app ${applicationId}`);
+
+    // Build context for LLM curation
+    let metricsContext = '';
+    if (typeof metrics === 'object' && metrics !== null) {
+      metricsContext = '\n\nDeepEval Metrics:\n' + 
+        Object.entries(metrics as Record<string, unknown>)
+          .map(([key, value]) => `- ${key}: ${(typeof value === 'number' ? (value * 100).toFixed(0) : value)}%`)
+          .join('\n');
+    }
+
+    const curationPrompt = `
+You are a BA (Business Analyst) assistant. Refine and enhance this recommendation based on metrics and initial suggestion.
+
+Original Prompt: "${originalPrompt}"
+Improved Prompt: "${improvedPrompt}"
+Initial LLM Suggestion: "${initialReason}"
+Priority: ${priority}
+${metricsContext}
+
+INSTRUCTIONS:
+1. Combine the metrics insights with the initial suggestion
+2. Create a clear, actionable recommendation
+3. Reference specific metrics where relevant
+4. Keep it concise but comprehensive (2-3 sentences max)
+
+Provide only the curated recommendation text, nothing else.
+    `;
+
+    // Use LLM assistance service to refine recommendation
+    const curatedSuggestion = await llmAssistanceService.assistRefineRecommendation(
+      applicationId,
+      initialReason,
+      `Combine with metrics: ${JSON.stringify(metrics)}`
+    );
+
+    logger.info(`[baReviewRoutes] Recommendation curated successfully`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        curatedSuggestion: curatedSuggestion.trim(),
+        priority,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[baReviewRoutes] Error curating recommendation: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * GET /api/ba-review/low-score-prompts/:applicationId
+ * Fetch all prompts with score below threshold (for bulk processing)
+ */
+baReviewRouter.get('/low-score-prompts/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const thresholdValue = req.query.threshold;
+    const thresholdStr = Array.isArray(thresholdValue) ? thresholdValue[0] : (thresholdValue || '70');
+    const threshold = parseInt(thresholdStr as string, 10) / 100;
+
+    if (!applicationId) {
+      res.status(400).json({ success: false, error: 'Missing applicationId' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching low-score prompts for app ${applicationId} (threshold: ${threshold})`);
+
+    const RawDataCollection = require('mongoose').connection.collection('rawdatas');
+
+    // Query for prompts with low scores
+    const lowScorePrompts = await RawDataCollection.find({
+      applicationId: applicationId,
+      'metrics.averageScore': { $lt: threshold },
+    })
+      .sort({ 'metrics.averageScore': 1 })
+      .limit(100)
+      .toArray();
+
+    interface FormattedLowScorePrompt {
+      _id: string;
+      userPrompt: string;
+      currentScore: number;
+      priority: string;
+      llmSuggestion: string;
+    }
+
+    const formattedPrompts: FormattedLowScorePrompt[] = lowScorePrompts.map((prompt: any) => ({
+      _id: prompt._id?.toString() || '',
+      userPrompt: prompt.userInput || '',
+      currentScore: prompt.metrics?.averageScore || 0,
+      priority: prompt.metrics?.averageScore < 0.5 ? 'critical' : 'high',
+      llmSuggestion: prompt.llmOutput || '',
+    }));
+
+    logger.info(`[baReviewRoutes] Found ${formattedPrompts.length} low-score prompts`);
+
+    res.json({
+      success: true,
+      data: formattedPrompts,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching low-score prompts: ${message}`);
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
+/**
+ * POST /api/ba-review/process-low-score-prompt
+ * Process a single low-score prompt: generate recommendation and add to queue
+ */
+baReviewRouter.post('/process-low-score-prompt', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+
+    const applicationId = typeof body.applicationId === 'string' ? body.applicationId : '';
+    const promptId = typeof body.promptId === 'string' ? body.promptId : '';
+    const userPrompt = typeof body.userPrompt === 'string' ? body.userPrompt : '';
+    const currentScore = typeof body.currentScore === 'number' ? body.currentScore : 0;
+    const llmSuggestion = typeof body.llmSuggestion === 'string' ? body.llmSuggestion : '';
+
+    if (!applicationId || !promptId || !userPrompt) {
+      res.status(400).json({ success: false, error: 'Missing required fields' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Processing low-score prompt: ${promptId}`);
+
+    // Generate improvement suggestion using LLM assistance service
+    const improvementSuggestion = await llmAssistanceService.assistRefineRecommendation(
+      applicationId,
+      userPrompt,
+      `Current performance score: ${(currentScore * 100).toFixed(0)}%. Suggest improvements.`
+    );
+
+    // Add to BA review queue
+    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+
+    const improvement = {
+      applicationId,
+      originalPrompt: userPrompt,
+      improvedPrompt: llmSuggestion,
+      reason: improvementSuggestion.trim(),
+      priority: currentScore < 0.5 ? 'critical' : 'high',
+      estimatedScoreImpact: Math.min(0.3, 1 - currentScore),
+      status: 'suggested',
+      createdAt: new Date(),
+      sourcePromptId: promptId,
+    };
+
+    await BAImprovementCollection.insertOne(improvement);
+
+    logger.info(`[baReviewRoutes] Low-score prompt processed and added to queue`);
+
+    res.json({
+      success: true,
+      data: {
+        promptId,
+        suggestion: improvementSuggestion.trim(),
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[baReviewRoutes] Error processing low-score prompt: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 export default baReviewRouter;

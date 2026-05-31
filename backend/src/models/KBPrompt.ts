@@ -29,6 +29,12 @@ export interface IKBPrompt extends Document {
   userNotes?: string;
   isActive: boolean;
   
+  // Badging
+  badgeStatus?: 'approved' | 'pending' | 'rejected';
+  badgedAt?: Date;
+  badgedBy?: string;
+  badgeNotes?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,6 +91,15 @@ export const kbPromptSchema = new Schema<IKBPrompt>(
       default: true,
       index: true,
     },
+    badgeStatus: {
+      type: String,
+      enum: ['approved', 'pending', 'rejected'],
+      default: 'pending',
+      index: true,
+    },
+    badgedAt: { type: Date },
+    badgedBy: { type: String },
+    badgeNotes: { type: String },
   },
   { timestamps: true }
 );

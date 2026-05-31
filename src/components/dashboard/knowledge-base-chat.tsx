@@ -45,6 +45,8 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [topicInput, setTopicInput] = useState('');
   const [showNewChatForm, setShowNewChatForm] = useState(false);
+  const [badgingMessageId, setBadgingMessageId] = useState<string | null>(null);
+  const [badgeNotes, setBadgeNotes] = useState('');
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -190,6 +192,42 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     }
   };
 
+  const badgePrompt = async (messageId: string) => {
+    if (!confirm('Badge this prompt as approved for template creation?')) {
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+
+      // For now, use messageId as promptId (would be replaced with actual prompt ID in production)
+      const response = await fetch(`${apiUrl}/api/knowledge-base/prompts/${messageId}/badge`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          badgeStatus: 'approved',
+          badgedBy: 'tester',
+          badgeNotes: badgeNotes,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to badge prompt');
+      }
+
+      const data = await response.json();
+      console.log('[v0] Prompt badged successfully:', data);
+
+      // Update UI to show badge
+      setBadgingMessageId(null);
+      setBadgeNotes('');
+      alert('Prompt badged successfully!');
+    } catch (err) {
+      console.error('[v0] Error badging prompt:', err);
+      alert('Failed to badge prompt');
+    }
+  };
+
   const deleteThread = async (threadId: string) => {
     if (!confirm('Delete this chat thread? This cannot be undone.')) {
       return;
@@ -238,14 +276,17 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
             </Button>
           ) : (
             <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Enter topic..."
+              <textarea
+                placeholder="Enter chat topic or initial question..."
                 value={topicInput}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setTopicInput(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTopicInput(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={4}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') createNewChatThread();
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    createNewChatThread();
+                  }
                 }}
               />
               <div className="flex gap-2">
@@ -354,6 +395,51 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
                         </p>
                       </div>
                     </div>
+
+                    {/* Badge button for assistant messages */}
+                    {message.role === 'assistant' && !message.content.startsWith('Error:') && (
+                      <div className="flex justify-start ml-0">
+                        {badgingMessageId === message.id ? (
+                          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-3 max-w-2xl w-full">
+                            <div className="space-y-2">
+                              <textarea
+                                placeholder="Add notes for this badged prompt (optional)..."
+                                value={badgeNotes}
+                                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBadgeNotes(e.target.value)}
+                                className="w-full px-3 py-2 border border-green-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                                rows={2}
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => badgePrompt(message.id)}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm"
+                                >
+                                  Confirm Badge
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setBadgingMessageId(null);
+                                    setBadgeNotes('');
+                                  }}
+                                  variant="outline"
+                                  className="flex-1 text-sm"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ) : (
+                          <Button
+                            onClick={() => setBadgingMessageId(message.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white gap-2 text-sm"
+                          >
+                            <Flag className="w-4 h-4" />
+                            Badge Prompt
+                          </Button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Context Used */}
                     {message.contextUsed && message.contextUsed.length > 0 && (

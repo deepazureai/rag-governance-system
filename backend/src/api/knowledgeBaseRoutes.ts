@@ -480,4 +480,110 @@ knowledgeBaseRouter.get('/prompts/:applicationId/:promptId', async (req: Request
   }
 });
 
+/**
+ * PATCH /api/knowledge-base/prompts/:promptId/badge
+ * Update badge status for a KB prompt (approval workflow)
+ */
+knowledgeBaseRouter.patch('/prompts/:promptId/badge', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const promptId = asString(req.params.promptId);
+    const body = req.body as Record<string, unknown>;
+
+    const badgeStatusValue = body.badgeStatus;
+    const badgedByValue = body.badgedBy;
+    const badgeNotesValue = body.badgeNotes;
+
+    const badgeStatus = typeof badgeStatusValue === 'string' ? badgeStatusValue : 'approved';
+    const badgedBy = typeof badgedByValue === 'string' ? badgedByValue : 'system';
+    const badgeNotes = typeof badgeNotesValue === 'string' ? badgeNotesValue : '';
+
+    if (!promptId) {
+      res.status(400).json({ error: 'Missing promptId' });
+      return;
+    }
+
+    if (!['approved', 'pending', 'rejected'].includes(badgeStatus)) {
+      res.status(400).json({ error: 'Invalid badge status' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Updating badge status for prompt ${promptId}: ${badgeStatus}`);
+
+    const KBPromptCollection = require('mongoose').connection.collection('kbprompts');
+
+    const updateData: Record<string, unknown> = {
+      badgeStatus,
+      badgedBy,
+      badgedAt: new Date(),
+    };
+
+    if (badgeNotes) {
+      updateData.badgeNotes = badgeNotes;
+    }
+
+    let query: Record<string, unknown> = {};
+
+    // Try to match by MongoDB ObjectId if promptId looks like one
+    if (promptId.match(/^[0-9a-f]{24}$/i)) {
+      query._id = new (require('mongoose')).Types.ObjectId(promptId);
+    } else {
+      // Fallback to string comparison
+      query._id = promptId;
+    }
+
+    const result = await KBPromptCollection.findOneAndUpdate(query, { $set: updateData }, { returnDocument: 'after' });
+
+    if (!result) {
+      res.status(404).json({ error: 'KB prompt not found' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Badge status updated for prompt ${promptId}`);
+
+    res.json({
+      success: true,
+      data: {
+        promptId,
+        badgeStatus,
+        badgedAt: new Date(),
+        badgedBy,
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to update badge status:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update badge status' });
+  }
+});
+
+/**
+ * GET /api/knowledge-base/badged-prompts/:applicationId
+ * Fetch all badged (approved) KB prompts for BA review and template creation
+ */
+knowledgeBaseRouter.get('/badged-prompts/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching badged prompts for app ${applicationId}`);
+
+    // Mock badged prompts - in production this would query the vector store or MongoDB
+    // For now, return empty array as template
+    const badgedPrompts: any[] = [];
+
+    logger.info(`[KnowledgeBase] Retrieved ${badgedPrompts.length} badged prompts`);
+
+    res.json({
+      success: true,
+      data: badgedPrompts,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to retrieve badged prompts:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to retrieve badged prompts' });
+  }
+});
+
 export default knowledgeBaseRouter;
