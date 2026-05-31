@@ -748,4 +748,107 @@ baReviewRouter.post('/process-low-score-prompt', async (req: Request, res: Respo
   }
 });
 
+/**
+ * GET /api/ba-review/raw-data-by-metric
+ * Fetch raw data records matching a specific metric and value for recommendations
+ * Query params:
+ *   - applicationId: Application ID (required)
+ *   - metric: Metric name (required)
+ *   - value: Metric value (required)
+ */
+baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationIdParam = req.query.applicationId;
+    const metricParam = req.query.metric;
+    const valueParam = req.query.value;
+
+    const applicationId = Array.isArray(applicationIdParam) ? applicationIdParam[0] : applicationIdParam;
+    const metric = Array.isArray(metricParam) ? metricParam[0] : metricParam;
+    const valueStr = Array.isArray(valueParam) ? valueParam[0] : valueParam;
+
+    if (!applicationId || !metric || !valueStr) {
+      res.status(400).json({
+        success: false,
+        message: 'applicationId, metric, and value query parameters are required',
+      });
+      return;
+    }
+
+    const value = parseFloat(valueStr as string);
+    if (isNaN(value)) {
+      res.status(400).json({
+        success: false,
+        message: 'value must be a valid number',
+      });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching raw data for app ${applicationId}, metric ${metric}, value ${value}`);
+
+    const RawDataCollection = mongoose.connection.collection('rawdatarecords');
+
+    // Find records matching the application and metric criteria
+    const records = await RawDataCollection.find({
+      applicationId: applicationId as string,
+      'evaluationScores.metricName': metric,
+      'evaluationScores.value': { $gte: value - 0.5, $lte: value + 0.5 }, // Match within 0.5 tolerance
+    })
+      .limit(1)
+      .toArray();
+
+    if (!records || records.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'No raw data records found matching criteria',
+      });
+      return;
+    }
+
+    const record = records[0];
+
+    if (!record) {
+      res.status(404).json({
+        success: false,
+        message: 'No raw data records found matching criteria',
+      });
+      return;
+    }
+
+    // Format the response
+    const response = {
+      _id: record._id?.toString(),
+      applicationId: record.applicationId,
+      userPrompt: record.userPrompt,
+      llmResponse: record.llmResponse,
+      context: record.context,
+      evaluationScores: record.evaluationScores,
+      userFeedback: record.userFeedback,
+      totalLatency: record.totalLatency,
+      baReview: record.baReview || {
+        promptImprovements: [],
+        reviewStatus: 'pending',
+      },
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+
+    logger.info(
+      `[baReviewRoutes] Successfully retrieved record ${record._id?.toString()} with ${response.baReview.promptImprovements?.length || 0} improvements`
+    );
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching raw data by metric: ${message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch raw data record',
+      error: message,
+    });
+  }
+});
+
 export default baReviewRouter;

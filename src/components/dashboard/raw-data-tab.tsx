@@ -71,28 +71,33 @@ export function RawDataTab({ applicationId }: RawDataTabProps) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       
-      // Fetch actual record from backend using metric and value
+      // Fetch actual record from backend using applicationId, metric, and value
       const queryParams = new URLSearchParams();
+      queryParams.append('applicationId', applicationId);
       queryParams.append('metric', item.metric || 'default');
       queryParams.append('value', String(item.value || 0));
       
       const response = await fetch(
-        `${apiUrl}/api/ba-review/raw-data?${queryParams.toString()}`
+        `${apiUrl}/api/ba-review/raw-data-by-metric?${queryParams.toString()}`
       );
       
       if (!response.ok) {
         console.error('[v0] Failed to fetch record detail:', response.statusText);
-        return;
+        throw new Error(`Failed to fetch record: ${response.statusText}`);
       }
       
-      const result = await response.json();
+      const result = await response.json() as { success?: boolean; data?: RawDataRecordDetail };
       if (result.success && result.data) {
-        setSelectedRecord(result.data as RawDataRecordDetail);
+        setSelectedRecord(result.data);
         setDetailModalOpen(true);
+      } else {
+        console.error('[v0] Invalid response format:', result);
+        throw new Error('Invalid response from server');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to fetch record';
       console.error('[v0] Error fetching record detail:', message);
+      alert(`Failed to view recommendations: ${message}`);
     }
   };
 
