@@ -35,22 +35,27 @@ export class LLMConfigService {
         throw new Error('Collection not available');
       }
 
-      console.log('[v0] Upserting config for applicationId:', (config as Record<string, unknown>).applicationId);
+      const applicationId = (config as Record<string, unknown>).applicationId as string;
+      console.log('[v0] Upserting config for applicationId:', applicationId);
       
-      const result = await collection.findOneAndUpdate(
-        { applicationId: (config as Record<string, unknown>).applicationId },
+      // Use replaceOne to upsert (replaces entire document or creates new one)
+      const upsertResult = await collection.updateOne(
+        { applicationId },
         { $set: config },
-        { upsert: true, returnDocument: 'after' }
+        { upsert: true }
       );
 
-      console.log('[v0] Upsert result:', result ? 'Document found/created' : 'No result');
+      console.log('[v0] Upsert acknowledged:', upsertResult.acknowledged, 'Modified:', upsertResult.modifiedCount, 'Upserted ID:', upsertResult.upsertedId);
 
-      if (!result || !result.value) {
-        throw new Error('Upsert completed but no document returned');
+      // Now fetch the document to return
+      const savedConfig = await collection.findOne({ applicationId }) as unknown;
+      
+      if (!savedConfig) {
+        throw new Error('Failed to retrieve saved configuration');
       }
 
-      console.log('[v0] Successfully upserted config for applicationId:', (result.value as Record<string, unknown>).applicationId);
-      return result.value as LLMConfig;
+      console.log('[v0] Successfully upserted and retrieved config for applicationId:', applicationId);
+      return savedConfig as LLMConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
