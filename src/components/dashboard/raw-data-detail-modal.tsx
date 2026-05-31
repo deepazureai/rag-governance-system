@@ -429,31 +429,51 @@ export function RawDataDetailModal({
             )}
           </div>
 
-          {/* Framework Evaluation Scores */}
+          {/* Evaluation Scores Section */}
           {record.evaluationScores && record.evaluationScores.length > 0 && (
             <div className="border border-gray-800 rounded overflow-hidden">
               <div className="bg-gray-900 px-4 py-3 font-mono text-sm">
                 <span className="text-orange-400">EVALUATION_SCORES</span>
               </div>
               <div className="bg-gray-950 px-4 py-3 border-t border-gray-800 space-y-3">
-                {record.evaluationScores.map((eval_score, idx) => (
-                  <div key={idx} className="bg-black p-3 rounded border border-gray-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-xs text-orange-400">{eval_score.framework}</span>
-                      <span className="text-gray-500 text-xs">{formatDate(eval_score.generatedAt)}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(eval_score.scores).map(([key, value]: [string, unknown]) => (
-                        <div key={key} className="text-xs">
-                          <span className="text-gray-400">{key}: </span>
-                          <span className="text-orange-300 font-mono">
-                            {typeof value === 'number' ? value.toFixed(3) : String(value)}
-                          </span>
+                {/* Handle both new format (array of { metricName, value }) and old format (array of { framework, scores }) */}
+                {record.evaluationScores.map((eval_score: any, idx: number) => {
+                  // New format: { metricName, value, timestamp }
+                  if (eval_score.metricName && typeof eval_score.value === 'number') {
+                    return (
+                      <div key={idx} className="bg-black p-3 rounded border border-gray-800">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-orange-400">{eval_score.metricName}</span>
+                          <span className="text-orange-300 font-mono font-bold">{eval_score.value.toFixed(2)}</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                      </div>
+                    );
+                  }
+                  
+                  // Old format: { framework, generatedAt, scores: {} }
+                  if (eval_score.scores && typeof eval_score.scores === 'object') {
+                    return (
+                      <div key={idx} className="bg-black p-3 rounded border border-gray-800">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-xs text-orange-400">{eval_score.framework}</span>
+                          <span className="text-gray-500 text-xs">{formatDate(eval_score.generatedAt)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {Object.entries(eval_score.scores).map(([key, value]: [string, unknown]) => (
+                            <div key={key} className="text-xs">
+                              <span className="text-gray-400">{key}: </span>
+                              <span className="text-orange-300 font-mono">
+                                {typeof value === 'number' ? value.toFixed(3) : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  return null;
+                })}
               </div>
             </div>
           )}
