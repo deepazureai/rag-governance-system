@@ -35,13 +35,84 @@ export function SynthesisConfig({
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
+      // Get applicationId from URL params or context
+      const applicationId = new URLSearchParams(window.location.search).get('appId') || 'default-app';
+
+      // Fetch full recommendation data for selected IDs
+      interface RecommendationData {
+        _id: string;
+        userPrompt: string;
+        llmResponse: string;
+        suggestion: string;
+        priority: string;
+        priorityScore: number;
+      }
+
+      const recommendationsData: RecommendationData[] = [];
+      for (const recId of selectedRecommendationIds) {
+        try {
+          const recResponse = await fetch(
+            `${apiUrl}/api/ba-review/recommendations/${applicationId}/${recId}`
+          );
+          if (recResponse.ok) {
+            const recData = (await recResponse.json()) as unknown;
+            if (
+              typeof recData === 'object' &&
+              recData !== null &&
+              'data' in recData &&
+              typeof (recData as Record<string, unknown>).data === 'object'
+            ) {
+              const rec = (recData as { data: RecommendationData }).data;
+              recommendationsData.push(rec);
+            }
+          }
+        } catch (err) {
+          console.error(`[v0] Failed to fetch recommendation ${recId}:`, err);
+        }
+      }
+
+      // Fetch full KB prompt data for selected IDs
+      interface KBPromptData {
+        _id: string;
+        prompt: string;
+        context: string;
+        relevanceScore: number;
+        source: string;
+      }
+
+      const kbPromptsData: KBPromptData[] = [];
+      for (const kbId of selectedKBPromptIds) {
+        try {
+          const kbResponse = await fetch(
+            `${apiUrl}/api/knowledge-base/prompts/${applicationId}/${kbId}`
+          );
+          if (kbResponse.ok) {
+            const kbData = (await kbResponse.json()) as unknown;
+            if (
+              typeof kbData === 'object' &&
+              kbData !== null &&
+              'data' in kbData &&
+              typeof (kbData as Record<string, unknown>).data === 'object'
+            ) {
+              const kb = (kbData as { data: KBPromptData }).data;
+              kbPromptsData.push(kb);
+            }
+          }
+        } catch (err) {
+          console.error(`[v0] Failed to fetch KB prompt ${kbId}:`, err);
+        }
+      }
+
+      // Call synthesis endpoint with enriched data
       const response = await fetch(`${apiUrl}/api/prompt-templates/synthesize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateName,
           recommendationIds: selectedRecommendationIds,
+          recommendations: recommendationsData.length > 0 ? recommendationsData : undefined,
           kbPromptIds: selectedKBPromptIds,
+          kbPrompts: kbPromptsData.length > 0 ? kbPromptsData : undefined,
           frameworks: selectedFrameworks,
         }),
       });

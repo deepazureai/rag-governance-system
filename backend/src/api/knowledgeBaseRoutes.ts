@@ -414,4 +414,70 @@ knowledgeBaseRouter.post('/assist/generate-summary', async (req: Request, res: R
   }
 });
 
+/**
+ * GET /api/knowledge-base/prompts/:applicationId/:promptId
+ * Fetch single KB prompt by ID for template synthesis enrichment
+ */
+knowledgeBaseRouter.get('/prompts/:applicationId/:promptId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const promptId = asString(req.params.promptId);
+
+    if (!applicationId || !promptId) {
+      res.status(400).json({ error: 'Missing applicationId or promptId' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching single prompt: ${promptId} for app ${applicationId}`);
+
+    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
+
+    // Get all documents and find the matching one
+    const allDocs = await vectorStore.search('', { k: 10000 });
+
+    interface KBPromptResult {
+      _id: string;
+      prompt: string;
+      context: string;
+      relevanceScore: number;
+      usageCount: number;
+      source: string;
+      createdAt: string;
+    }
+
+    // Find document matching the promptId
+    const matchingDoc = allDocs.find((doc: any) => {
+      const generatedId = `kb-${allDocs.indexOf(doc)}-${doc.metadata?.uploadedAt?.getTime?.() || Date.now()}`;
+      return generatedId === promptId || doc.metadata?.id === promptId;
+    });
+
+    if (!matchingDoc) {
+      res.status(404).json({ error: 'KB prompt not found' });
+      return;
+    }
+
+    const prompt: KBPromptResult = {
+      _id: promptId,
+      prompt: matchingDoc.content.substring(0, 200).trim(),
+      context: matchingDoc.content,
+      relevanceScore: typeof matchingDoc.metadata.relevanceScore === 'number' 
+        ? matchingDoc.metadata.relevanceScore 
+        : 0.5,
+      usageCount: 0,
+      source: String(matchingDoc.metadata.source ?? 'unknown'),
+      createdAt: String(matchingDoc.metadata.uploadedAt ?? new Date().toISOString()),
+    };
+
+    logger.info(`[KnowledgeBase] Retrieved single prompt: ${promptId}`);
+
+    res.json({
+      success: true,
+      data: prompt,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to retrieve single prompt:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to retrieve prompt' });
+  }
+});
+
 export default knowledgeBaseRouter;

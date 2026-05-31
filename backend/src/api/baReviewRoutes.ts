@@ -484,4 +484,74 @@ baReviewRouter.get('/recommendations/:applicationId', async (req: Request, res: 
   }
 });
 
+/**
+ * GET /api/ba-review/recommendations/:applicationId/:recommendationId
+ * Fetch single recommendation by ID for template synthesis enrichment
+ */
+baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const recommendationId = asString(req.params.recommendationId);
+
+    if (!applicationId || !recommendationId) {
+      res.status(400).json({ success: false, error: 'Missing applicationId or recommendationId' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Fetching single recommendation: ${recommendationId} for app ${applicationId}`);
+
+    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+    
+    let query: Record<string, unknown> = {
+      applicationId: applicationId,
+      status: { $in: ['approved', 'suggested'] }
+    };
+
+    // Try to match by MongoDB ObjectId if recommendationId looks like one
+    if (recommendationId.match(/^[0-9a-f]{24}$/i)) {
+      query._id = new (require('mongoose')).Types.ObjectId(recommendationId);
+    } else {
+      // Fallback to string comparison
+      query._id = recommendationId;
+    }
+
+    const improvement = await BAImprovementCollection.findOne(query);
+
+    if (!improvement) {
+      res.status(404).json({ success: false, error: 'Recommendation not found' });
+      return;
+    }
+
+    interface FormattedRecommendation {
+      _id: string;
+      userPrompt: string;
+      llmResponse: string;
+      suggestion: string;
+      priority: string;
+      priorityScore: number;
+    }
+
+    const recommendation: FormattedRecommendation = {
+      _id: improvement._id?.toString() || recommendationId,
+      userPrompt: improvement.originalPrompt || '',
+      llmResponse: improvement.improvedPrompt || '',
+      suggestion: improvement.reason || '',
+      priority: improvement.priority || 'medium',
+      priorityScore: improvement.estimatedScoreImpact || 0,
+    };
+
+    res.json({
+      success: true,
+      data: recommendation,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching single recommendation: ${message}`);
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
 export default baReviewRouter;

@@ -458,6 +458,7 @@ promptTemplateRouter.post('/assist/combine-prompts', async (req: Request, res: R
  * POST /api/prompt-templates/synthesize
  * LLM-powered synthesis: Combine recommendations + KB prompts into CrewAI template
  * Used by synthesis-config.tsx during template creation
+ * Now supports enriched data: full recommendation and KB prompt content
  */
 promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -465,7 +466,9 @@ promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Pr
 
     const templateNameValue = body.templateName;
     const recommendationIdsValue = body.recommendationIds;
+    const recommendationsValue = body.recommendations;
     const kbPromptIdsValue = body.kbPromptIds;
+    const kbPromptsValue = body.kbPrompts;
     const frameworksValue = body.frameworks;
     const synthesisStrategyValue = body.synthesisStrategy;
     const templateFormatValue = body.templateFormat;
@@ -484,6 +487,54 @@ promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Pr
     const synthesisStrategy = typeof synthesisStrategyValue === 'string' ? synthesisStrategyValue : 'equal_weight';
     const templateFormat = typeof templateFormatValue === 'string' ? templateFormatValue : 'crewai_task';
 
+    // Extract enriched recommendation data if provided
+    interface RecommendationData {
+      _id: string;
+      userPrompt: string;
+      llmResponse: string;
+      suggestion: string;
+      priority: string;
+      priorityScore: number;
+    }
+
+    const recommendationsData: RecommendationData[] = [];
+    if (Array.isArray(recommendationsValue)) {
+      for (const rec of recommendationsValue) {
+        if (
+          typeof rec === 'object' &&
+          rec !== null &&
+          'userPrompt' in rec &&
+          'llmResponse' in rec &&
+          'suggestion' in rec
+        ) {
+          recommendationsData.push(rec as RecommendationData);
+        }
+      }
+    }
+
+    // Extract enriched KB prompt data if provided
+    interface KBPromptData {
+      _id: string;
+      prompt: string;
+      context: string;
+      relevanceScore: number;
+      source: string;
+    }
+
+    const kbPromptsData: KBPromptData[] = [];
+    if (Array.isArray(kbPromptsValue)) {
+      for (const kb of kbPromptsValue) {
+        if (
+          typeof kb === 'object' &&
+          kb !== null &&
+          'prompt' in kb &&
+          'context' in kb
+        ) {
+          kbPromptsData.push(kb as KBPromptData);
+        }
+      }
+    }
+
     if (!templateName.trim()) {
       res.status(400).json({ success: false, message: 'Template name is required' });
       return;
@@ -496,24 +547,59 @@ promptTemplateRouter.post('/synthesize', async (req: Request, res: Response): Pr
 
     logger.info(`[promptTemplateRoutes] Synthesizing template: ${templateName} (recs: ${recommendationIds.length}, kb: ${kbPromptIds.length})`);
 
+    // Build enriched synthesis prompt with full data
+    let enrichedContent = '';
+
+    if (recommendationsData.length > 0) {
+      enrichedContent += '\n## BA Recommendations:\n';
+      for (let i = 0; i < recommendationsData.length; i++) {
+        const rec = recommendationsData[i];
+        if (rec) {
+          enrichedContent += `\n${i + 1}. User Query: "${rec.userPrompt}"`;
+          enrichedContent += `\n   LLM Response: "${rec.llmResponse}"`;
+          enrichedContent += `\n   BA Suggestion: "${rec.suggestion}"`;
+          enrichedContent += `\n   Priority: ${rec.priority} (Score: ${rec.priorityScore})`;
+        }
+      }
+    }
+
+    if (kbPromptsData.length > 0) {
+      enrichedContent += '\n\n## Knowledge Base Prompts & Context:\n';
+      for (let i = 0; i < kbPromptsData.length; i++) {
+        const kb = kbPromptsData[i];
+        if (kb) {
+          enrichedContent += `\n${i + 1}. Prompt: "${kb.prompt}"`;
+          enrichedContent += `\n   Context: "${kb.context.substring(0, 500)}"`;
+          enrichedContent += `\n   Source: ${kb.source}`;
+          enrichedContent += `\n   Relevance Score: ${kb.relevanceScore}`;
+        }
+      }
+    }
+
     // Construct synthesis prompt for LLM
     const synthesisPrompt = `
 You are a prompt engineering expert tasked with creating a production-ready ${templateFormat} template.
 
 Template Name: ${templateName}
 Strategy: ${synthesisStrategy}
-Frameworks: ${frameworks.join(', ')}
+Evaluation Frameworks: ${frameworks.join(', ')}
 
-Selected ${recommendationIds.length} BA recommendations and ${kbPromptIds.length} Knowledge Base prompts.
-Combine them intelligently into a single, cohesive ${templateFormat} format template.
+${enrichedContent}
 
-For CrewAI format, include:
-- A clear task name and description
-- Expected inputs and outputs
-- Quality guidelines
-- Evaluation criteria based on: ${frameworks.join(', ')}
+INSTRUCTIONS:
+1. Analyze all provided BA recommendations and Knowledge Base prompts
+2. Incorporate the specific insights, suggestions, and context from both sources
+3. Create a unified, comprehensive ${templateFormat} template that reflects these inputs
+4. Ensure the template includes evaluation criteria based on all selected frameworks
 
-Generate the complete template in YAML format that can be directly used in production.
+For CrewAI YAML format:
+- Include task name and clear description incorporating the recommendations
+- Define expected inputs and outputs based on KB context
+- Add quality guidelines reflecting BA suggestions
+- Add evaluation criteria from frameworks and recommendations
+- Include any specific requirements mentioned in suggestions
+
+Generate the complete template in production-ready YAML format.
     `;
 
     // Call LLM to generate template using the recommendation provider
@@ -533,6 +619,9 @@ Generate the complete template in YAML format that can be directly used in produ
       frameworks: string[];
       recommendationIds: string[];
       kbPromptIds: string[];
+      recommendationsCount: number;
+      kbPromptsCount: number;
+      dataEnriched: boolean;
       timestamp: string;
     }
 
@@ -542,10 +631,13 @@ Generate the complete template in YAML format that can be directly used in produ
       frameworks: frameworks,
       recommendationIds: recommendationIds,
       kbPromptIds: kbPromptIds,
+      recommendationsCount: recommendationsData.length,
+      kbPromptsCount: kbPromptsData.length,
+      dataEnriched: recommendationsData.length > 0 || kbPromptsData.length > 0,
       timestamp: new Date().toISOString(),
     };
 
-    logger.info(`[promptTemplateRoutes] Template synthesis completed: ${templateName}`);
+    logger.info(`[promptTemplateRoutes] Template synthesis completed: ${templateName} (enriched: ${synthesisMetadata.dataEnriched})`);
 
     res.status(200).json({
       success: true,
