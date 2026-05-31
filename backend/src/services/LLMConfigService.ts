@@ -23,20 +23,33 @@ export class LLMConfigService {
 
       // Encrypt sensitive fields
       const config = this.encryptSensitiveFields(validation.data as any);
+      console.log('[v0] Encrypted config keys:', Object.keys(config));
 
       const db = mongoose.connection;
+      if (!db || !db.collection) {
+        throw new Error('Database connection not available');
+      }
+      
       const collection = db.collection(this.collection);
+      if (!collection) {
+        throw new Error('Collection not available');
+      }
 
+      console.log('[v0] Upserting config for applicationId:', (config as Record<string, unknown>).applicationId);
+      
       const result = await collection.findOneAndUpdate(
         { applicationId: (config as Record<string, unknown>).applicationId },
         { $set: config },
         { upsert: true, returnDocument: 'after' }
       );
 
+      console.log('[v0] Upsert result:', result ? 'Document found/created' : 'No result');
+
       if (!result || !result.value) {
-        throw new Error('Failed to upsert configuration');
+        throw new Error('Upsert completed but no document returned');
       }
 
+      console.log('[v0] Successfully upserted config for applicationId:', (result.value as Record<string, unknown>).applicationId);
       return result.value as LLMConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
@@ -227,28 +240,44 @@ export class LLMConfigService {
 
   /**
    * Encrypt sensitive credential fields
+   * Handles both new field names (api_key, azure_endpoint) and legacy names (azureApiKey, azureEndpoint)
    * @param config - Configuration object to encrypt
    * @returns Configuration with encrypted sensitive fields
    */
   private encryptSensitiveFields(config: LLMConfigInput): LLMConfigInput {
     const encrypted: LLMConfigInput = { ...config };
 
-    // Encrypt provider-specific credentials
-    if (encrypted.azureApiKey) {
+    // Encrypt new Azure OpenAI field names
+    if (encrypted.api_key && typeof encrypted.api_key === 'string') {
+      (encrypted as Record<string, unknown>).api_key = cryptoUtil.encrypt(encrypted.api_key);
+    }
+    
+    // Encrypt legacy Azure OpenAI field names
+    if (encrypted.azureApiKey && typeof encrypted.azureApiKey === 'string') {
       encrypted.azureApiKey = cryptoUtil.encrypt(encrypted.azureApiKey);
     }
-    if (encrypted.claudeApiKey) {
+    
+    // Encrypt Claude credentials
+    if (encrypted.claudeApiKey && typeof encrypted.claudeApiKey === 'string') {
       encrypted.claudeApiKey = cryptoUtil.encrypt(encrypted.claudeApiKey);
     }
-    if (encrypted.awsAccessKeyId) {
+    
+    // Encrypt AWS credentials
+    if (encrypted.awsAccessKeyId && typeof encrypted.awsAccessKeyId === 'string') {
       encrypted.awsAccessKeyId = cryptoUtil.encrypt(encrypted.awsAccessKeyId);
     }
-    if (encrypted.awsSecretAccessKey) {
+    if (encrypted.awsSecretAccessKey && typeof encrypted.awsSecretAccessKey === 'string') {
       encrypted.awsSecretAccessKey = cryptoUtil.encrypt(encrypted.awsSecretAccessKey);
     }
-    if (encrypted.openaiApiKey) {
+    
+    // Encrypt OpenAI credentials
+    if (encrypted.openaiApiKey && typeof encrypted.openaiApiKey === 'string') {
       encrypted.openaiApiKey = cryptoUtil.encrypt(encrypted.openaiApiKey);
     }
+
+    // Add timestamps
+    (encrypted as Record<string, unknown>).createdAt = (encrypted as Record<string, unknown>).createdAt || new Date();
+    (encrypted as Record<string, unknown>).updatedAt = new Date();
 
     return encrypted;
   }
