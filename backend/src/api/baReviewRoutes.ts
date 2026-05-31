@@ -785,20 +785,28 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
 
     logger.info(`[baReviewRoutes] Fetching raw data for app ${applicationId}, metric ${metric}, value ${value}`);
 
-    // Search in evaluation records with the metric
     const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
     
-    // Build query based on where metric data is stored (could be in evaluation object or direct)
+    // Search for evaluation records with the metric
     const metricStr = metric as string;
-    const queryObj: Record<string, unknown> = {
+    const queryField = `evaluation.${metricStr}`;
+    
+    // Build query to find records with metric value close to the requested value
+    const query: Record<string, unknown> = {
       applicationId: applicationId as string,
-      $or: [
-        { [`evaluation.${metricStr}`]: { $gte: value - 0.5, $lte: value + 0.5 } },
-        { [metricStr]: { $gte: value - 0.5, $lte: value + 0.5 } },
-      ],
+    };
+    
+    // Query with range (±0.5 tolerance)
+    (query as Record<string, unknown>)[queryField] = {
+      $gte: value - 0.5,
+      $lte: value + 0.5,
     };
 
-    const records = await EvaluationCollection.find(queryObj).limit(1).toArray();
+    console.log('[v0] Query for raw-data-by-metric:', JSON.stringify(query));
+
+    const records = await EvaluationCollection.find(query).limit(1).toArray();
+
+    console.log('[v0] Found records count:', records?.length || 0);
 
     if (!records || records.length === 0) {
       logger.warn(
@@ -813,42 +821,35 @@ baReviewRouter.get('/raw-data-by-metric', async (req: Request, res: Response): P
       return;
     }
 
-    const record = records[0];
-
-    if (!record) {
-      res.status(404).json({
-        success: false,
-        message: 'No raw data records found matching criteria',
-      });
-      return;
-    }
+    const record = records[0] as any;
 
     // Format the response with available data
     const response = {
-      _id: (record as any)._id?.toString(),
-      applicationId: (record as any).applicationId,
-      userPrompt: (record as any).userPrompt || (record as any).query || '',
-      llmResponse: (record as any).llmResponse || (record as any).response || '',
-      context: (record as any).context || '',
+      _id: record._id?.toString(),
+      applicationId: record.applicationId,
+      userPrompt: record.userPrompt || record.query || '',
+      llmResponse: record.llmResponse || record.response || '',
+      context: record.context || '',
+      contextRetrieved: record.contextRetrieved || [],
       evaluationScores: [
         {
           metricName: metric,
           value: value,
-          timestamp: (record as any).timestamp,
+          timestamp: record.timestamp,
         },
       ],
-      userFeedback: (record as any).userFeedback,
-      totalLatency: (record as any).totalLatency,
-      baReview: (record as any).baReview || {
+      userFeedback: record.userFeedback,
+      totalLatency: record.totalLatency,
+      baReview: record.baReview || {
         promptImprovements: [],
         reviewStatus: 'pending',
       },
-      createdAt: (record as any).createdAt,
-      updatedAt: (record as any).updatedAt,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
     };
 
     logger.info(
-      `[baReviewRoutes] Successfully retrieved record ${(record as any)._id?.toString()} with metric ${metric}`
+      `[baReviewRoutes] Successfully retrieved record ${record._id?.toString()} with metric ${metric}`
     );
 
     res.status(200).json({
