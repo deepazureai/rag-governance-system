@@ -21,8 +21,6 @@ export function RawDataDetailModal({
   onClose,
   onAddImprovement,
 }: RawDataDetailModalProps) {
-  console.log('[v0] Modal opened with record._id:', record._id, 'length:', record._id?.length);
-  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     userPrompt: true,
     context: true,
@@ -36,6 +34,8 @@ export function RawDataDetailModal({
   const [improvedPrompt, setImprovedPrompt] = useState('');
   const [improvementReason, setImprovementReason] = useState('');
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
+  const [isSavingImprovement, setIsSavingImprovement] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [llmRecommendations, setLlmRecommendations] = useState<{
     reasoning: string;
     suggestions: Array<{
@@ -229,13 +229,9 @@ export function RawDataDetailModal({
     }
 
     try {
+      setIsSavingImprovement(true);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       console.log('[v0] Saving improvement...');
-      console.log('[v0] record._id:', record._id);
-      console.log('[v0] record._id type:', typeof record._id);
-      console.log('[v0] record._id length:', record._id?.length);
-      console.log('[v0] improvedPrompt length:', improvedPrompt.length);
-      console.log('[v0] improvementReason length:', improvementReason.length);
 
       const requestBody = {
         rawDataRecordId: record._id,
@@ -245,8 +241,6 @@ export function RawDataDetailModal({
         baName: 'Current User',
         estimatedScoreImpact: 0.05,
       };
-
-      console.log('[v0] Request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await fetch(`${apiUrl}/api/ba-review/add-improvement`, {
         method: 'POST',
@@ -267,14 +261,18 @@ export function RawDataDetailModal({
       const successData = await response.json() as Record<string, unknown>;
       console.log('[v0] Save response:', successData);
       
-      setImprovedPrompt('');
-      setImprovementReason('');
+      // Keep the improved prompt and reason displayed to show what was saved
       setImprovementMode(false);
-      alert('Improvement saved successfully!');
+      setSaveSuccess(true);
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSaveSuccess(false), 5000);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to save improvement';
       console.error('[v0] Error:', message);
       alert(`Failed to save: ${message}`);
+    } finally {
+      setIsSavingImprovement(false);
     }
   };
 
@@ -706,10 +704,19 @@ export function RawDataDetailModal({
                 {/* Unified Recommendations View - DeepEval + LLM Combined */}
                 {(deepEvalSuggestions || llmRecommendations) && (
                   <div className="space-y-4">
+                    {/* Success Message */}
+                    {saveSuccess && (
+                      <div className="bg-green-900 border border-green-700 rounded p-3">
+                        <p className="text-sm text-green-200 font-medium">
+                          ✓ Revised prompt saved successfully! It's now available in BA Review Queue → Recommendations.
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Show Generated Revised Prompt if Available */}
                     {improvedPrompt && improvedPrompt !== 'Enter improved prompt...' && (
-                      <div className="bg-green-950 p-4 rounded border border-green-800">
-                        <h3 className="text-sm font-mono text-green-300 mb-3">REVISED PROMPT (Generated)</h3>
+                      <div className={`p-4 rounded border ${saveSuccess ? 'bg-green-950 border-green-700' : 'bg-green-950 border-green-800'}`}>
+                        <h3 className="text-sm font-mono text-green-300 mb-3">REVISED PROMPT {saveSuccess ? '(Saved)' : '(Generated)'}</h3>
                         <div className="bg-black p-3 rounded border border-gray-700 text-xs text-gray-200 font-mono whitespace-pre-wrap max-h-48 overflow-y-auto">
                           {improvedPrompt}
                         </div>
