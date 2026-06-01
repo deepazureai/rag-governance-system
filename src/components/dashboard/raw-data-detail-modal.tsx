@@ -196,19 +196,28 @@ export function RawDataDetailModal({
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      console.log('[v0] Saving improvement with sources - DeepEval:', !!deepEvalSuggestions, 'LLM:', !!llmRecommendations);
+      console.log('[v0] Saving improvement...');
+      console.log('[v0] record._id:', record._id);
+      console.log('[v0] record._id type:', typeof record._id);
+      console.log('[v0] record._id length:', record._id?.length);
+      console.log('[v0] improvedPrompt length:', improvedPrompt.length);
+      console.log('[v0] improvementReason length:', improvementReason.length);
+
+      const requestBody = {
+        rawDataRecordId: record._id,
+        improvedPrompt: improvedPrompt.trim(),
+        reason: improvementReason.trim(),
+        baEmail: 'ba@company.com',
+        baName: 'Current User',
+        estimatedScoreImpact: 0.05,
+      };
+
+      console.log('[v0] Request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await fetch(`${apiUrl}/api/ba-review/add-improvement`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawDataRecordId: record._id,
-          improvedPrompt: improvedPrompt.trim(),
-          reason: improvementReason.trim(),
-          baEmail: 'ba@company.com',
-          baName: 'Current User',
-          estimatedScoreImpact: 0.05,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

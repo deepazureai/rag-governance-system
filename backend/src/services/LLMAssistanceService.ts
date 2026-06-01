@@ -359,38 +359,57 @@ ${truncatedContent}`;
         throw new Error(`LLM connection validation failed: ${connectionTest.error}`);
       }
 
-      // Build the curation prompt
-      const systemPrompt = `You are an expert prompt engineer. Your task is to refine and improve a prompt by addressing identified issues.
+      // Build the curation prompt with STRICT boundaries
+      const systemPrompt = `YOU ARE A PROMPT REFINEMENT ENGINE. FOLLOW THESE RULES EXACTLY:
 
-Return ONLY this exact JSON with no other text:
+CRITICAL RULES - MUST FOLLOW:
+1. You are NOT an AI assistant. You are a prompt refinement tool.
+2. Your ONLY output is valid JSON. NO other text.
+3. NO explanations, NO markdown, NO code blocks, NO anything else.
+4. If you cannot output valid JSON, output error JSON: {"error": "reason"}
+5. The JSON MUST have exactly these fields: revisedPrompt, reasoning, expectedScoreIncrease
+
+TASK: Take the original prompt and the identified issues, then generate a NEW PROMPT that:
+- Directly incorporates solutions to all identified issues
+- Is ready to use immediately as a replacement for the original prompt
+- Maintains the original intent but improves it
+- Is NOT guidelines or recommendations, but an actual working prompt
+
+OUTPUT FORMAT - REQUIRED:
+You MUST output ONLY this JSON structure, nothing else:
 {
-  "revisedPrompt": "the complete improved prompt ready to use",
-  "reasoning": "brief explanation of improvements",
+  "revisedPrompt": "the complete new prompt that replaces the original",
+  "reasoning": "brief explanation of key improvements made",
   "expectedScoreIncrease": 20
-}`;
+}
+
+REMEMBER: Output ONLY JSON. No preamble, no explanation, no markdown. Just the JSON object.`;
 
       const issuesText = issues.map((i, idx) => `${idx + 1}. ${i}`).join('\n');
 
-      const userPrompt = `Refine this prompt to address the issues below and create an IMPROVED VERSION ready to use immediately:
+      const userPrompt = `REFINE THIS PROMPT INCORPORATING THE ISSUES BELOW.
 
-ORIGINAL PROMPT:
+ORIGINAL PROMPT (this is what users currently use):
 """
 ${originalPrompt}
 """
 
-ISSUES TO ADDRESS:
+IDENTIFIED ISSUES THAT NEED FIXING:
 ${issuesText}
 
-Create a CONCRETE, REVISED VERSION of the prompt that directly addresses each issue. This should be an actual working prompt, not guidelines.
+YOUR TASK:
+Generate a new, improved version of the prompt that directly addresses each issue above.
+The new prompt should be better than the original and ready to use immediately.
+It should NOT be guidelines - it should be an actual, concrete prompt.
 
-Return ONLY this JSON (no other text):
+OUTPUT ONLY THIS JSON (nothing else):
 {
-  "revisedPrompt": "complete improved prompt here",
-  "reasoning": "what was improved and why",
+  "revisedPrompt": "complete new prompt here",
+  "reasoning": "key improvements made",
   "expectedScoreIncrease": 20
 }`;
 
-      console.log(`[LLMAssistanceService] Generating curated prompt for app ${applicationId}`);
+      console.log(`[LLMAssistanceService] Generating curated prompt for app ${applicationId} with ${issues.length} issues`);
 
       // Generate curated prompt
       const suggestion = await llmClient.generate(userPrompt, {
@@ -403,9 +422,10 @@ Return ONLY this JSON (no other text):
         throw new Error('LLM returned empty response');
       }
 
-      console.log(`[LLMAssistanceService] Generated curated prompt, parsing response`);
+      console.log(`[LLMAssistanceService] Generated curated prompt, raw response length: ${suggestion.length}`);
+      console.log(`[LLMAssistanceService] First 200 chars: ${suggestion.substring(0, 200)}`);
 
-      // Parse the JSON response
+      // Parse the JSON response with aggressive cleanup
       let cleanedResponse = suggestion.trim();
       
       // Remove markdown code blocks
@@ -414,32 +434,59 @@ Return ONLY this JSON (no other text):
         .replace(/```\n?/g, '')
         .trim();
       
-      // Extract JSON if wrapped in other text
-      if (!cleanedResponse.startsWith('{')) {
-        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[0];
-        }
+      // Remove any leading text before first {
+      const firstBraceIndex = cleanedResponse.indexOf('{');
+      if (firstBraceIndex > 0) {
+        console.log(`[LLMAssistanceService] Found { at index ${firstBraceIndex}, removing leading text`);
+        cleanedResponse = cleanedResponse.substring(firstBraceIndex);
       }
+      
+      // Remove any trailing text after last }
+      const lastBraceIndex = cleanedResponse.lastIndexOf('}');
+      if (lastBraceIndex >= 0 && lastBraceIndex < cleanedResponse.length - 1) {
+        console.log(`[LLMAssistanceService] Found } at index ${lastBraceIndex}, removing trailing text`);
+        cleanedResponse = cleanedResponse.substring(0, lastBraceIndex + 1);
+      }
+      
+      console.log(`[LLMAssistanceService] Cleaned response: ${cleanedResponse.substring(0, 200)}`);
       
       const parsed = JSON.parse(cleanedResponse);
 
       if (!parsed.revisedPrompt || typeof parsed.revisedPrompt !== 'string') {
-        throw new Error('Invalid revisedPrompt in LLM response');
+        throw new Error('Invalid revisedPrompt in LLM response - must be non-empty string');
+      }
+      
+      if (parsed.revisedPrompt.trim().length < 10) {
+        throw new Error('revisedPrompt is too short - LLM may not have generated a valid prompt');
       }
 
-      console.log(`[LLMAssistanceService] Successfully curated prompt for app ${applicationId}`);
+      console.log(`[LLMAssistanceService] Successfully curated prompt for app ${applicationId}, revised length: ${parsed.revisedPrompt.length}`);
 
       return {
         revisedPrompt: parsed.revisedPrompt.trim(),
-        reasoning: parsed.reasoning || 'Prompt refined based on identified issues',
+        reasoning: parsed.reasoning || 'Prompt refined to address identified issues',
         expectedScoreIncrease: parsed.expectedScoreIncrease || 20,
       };
     } catch (error: unknown) {
       // Fallback: Return a basic refined prompt if parsing fails
       if (error instanceof SyntaxError) {
         console.warn(`[LLMAssistanceService] JSON parse failed, returning fallback refined prompt`);
-        const fallbackPrompt = `${originalPrompt}\n\n[Applied Improvements]:\n${issues.map((i) => `• ${i}`).join('\n')}`;
+        
+        // Create a basic refined prompt incorporating the issues
+        const refinedPoints = issues
+          .map((issue: string) => {
+            // Clean up the issue text if it's just recommendations
+            if (issue.includes(':')) {
+              const parts = issue.split(':');
+              const lastPart = parts[parts.length - 1];
+              return lastPart ? lastPart.trim() : issue;
+            }
+            return issue;
+          })
+          .filter((i: string) => i && i.length > 0)
+          .slice(0, 3); // Take top 3 issues
+
+        const fallbackPrompt = `${originalPrompt}\n\n[Refinements based on identified issues]:\n${refinedPoints.map((p: string) => `- ${p}`).join('\n')}`;
         
         return {
           revisedPrompt: fallbackPrompt,
