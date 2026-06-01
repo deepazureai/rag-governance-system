@@ -711,7 +711,7 @@ export function RawDataDetailModal({
                         value={improvedPrompt}
                         onChange={(e) => setImprovedPrompt(e.target.value)}
                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200 font-mono"
-                        rows={3}
+                        rows={8}
                         placeholder="Enter improved version of the prompt..."
                       />
                     </div>
@@ -723,7 +723,7 @@ export function RawDataDetailModal({
                         value={improvementReason}
                         onChange={(e) => setImprovementReason(e.target.value)}
                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200 font-mono"
-                        rows={2}
+                        rows={5}
                         placeholder="Why is this improvement better?"
                       />
                     </div>
