@@ -309,10 +309,19 @@ CRITICAL: Return ONLY the JSON object below with no additional text:
     };
   } catch (error) {
     console.error('[PromptImprovement] Failed to parse response:', response, 'Error:', error);
-    // Fallback: return the analysis text as the improved prompt if JSON parsing fails
-    // This ensures something useful is returned
+    // Fallback: Construct a concrete improved prompt based on the issues identified
+    const improvedPrompt = `${originalPrompt}
+
+Additional instructions for improved accuracy:
+- Use ONLY information from the provided context/documents
+- If the context doesn't contain relevant information, explicitly state "I cannot answer this based on the provided context"
+- Always cite which context or document section supports your answer
+- If you're uncertain, indicate your level of confidence and explain why
+- Keep your response factual and grounded in the retrieved documents
+- Do not speculate or provide information beyond what the context supports`;
+
     return {
-      improvedPrompt: `IMPROVEMENT SUGGESTIONS:\n${issues.map((i, idx) => `${idx + 1}. ${i}`).join('\n')}\n\nOPTIMIZED PROMPT:\nModify your original prompt to:\n- Explicitly request use of provided context/documents\n- Ask the model to cite sources\n- Specify what to do if no relevant context exists\n- Add constraints against speculation`,
+      improvedPrompt: improvedPrompt.trim(),
       improvements: issues,
       expectedGroundednessIncrease: 20,
     };
