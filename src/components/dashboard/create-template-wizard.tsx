@@ -246,6 +246,7 @@ export function CreateTemplateWizard({
         {currentStep === 3 && (
           <div>
             <SynthesisConfig
+              applicationId={applicationId}
               selectedRecommendationIds={selectedRecommendationIds}
               selectedKBPromptIds={selectedKBPromptIds}
               selectedFrameworks={selectedFrameworks}

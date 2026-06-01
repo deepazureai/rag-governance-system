@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Loader, Copy, RefreshCw } from 'lucide-react';
 
 interface SynthesisConfigProps {
+  applicationId: string;
   selectedRecommendationIds: string[];
   selectedKBPromptIds: string[];
   selectedFrameworks: string[];
@@ -15,6 +16,7 @@ interface SynthesisConfigProps {
 }
 
 export function SynthesisConfig({
+  applicationId,
   selectedRecommendationIds,
   selectedKBPromptIds,
   selectedFrameworks,

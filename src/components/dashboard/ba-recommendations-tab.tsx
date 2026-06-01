@@ -51,7 +51,6 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
       if (!response.ok) throw new Error('Failed to fetch prompts');
       
       const data = await response.json() as any;
-      console.log('[v0] Fetched prompts:', data.data.prompts);
       setPrompts(data.data.prompts);
       setPagination(data.data.pagination);
       setError(null);
@@ -192,8 +191,8 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
                   {/* Original */}
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Original Prompt</label>
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 min-h-24 line-clamp-4">
-                      {prompt.userPrompt}
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 min-h-24 line-clamp-4 whitespace-pre-wrap break-words">
+                      {prompt.userPrompt && prompt.userPrompt.trim() ? prompt.userPrompt : <span className="text-gray-400 italic">No original prompt available</span>}
                     </div>
                   </div>
 

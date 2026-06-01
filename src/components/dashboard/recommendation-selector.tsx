@@ -36,7 +36,6 @@ export function RecommendationSelector({
         setError(null);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         
-        console.log('[v0] Fetching approved prompts for appId:', applicationId);
         const response = await fetch(
           `${apiUrl}/api/ba-review/approved-prompts/${applicationId}`
         );
@@ -46,7 +45,6 @@ export function RecommendationSelector({
         }
         
         const data = (await response.json()) as any;
-        console.log('[v0] Approved prompts response:', data);
         setPrompts(data.data?.prompts || []);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to fetch approved prompts';
