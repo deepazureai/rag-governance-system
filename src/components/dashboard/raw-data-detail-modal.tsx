@@ -794,18 +794,21 @@ export function RawDataDetailModal({
                 {!improvementMode && (
                   <Button
                     onClick={() => {
-                      let combined = '';
-                      if (deepEvalSuggestions) {
-                        combined += 'DeepEval: ' + deepEvalSuggestions + '\n\n';
+                      // Only populate with recommendations if we don't already have a revised prompt from LLM
+                      if (!improvedPrompt || improvedPrompt === 'Enter improved prompt...') {
+                        let combined = '';
+                        if (deepEvalSuggestions) {
+                          combined += 'DeepEval: ' + deepEvalSuggestions + '\n\n';
+                        }
+                        if (llmRecommendations?.suggestions.length) {
+                          combined += 'LLM: ' + llmRecommendations.suggestions.map(s => s.suggestion).join(' | ');
+                        }
+                        setImprovedPrompt(combined || 'Enter improved prompt...');
+                        const reason = (deepEvalReasoning && llmRecommendations?.reasoning) 
+                          ? `DeepEval: ${deepEvalReasoning}\nLLM: ${llmRecommendations.reasoning}`
+                          : deepEvalReasoning || llmRecommendations?.reasoning || '';
+                        setImprovementReason(reason || 'Enter reason...');
                       }
-                      if (llmRecommendations?.suggestions.length) {
-                        combined += 'LLM: ' + llmRecommendations.suggestions.map(s => s.suggestion).join(' | ');
-                      }
-                      setImprovedPrompt(combined || 'Enter improved prompt...');
-                      const reason = (deepEvalReasoning && llmRecommendations?.reasoning) 
-                        ? `DeepEval: ${deepEvalReasoning}\nLLM: ${llmRecommendations.reasoning}`
-                        : deepEvalReasoning || llmRecommendations?.reasoning || '';
-                      setImprovementReason(reason || 'Enter reason...');
                       setImprovementMode(true);
                     }}
                     className="w-full mt-4 bg-green-900 hover:bg-green-800 text-green-100"
