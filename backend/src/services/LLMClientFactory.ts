@@ -66,6 +66,15 @@ export class AzureOpenAIProvider implements ILLMProvider {
 
       const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/chat/completions?api-version=${this.apiVersion}`;
 
+      // Debug logging
+      console.log('[v0] AzureOpenAIProvider generating response:', {
+        url,
+        deploymentName: this.deploymentName,
+        apiVersion: this.apiVersion,
+        temperature,
+        maxTokens,
+      });
+
       // Create fetch options with optional SSL verification skip
       const fetchOptions: RequestInit = {
         method: 'POST',
@@ -96,6 +105,11 @@ export class AzureOpenAIProvider implements ILLMProvider {
 
       if (!response.ok) {
         const error = await response.text();
+        console.error('[v0] Azure API error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: error.substring(0, 500),
+        });
         throw new Error(`Azure OpenAI API error: ${response.statusText} - ${error}`);
       }
 
