@@ -306,6 +306,28 @@ export class LLMConfigService {
       normalized.api_version = config.azureApiVersion;
     }
 
+    // Extract base endpoint if full URL is provided
+    if (normalized.azure_endpoint && typeof normalized.azure_endpoint === 'string') {
+      let endpoint = normalized.azure_endpoint;
+      
+      // First, remove any query parameters from the URL
+      if (endpoint.includes('?')) {
+        const parts = endpoint.split('?');
+        endpoint = parts[0] || endpoint;
+      }
+      
+      // If endpoint includes the full path with /openai/deployments/, extract just the base
+      if (endpoint.includes('/openai/deployments/')) {
+        const parts = endpoint.split('/openai/deployments/');
+        const baseUrl = parts[0] || endpoint;
+        normalized.azure_endpoint = baseUrl;
+        console.log('[v0] LLMConfigService: Extracted base endpoint from full URL:', {
+          original: normalized.azure_endpoint,
+          extracted: baseUrl,
+        });
+      }
+    }
+
     console.log('[v0] Normalized LLM config:', {
       provider: normalized.provider,
       has_api_key: !!normalized.api_key,
