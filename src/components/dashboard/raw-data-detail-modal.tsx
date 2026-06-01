@@ -191,23 +191,14 @@ export function RawDataDetailModal({
 
           if (curateResponse.ok) {
             const curateData = await curateResponse.json() as Record<string, unknown>;
-            console.log('[v0] Full curateData:', JSON.stringify(curateData, null, 2));
-            console.log('[v0] curateData.data:', curateData.data);
-            console.log('[v0] curateData keys:', Object.keys(curateData));
             
             const curateResult = curateData.data as Record<string, unknown> | undefined;
-            console.log('[v0] Extracted curateResult:', curateResult);
             
             if (curateResult && typeof curateResult.revisedPrompt === 'string') {
-              console.log('[v0] Revised prompt generated successfully, length:', curateResult.revisedPrompt.length);
-              console.log('[v0] About to set improved prompt with:', curateResult.revisedPrompt.substring(0, 100));
               setImprovedPrompt(curateResult.revisedPrompt);
               setImprovementReason(typeof curateResult.reasoning === 'string' ? curateResult.reasoning : 'Refined based on LLM recommendations');
-              console.log('[v0] State updated with revised prompt');
             } else {
-              console.warn('[v0] Curate result missing revisedPrompt:', curateResult);
-              console.warn('[v0] revisedPrompt type:', typeof (curateResult as any)?.revisedPrompt);
-              console.warn('[v0] curateResult keys:', curateResult ? Object.keys(curateResult) : 'curateResult is null/undefined');
+              console.warn('[v0] Curate result missing revisedPrompt');
             }
           } else {
             const errorText = await curateResponse.text();
@@ -712,8 +703,26 @@ export function RawDataDetailModal({
 
                 {/* Unified Recommendations View - DeepEval + LLM Combined */}
                 {(deepEvalSuggestions || llmRecommendations) && (
-                  <div className="bg-gray-950 p-4 rounded border border-blue-800 mb-4">
-                    <h3 className="text-sm font-mono text-blue-300 mb-3">COMBINED RECOMMENDATIONS</h3>
+                  <div className="space-y-4">
+                    {/* Show Generated Revised Prompt if Available */}
+                    {improvedPrompt && improvedPrompt !== 'Enter improved prompt...' && (
+                      <div className="bg-green-950 p-4 rounded border border-green-800">
+                        <h3 className="text-sm font-mono text-green-300 mb-3">REVISED PROMPT (Generated)</h3>
+                        <div className="bg-black p-3 rounded border border-gray-700 text-xs text-gray-200 font-mono whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {improvedPrompt}
+                        </div>
+                        {improvementReason && (
+                          <div className="mt-3 pt-3 border-t border-green-700">
+                            <p className="text-xs text-green-400 mb-2">Reasoning:</p>
+                            <p className="text-xs text-gray-300">{improvementReason}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* DeepEval + LLM Recommendations Section */}
+                    <div className="bg-gray-950 p-4 rounded border border-blue-800">
+                      <h3 className="text-sm font-mono text-blue-300 mb-3">COMBINED RECOMMENDATIONS</h3>
                     
                     {/* DeepEval Suggestions */}
                     {deepEvalSuggestions && (
@@ -764,6 +773,7 @@ export function RawDataDetailModal({
                         )}
                       </div>
                     )}
+                  </div>
                   </div>
                 )}
 
