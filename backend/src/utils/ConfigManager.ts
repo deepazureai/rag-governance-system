@@ -148,10 +148,11 @@ export class ConfigManager {
 
     switch (config.provider) {
       case 'azure-openai':
-        if (!config.azureEndpoint) errors.push('Azure Endpoint is required');
-        if (!config.azureApiKey) errors.push('Azure API Key is required');
-        if (!config.azureDeploymentName) errors.push('Azure Deployment Name is required');
-        if (!config.azureApiVersion) errors.push('Azure API Version is required');
+        // Check for snake_case properties (as stored in MongoDB from Settings->LLM)
+        if (!config.azure_endpoint) errors.push('Azure Endpoint is required');
+        if (!config.api_key) errors.push('Azure API Key is required');
+        if (!config.deployment) errors.push('Azure Deployment Name is required');
+        if (!config.api_version) errors.push('Azure API Version is required');
         break;
 
       case 'claude':
