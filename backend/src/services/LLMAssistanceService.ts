@@ -339,13 +339,25 @@ ${truncatedContent}`;
       console.log(`[LLMAssistanceService] Fetching LLM config for curating prompt for app ${applicationId}`);
       const llmConfig = await configManager.getApplicationLLMConfig(applicationId);
 
+      console.log('[v0] Fetched llmConfig:', JSON.stringify(llmConfig, null, 2));
+
       if (!llmConfig) {
         throw new Error(`No LLM configuration found for application ${applicationId}`);
       }
 
       // Validate config
       const validation = configManager.validateLLMConfig(llmConfig);
+      console.log('[v0] Config validation result:', validation);
+      
       if (!validation.valid) {
+        console.error('[v0] Config validation failed. Config keys:', Object.keys(llmConfig));
+        console.error('[v0] Config values:', {
+          provider: llmConfig.provider,
+          azureEndpoint: llmConfig.azureEndpoint ? '***SET***' : 'MISSING',
+          azureApiKey: llmConfig.azureApiKey ? '***SET***' : 'MISSING',
+          azureDeploymentName: llmConfig.azureDeploymentName ? '***SET***' : 'MISSING',
+          azureApiVersion: llmConfig.azureApiVersion ? '***SET***' : 'MISSING',
+        });
         throw new Error(`Invalid LLM config: ${validation.errors.join(', ')}`);
       }
 
