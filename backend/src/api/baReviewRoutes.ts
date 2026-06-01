@@ -1072,6 +1072,11 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
           applicationId: 1,
           userPrompt: 1,
           'baReview.promptImprovements': 1,
+          'baReview.approvalStatus': 1,
+          'baReview.approvedRevisedPrompt': 1,
+          'baReview.approvalReason': 1,
+          'baReview.approvedBy': 1,
+          'baReview.approvedAt': 1,
           llmResponse: 1,
           context: 1,
           deepEvalAnalysis: 1,
@@ -1086,13 +1091,11 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
       .toArray();
 
     console.log(`[v0] Fetched ${prompts.length} prompts for app ${applicationId}, total: ${totalCount}`);
-    console.log('[v0] Sample prompt structure:', prompts[0]);
 
     res.status(200).json({
       success: true,
       data: {
         prompts: prompts.map((p: any) => {
-          // Get the first improvement if available (array structure)
           const firstImprovement = p.baReview?.promptImprovements?.[0];
           return {
             _id: p._id?.toString?.(),
@@ -1104,6 +1107,11 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
             generatedAt: firstImprovement?.generatedAt || null,
             llmResponse: p.llmResponse,
             hasRevision: !!firstImprovement?.revisedPrompt,
+            approvalStatus: p.baReview?.approvalStatus || 'pending',
+            approvedRevisedPrompt: p.baReview?.approvedRevisedPrompt || null,
+            approvalReason: p.baReview?.approvalReason || null,
+            approvedBy: p.baReview?.approvedBy || null,
+            approvedAt: p.baReview?.approvedAt || null,
             updatedAt: p.updatedAt,
           };
         }),
@@ -1125,6 +1133,83 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
       error: message,
       message: 'Failed to fetch prompts',
     });
+  }
+});
+
+/**
+ * Approve/Reject a prompt revision (for Recommendations tab)
+ * PATCH /api/ba-review/approve-prompt/:recordId
+ * Body: { approvalStatus: 'approved'|'rejected', approvedRevisedPrompt: string, approvalReason: string }
+ */
+baReviewRouter.patch('/approve-prompt/:recordId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const recordId = asString(req.params.recordId);
+    const { approvalStatus, approvedRevisedPrompt, approvalReason } = req.body as any;
+
+    if (!recordId) {
+      res.status(400).json({ success: false, error: 'recordId is required' });
+      return;
+    }
+
+    if (!['approved', 'rejected'].includes(approvalStatus)) {
+      res.status(400).json({ success: false, error: 'approvalStatus must be "approved" or "rejected"' });
+      return;
+    }
+
+    const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+
+    // Find record
+    let objectId: mongoose.Types.ObjectId | null = null;
+    try {
+      if (recordId.length === 24) {
+        objectId = new mongoose.Types.ObjectId(recordId);
+      }
+    } catch (e) {
+      // Not a valid ObjectId, try string lookup
+    }
+
+    const query = objectId ? { _id: objectId } : { _id: recordId };
+    const record = await EvaluationCollection.findOne(query as any);
+
+    if (!record) {
+      res.status(404).json({ success: false, error: `Record not found: ${recordId}` });
+      return;
+    }
+
+    // Update with approval status
+    const updateData: any = {
+      $set: {
+        'baReview.approvalStatus': approvalStatus,
+        'baReview.approvedRevisedPrompt': approvedRevisedPrompt,
+        'baReview.approvalReason': approvalReason,
+        'baReview.approvedBy': 'ba@company.com',
+        'baReview.approvedAt': new Date(),
+        updatedAt: new Date(),
+      },
+    };
+
+    const updateResult = await EvaluationCollection.updateOne(query as any, updateData);
+
+    if (updateResult.modifiedCount === 0) {
+      res.status(500).json({ success: false, error: 'Failed to update record' });
+      return;
+    }
+
+    console.log(`[v0] Prompt ${approvalStatus} for record ${recordId}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Prompt ${approvalStatus} successfully`,
+      data: {
+        recordId,
+        approvalStatus,
+        approvedRevisedPrompt,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error approving prompt: ${message}`);
+    res.status(500).json({ success: false, error: message });
   }
 });
 

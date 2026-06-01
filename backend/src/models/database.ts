@@ -248,6 +248,25 @@ export interface ApplicationMetric {
     generatedAt: Date; // When the revised prompt was generated
     generatedBy: string; // LLM model used (e.g., "azure-openai-gpt35")
   };
+
+  // BA Review Approval (for Templates tab - only approved prompts can be used)
+  baReview?: {
+    promptImprovements?: Array<{
+      revisedPrompt: string;
+      improvementReason: string;
+      estimatedScoreIncrease: number;
+      generatedAt: Date;
+      generatedBy: string;
+    }>;
+    approvalStatus?: 'pending' | 'approved' | 'rejected'; // Current approval state
+    approvedRevisedPrompt?: string; // The final approved revision (may be edited by BA)
+    approvalReason?: string; // Why BA approved/rejected this prompt
+    approvedBy?: string; // BA email who approved
+    approvedAt?: Date; // When approval decision was made
+    reviewStatus?: string;
+    reviewedBy?: string;
+    reviewedAt?: Date;
+  };
   
   // Timestamps (REQUIRED for latency & throughput)
   promptTimestamp: Date; // When user submitted prompt
