@@ -21,6 +21,8 @@ export function RawDataDetailModal({
   onClose,
   onAddImprovement,
 }: RawDataDetailModalProps) {
+  console.log('[v0] Modal opened with record._id:', record._id, 'length:', record._id?.length);
+  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     userPrompt: true,
     context: true,
