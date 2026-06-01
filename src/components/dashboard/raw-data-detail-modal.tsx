@@ -211,18 +211,27 @@ export function RawDataDetailModal({
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save');
+      if (!response.ok) {
+        const errorData = await response.json() as Record<string, unknown>;
+        const errorMessage = typeof errorData.error === 'string' 
+          ? errorData.error 
+          : typeof errorData.message === 'string' 
+          ? errorData.message 
+          : 'Failed to save improvement';
+        throw new Error(errorMessage);
+      }
+      
+      const successData = await response.json() as Record<string, unknown>;
+      console.log('[v0] Save response:', successData);
       
       setImprovedPrompt('');
       setImprovementReason('');
-      setDeepEvalSuggestions('');
-      setDeepEvalReasoning('');
       setImprovementMode(false);
-      alert('Improvement saved!');
+      alert('Improvement saved successfully!');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to save improvement';
       console.error('[v0] Error:', message);
-      alert(message);
+      alert(`Failed to save: ${message}`);
     }
   };
 
