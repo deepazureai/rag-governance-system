@@ -305,17 +305,24 @@ export class BAReviewQueueService {
         ]
       );
 
-      // Update queue item status
-      await BAReviewQueueCollection.updateOne(
-        { _id: new mongoose.Types.ObjectId(queueItemId) },
-        {
-          $set: {
-            status: 'reviewed',
-            'reviewCompletedAt': new Date(),
-            updatedAt: new Date(),
-          },
+      // Update queue item status (if queueItemId is provided)
+      if (queueItemId && queueItemId.trim()) {
+        try {
+          await BAReviewQueueCollection.updateOne(
+            { _id: new mongoose.Types.ObjectId(queueItemId) },
+            {
+              $set: {
+                status: 'reviewed',
+                'reviewCompletedAt': new Date(),
+                updatedAt: new Date(),
+              },
+            }
+          );
+        } catch (queueError: any) {
+          logger.warn(`[BAReviewQueueService] Warning: Could not update queue item ${queueItemId}: ${queueError.message}`);
+          // Don't throw - queue update is optional, record update is what matters
         }
-      );
+      }
 
       logger.info(`[BAReviewQueueService] Added prompt improvement for record ${rawDataRecordId}`);
 
