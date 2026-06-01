@@ -353,10 +353,10 @@ ${truncatedContent}`;
         console.error('[v0] Config validation failed. Config keys:', Object.keys(llmConfig));
         console.error('[v0] Config values:', {
           provider: llmConfig.provider,
-          azureEndpoint: llmConfig.azureEndpoint ? '***SET***' : 'MISSING',
-          azureApiKey: llmConfig.azureApiKey ? '***SET***' : 'MISSING',
-          azureDeploymentName: llmConfig.azureDeploymentName ? '***SET***' : 'MISSING',
-          azureApiVersion: llmConfig.azureApiVersion ? '***SET***' : 'MISSING',
+          azure_endpoint: llmConfig.azure_endpoint ? '***SET***' : 'MISSING',
+          api_key: llmConfig.api_key ? '***SET***' : 'MISSING',
+          deployment: llmConfig.deployment ? '***SET***' : 'MISSING',
+          api_version: llmConfig.api_version ? '***SET***' : 'MISSING',
         });
         throw new Error(`Invalid LLM config: ${validation.errors.join(', ')}`);
       }
