@@ -155,9 +155,9 @@ export function RawDataDetailModal({
       console.log('[v0] llmRecommendationsText for extraction:', llmRecommendationsText.substring(0, 500));
       
       // Extract issues from recommendations text
-      // The recommendations text contains numbered items like "1. **Title:**" (colon INSIDE the bold)
-      // Format: "1. **Root Cause Analysis of Low rawMetrics Score:**"
-      const issueMatches = llmRecommendationsText.match(/^\d+\.\s+\*\*(.+?):\*\*/gm);
+      // The recommendations text contains numbered items like "1. **Title**" (NO colon)
+      // Format: "1. **Root Cause Analysis of Low rawMetrics Score**\n   Description text..."
+      const issueMatches = llmRecommendationsText.match(/^\d+\.\s+\*\*([^*]+)\*\*/gm);
       console.log('[v0] Regex matches found:', issueMatches?.length || 0);
       if (issueMatches) {
         console.log('[v0] Raw matches:', issueMatches);
@@ -166,8 +166,8 @@ export function RawDataDetailModal({
       const issues = issueMatches 
         ? issueMatches.map((match: string) => {
             // Extract just the text between ** marks
-            // match is like "1. **Title:**" so extract "Title"
-            const titleMatch = match.match(/\*\*(.+?):\*\*/);
+            // match is like "1. **Title**" so extract "Title"
+            const titleMatch = match.match(/\*\*([^*]+)\*\*/);
             return titleMatch && titleMatch[1] ? titleMatch[1].trim() : match.trim();
           })
         : [];
