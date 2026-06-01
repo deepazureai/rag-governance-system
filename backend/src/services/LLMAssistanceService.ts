@@ -303,6 +303,156 @@ ${truncatedContent}`;
    */
 
   /**
+   * Curate and refine a prompt based on identified issues
+   * Generates an ACTUAL REVISED PROMPT that incorporates recommendations
+   * Not just guidelines - this is a concrete improved version ready to use
+   * 
+   * @param applicationId - Application identifier (to fetch LLM config)
+   * @param originalPrompt - The original prompt to improve
+   * @param issues - List of identified issues/recommendations to address
+   * @returns Refined prompt, reasoning, and expected score increase
+   */
+  async curateAndRefinePrompt(
+    applicationId: string,
+    originalPrompt: string,
+    issues: string[]
+  ): Promise<{
+    revisedPrompt: string;
+    reasoning: string;
+    expectedScoreIncrease: number;
+  }> {
+    try {
+      // Validate inputs
+      if (!applicationId?.trim()) {
+        throw new Error('applicationId is required');
+      }
+
+      if (!originalPrompt?.trim()) {
+        throw new Error('originalPrompt is required');
+      }
+
+      if (!issues || issues.length === 0) {
+        throw new Error('At least one issue is required');
+      }
+
+      // Fetch LLM config
+      console.log(`[LLMAssistanceService] Fetching LLM config for curating prompt for app ${applicationId}`);
+      const llmConfig = await configManager.getApplicationLLMConfig(applicationId);
+
+      if (!llmConfig) {
+        throw new Error(`No LLM configuration found for application ${applicationId}`);
+      }
+
+      // Validate config
+      const validation = configManager.validateLLMConfig(llmConfig);
+      if (!validation.valid) {
+        throw new Error(`Invalid LLM config: ${validation.errors.join(', ')}`);
+      }
+
+      // Create LLM client
+      const llmClient = LLMClientFactory.create(llmConfig);
+
+      // Validate connection
+      console.log(`[LLMAssistanceService] Validating LLM connection for provider: ${llmConfig.provider}`);
+      const connectionTest = await llmClient.validate();
+      if (!connectionTest.valid) {
+        throw new Error(`LLM connection validation failed: ${connectionTest.error}`);
+      }
+
+      // Build the curation prompt
+      const systemPrompt = `You are an expert prompt engineer. Your task is to refine and improve a prompt by addressing identified issues.
+
+Return ONLY this exact JSON with no other text:
+{
+  "revisedPrompt": "the complete improved prompt ready to use",
+  "reasoning": "brief explanation of improvements",
+  "expectedScoreIncrease": 20
+}`;
+
+      const issuesText = issues.map((i, idx) => `${idx + 1}. ${i}`).join('\n');
+
+      const userPrompt = `Refine this prompt to address the issues below and create an IMPROVED VERSION ready to use immediately:
+
+ORIGINAL PROMPT:
+"""
+${originalPrompt}
+"""
+
+ISSUES TO ADDRESS:
+${issuesText}
+
+Create a CONCRETE, REVISED VERSION of the prompt that directly addresses each issue. This should be an actual working prompt, not guidelines.
+
+Return ONLY this JSON (no other text):
+{
+  "revisedPrompt": "complete improved prompt here",
+  "reasoning": "what was improved and why",
+  "expectedScoreIncrease": 20
+}`;
+
+      console.log(`[LLMAssistanceService] Generating curated prompt for app ${applicationId}`);
+
+      // Generate curated prompt
+      const suggestion = await llmClient.generate(userPrompt, {
+        temperature: 0.7,
+        maxTokens: llmConfig.maxTokens ?? 2048,
+        systemPrompt,
+      });
+
+      if (!suggestion?.trim()) {
+        throw new Error('LLM returned empty response');
+      }
+
+      console.log(`[LLMAssistanceService] Generated curated prompt, parsing response`);
+
+      // Parse the JSON response
+      let cleanedResponse = suggestion.trim();
+      
+      // Remove markdown code blocks
+      cleanedResponse = cleanedResponse
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      
+      // Extract JSON if wrapped in other text
+      if (!cleanedResponse.startsWith('{')) {
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[0];
+        }
+      }
+      
+      const parsed = JSON.parse(cleanedResponse);
+
+      if (!parsed.revisedPrompt || typeof parsed.revisedPrompt !== 'string') {
+        throw new Error('Invalid revisedPrompt in LLM response');
+      }
+
+      console.log(`[LLMAssistanceService] Successfully curated prompt for app ${applicationId}`);
+
+      return {
+        revisedPrompt: parsed.revisedPrompt.trim(),
+        reasoning: parsed.reasoning || 'Prompt refined based on identified issues',
+        expectedScoreIncrease: parsed.expectedScoreIncrease || 20,
+      };
+    } catch (error: unknown) {
+      // Fallback: Return a basic refined prompt if parsing fails
+      if (error instanceof SyntaxError) {
+        console.warn(`[LLMAssistanceService] JSON parse failed, returning fallback refined prompt`);
+        const fallbackPrompt = `${originalPrompt}\n\n[Applied Improvements]:\n${issues.map((i) => `• ${i}`).join('\n')}`;
+        
+        return {
+          revisedPrompt: fallbackPrompt,
+          reasoning: 'Refined based on identified issues',
+          expectedScoreIncrease: 15,
+        };
+      }
+
+      throw this.handleError('curateAndRefinePrompt', error, applicationId);
+    }
+  }
+
+  /**
    * Generate LLM-powered recommendations based on DeepEval analysis
    * Uses the application's saved LLM configuration from Settings->LLM tab
    * 

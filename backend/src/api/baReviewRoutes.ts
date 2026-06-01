@@ -976,4 +976,65 @@ baReviewRouter.post('/get-recommendations', async (req: Request, res: Response):
   }
 });
 
+/**
+ * Curate and refine a prompt based on identified issues
+ * POST /api/ba-review/curate-prompt
+ * 
+ * Generates an ACTUAL REVISED PROMPT (not just recommendations)
+ * that incorporates the identified issues and improvements
+ */
+baReviewRouter.post('/curate-prompt', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, originalPrompt, issues } = req.body as {
+      applicationId?: string;
+      originalPrompt?: string;
+      issues?: string[];
+    };
+
+    // Validation
+    if (!applicationId || typeof applicationId !== 'string') {
+      res.status(400).json({ success: false, error: 'applicationId is required' });
+      return;
+    }
+
+    if (!originalPrompt || typeof originalPrompt !== 'string') {
+      res.status(400).json({ success: false, error: 'originalPrompt is required' });
+      return;
+    }
+
+    if (!issues || !Array.isArray(issues) || issues.length === 0) {
+      res.status(400).json({ success: false, error: 'issues array is required with at least one item' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Curating prompt for app ${applicationId} with ${issues.length} issues`);
+    console.log('[v0] Curating prompt - originalPrompt length:', originalPrompt.length, 'issues:', issues.length);
+
+    // Call the service to curate and refine the prompt
+    const result = await llmAssistanceService.curateAndRefinePrompt(
+      applicationId,
+      originalPrompt,
+      issues
+    );
+
+    logger.info(`[baReviewRoutes] Successfully curated prompt for app ${applicationId}`);
+    console.log('[v0] Curated prompt result - revisedPrompt length:', result.revisedPrompt.length);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Prompt successfully curated and refined',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error curating prompt: ${message}`);
+    console.error('[v0] Error in curate-prompt:', message);
+    res.status(500).json({
+      success: false,
+      error: message,
+      message: 'Failed to curate and refine prompt',
+    });
+  }
+});
+
 export default baReviewRouter;

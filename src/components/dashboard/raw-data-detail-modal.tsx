@@ -140,6 +140,45 @@ export function RawDataDetailModal({
         ...prev,
         recommendations: true,
       }));
+
+      // Now curate and generate a revised prompt based on the recommendations
+      console.log('[v0] Curating prompt based on recommendations...');
+      
+      // Extract issues from recommendations to feed into curate endpoint
+      const issues = llmRecommendationsText
+        .split('\n')
+        .filter((line: string) => line.trim().length > 0)
+        .slice(0, 5); // Take first 5 recommendation items
+
+      if (issues.length > 0 && record.userPrompt) {
+        try {
+          const curateResponse = await fetch(`${apiUrl}/api/ba-review/curate-prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              applicationId: record.applicationId,
+              originalPrompt: record.userPrompt,
+              issues: issues,
+            }),
+          });
+
+          if (curateResponse.ok) {
+            const curateData = await curateResponse.json() as Record<string, unknown>;
+            const curateResult = curateData.data as Record<string, unknown> | undefined;
+            
+            if (curateResult && typeof curateResult.revisedPrompt === 'string') {
+              console.log('[v0] Revised prompt generated successfully');
+              setImprovedPrompt(curateResult.revisedPrompt);
+              setImprovementReason(typeof curateResult.reasoning === 'string' ? curateResult.reasoning : 'Refined based on LLM recommendations');
+            }
+          } else {
+            console.warn('[v0] Failed to generate revised prompt');
+          }
+        } catch (curateError: unknown) {
+          console.warn('[v0] Error curating prompt:', curateError instanceof Error ? curateError.message : String(curateError));
+          // Don't fail the whole flow if curate fails
+        }
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to generate recommendations';
       console.error('[v0] Recommendation error:', message);
