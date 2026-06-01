@@ -3,15 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle2, Loader } from 'lucide-react';
 
-interface BARecommendation {
+interface ApprovedPrompt {
   _id: string;
-  userPrompt: string;
-  llmResponse: string;
-  suggestion: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  priorityScore: number;
+  originalPrompt: string;
+  revisedPrompt: string;
+  improvementReason: string;
+  approvedAt: string;
 }
 
 interface RecommendationSelectorProps {
@@ -25,41 +25,38 @@ export function RecommendationSelector({
   selectedIds,
   onSelectionChange,
 }: RecommendationSelectorProps): React.ReactElement {
-  const [recommendations, setRecommendations] = useState<BARecommendation[]>([]);
+  const [prompts, setPrompts] = useState<ApprovedPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchRecommendations = async (): Promise<void> => {
+    const fetchApprovedPrompts = async (): Promise<void> => {
       try {
         setIsLoading(true);
         setError(null);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         
         const response = await fetch(
-          `${apiUrl}/api/ba-review/recommendations/${applicationId}`
+          `${apiUrl}/api/ba-review/approved-prompts/${applicationId}`
         );
         
         if (!response.ok) {
-          throw new Error('Failed to fetch recommendations');
+          throw new Error('Failed to fetch approved prompts');
         }
         
-        const data = (await response.json()) as unknown;
-        if (typeof data === 'object' && data !== null && 'success' in data && 'data' in data) {
-          const typedData = data as { success: boolean; data: BARecommendation[] };
-          setRecommendations(typedData.data || []);
-        }
+        const data = (await response.json()) as any;
+        setPrompts(data.data?.prompts || []);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch recommendations';
-        console.error('[v0] Error fetching recommendations:', message);
+        const message = err instanceof Error ? err.message : 'Failed to fetch approved prompts';
+        console.error('[v0] Error fetching prompts:', message);
         setError(message);
-        setRecommendations([]);
+        setPrompts([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRecommendations();
+    fetchApprovedPrompts();
   }, [applicationId]);
 
   const handleToggle = (id: string): void => {
@@ -70,26 +67,11 @@ export function RecommendationSelector({
     }
   };
 
-  const getPriorityColor = (priority: string): string => {
-    switch (priority) {
-      case 'critical':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'high':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader className="w-6 h-6 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-600">Loading recommendations...</span>
+        <span className="ml-2 text-gray-600">Loading approved prompts...</span>
       </div>
     );
   }
@@ -100,7 +82,7 @@ export function RecommendationSelector({
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-red-900">Failed to load recommendations</h3>
+            <h3 className="font-semibold text-red-900">Failed to load prompts</h3>
             <p className="text-sm text-red-700 mt-1">{error}</p>
           </div>
         </div>
@@ -108,10 +90,10 @@ export function RecommendationSelector({
     );
   }
 
-  if (recommendations.length === 0) {
+  if (prompts.length === 0) {
     return (
       <Card className="p-6 border-gray-200 bg-gray-50">
-        <p className="text-gray-600 text-center">No recommendations available for this application</p>
+        <p className="text-gray-600 text-center">No approved prompts available. Please approve prompts in the Recommendations tab first.</p>
       </Card>
     );
   }
@@ -120,7 +102,7 @@ export function RecommendationSelector({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-900">
-          BA Review Recommendations ({selectedIds.length} selected)
+          Approved Prompts ({selectedIds.length} of {prompts.length} selected)
         </h3>
         {selectedIds.length > 0 && (
           <Button
@@ -135,40 +117,55 @@ export function RecommendationSelector({
       </div>
 
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {recommendations.map((rec) => (
+        {prompts.map((prompt) => (
           <Card
-            key={rec._id}
+            key={prompt._id}
             className={`p-4 border-2 cursor-pointer transition-all ${
-              selectedIds.includes(rec._id)
+              selectedIds.includes(prompt._id)
                 ? 'border-blue-500 bg-blue-50'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            onClick={() => handleToggle(rec._id)}
+            onClick={() => handleToggle(prompt._id)}
           >
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-1">
-                {selectedIds.includes(rec._id) ? (
+                {selectedIds.includes(prompt._id) ? (
                   <CheckCircle2 className="w-5 h-5 text-blue-600" />
                 ) : (
                   <div className="w-5 h-5 border-2 border-gray-300 rounded-full" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
+                {/* Approved Badge */}
                 <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold uppercase border ${getPriorityColor(
-                      rec.priority
-                    )}`}
-                  >
-                    {rec.priority}
+                  <Badge className="bg-green-900 text-green-200">Approved</Badge>
+                  <span className="text-xs text-gray-500">
+                    {new Date(prompt.approvedAt).toLocaleDateString()}
                   </span>
-                  <span className="text-xs text-gray-500">Score: {rec.priorityScore.toFixed(2)}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{rec.userPrompt}</p>
-                <p className="text-xs text-gray-600 line-clamp-2 mb-2">{rec.llmResponse}</p>
-                <p className="text-xs text-blue-700 bg-blue-50 p-2 rounded line-clamp-2">
-                  <span className="font-semibold">Suggestion:</span> {rec.suggestion}
-                </p>
+
+                {/* Original Prompt */}
+                <div className="mb-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Original</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded line-clamp-2">
+                    {prompt.originalPrompt}
+                  </p>
+                </div>
+
+                {/* Revised Prompt */}
+                <div className="mb-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Revised</p>
+                  <p className="text-sm text-gray-900 bg-blue-50 p-2 rounded line-clamp-2 border border-blue-200">
+                    {prompt.revisedPrompt}
+                  </p>
+                </div>
+
+                {/* Improvement Reason */}
+                {prompt.improvementReason && (
+                  <p className="text-xs text-gray-600 italic">
+                    <span className="font-semibold">Why:</span> {prompt.improvementReason.substring(0, 100)}...
+                  </p>
+                )}
               </div>
             </div>
           </Card>
@@ -176,7 +173,7 @@ export function RecommendationSelector({
       </div>
 
       <p className="text-xs text-gray-600 text-center">
-        Select recommendations to include in template synthesis
+        Select approved prompts to include in template synthesis
       </p>
     </div>
   );

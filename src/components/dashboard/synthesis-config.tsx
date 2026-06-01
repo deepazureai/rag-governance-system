@@ -34,86 +34,16 @@ export function SynthesisConfig({
       setSynthesizedTemplate(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      // Get applicationId from URL params or context
       const applicationId = new URLSearchParams(window.location.search).get('appId') || 'default-app';
 
-      // Fetch full recommendation data for selected IDs
-      interface RecommendationData {
-        _id: string;
-        userPrompt: string;
-        llmResponse: string;
-        suggestion: string;
-        priority: string;
-        priorityScore: number;
-      }
-
-      const recommendationsData: RecommendationData[] = [];
-      for (const recId of selectedRecommendationIds) {
-        try {
-          const recResponse = await fetch(
-            `${apiUrl}/api/ba-review/recommendations/${applicationId}/${recId}`
-          );
-          if (recResponse.ok) {
-            const recData = (await recResponse.json()) as unknown;
-            if (
-              typeof recData === 'object' &&
-              recData !== null &&
-              'data' in recData &&
-              typeof (recData as Record<string, unknown>).data === 'object'
-            ) {
-              const rec = (recData as { data: RecommendationData }).data;
-              recommendationsData.push(rec);
-            }
-          }
-        } catch (err) {
-          console.error(`[v0] Failed to fetch recommendation ${recId}:`, err);
-        }
-      }
-
-      // Fetch full KB prompt data for selected IDs
-      interface KBPromptData {
-        _id: string;
-        prompt: string;
-        context: string;
-        relevanceScore: number;
-        source: string;
-      }
-
-      const kbPromptsData: KBPromptData[] = [];
-      for (const kbId of selectedKBPromptIds) {
-        try {
-          const kbResponse = await fetch(
-            `${apiUrl}/api/knowledge-base/prompts/${applicationId}/${kbId}`
-          );
-          if (kbResponse.ok) {
-            const kbData = (await kbResponse.json()) as unknown;
-            if (
-              typeof kbData === 'object' &&
-              kbData !== null &&
-              'data' in kbData &&
-              typeof (kbData as Record<string, unknown>).data === 'object'
-            ) {
-              const kb = (kbData as { data: KBPromptData }).data;
-              kbPromptsData.push(kb);
-            }
-          }
-        } catch (err) {
-          console.error(`[v0] Failed to fetch KB prompt ${kbId}:`, err);
-        }
-      }
-
-      // Call synthesis endpoint with enriched data
-      const response = await fetch(`${apiUrl}/api/prompt-templates/synthesize`, {
+      // Call the new synthesize-template endpoint with approved prompts
+      const response = await fetch(`${apiUrl}/api/ba-review/synthesize-template`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          applicationId,
+          selectedPromptIds: selectedRecommendationIds,
           templateName,
-          recommendationIds: selectedRecommendationIds,
-          recommendations: recommendationsData.length > 0 ? recommendationsData : undefined,
-          kbPromptIds: selectedKBPromptIds,
-          kbPrompts: kbPromptsData.length > 0 ? kbPromptsData : undefined,
-          frameworks: selectedFrameworks,
         }),
       });
 
@@ -121,14 +51,18 @@ export function SynthesisConfig({
         throw new Error(`Synthesis failed: ${response.statusText}`);
       }
 
-      const data = (await response.json()) as unknown;
-      if (typeof data === 'object' && data !== null && 'success' in data && 'data' in data) {
-        const typedData = data as {
-          success: boolean;
-          data: { crewaiTemplate: string; metadata: Record<string, unknown> };
-        };
-        setSynthesizedTemplate(typedData.data.crewaiTemplate);
-        onSynthesisComplete(typedData.data);
+      const data = (await response.json()) as any;
+      if (data.success && data.data?.template) {
+        const templateJson = JSON.stringify(data.data.template, null, 2);
+        setSynthesizedTemplate(templateJson);
+        onSynthesisComplete({
+          crewaiTemplate: templateJson,
+          metadata: {
+            promptsIncluded: data.data.promptsIncluded,
+            createdAt: new Date().toISOString(),
+            applicationId,
+          },
+        });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Synthesis failed';
@@ -148,67 +82,36 @@ export function SynthesisConfig({
     }
   };
 
-  const totalSelected = selectedRecommendationIds.length + selectedKBPromptIds.length;
-  const canSynthesize = totalSelected > 0 && selectedFrameworks.length > 0;
+  const totalSelected = selectedRecommendationIds.length;
+  const canSynthesize = totalSelected > 0;
 
   return (
     <div className="space-y-6">
       {/* Summary */}
       <Card className="p-4 bg-blue-50 border-blue-200">
         <h3 className="font-semibold text-gray-900 mb-3">Synthesis Summary</h3>
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-gray-600">Recommendations Selected</p>
+            <p className="text-gray-600">Approved Prompts Selected</p>
             <p className="text-lg font-bold text-blue-600">{selectedRecommendationIds.length}</p>
           </div>
           <div>
-            <p className="text-gray-600">KB Prompts Selected</p>
-            <p className="text-lg font-bold text-green-600">{selectedKBPromptIds.length}</p>
-          </div>
-          <div>
-            <p className="text-gray-600">Evaluation Frameworks</p>
-            <p className="text-lg font-bold text-purple-600">{selectedFrameworks.length}</p>
+            <p className="text-gray-600">Template Name</p>
+            <p className="text-lg font-bold text-purple-600">{templateName || 'Unnamed'}</p>
           </div>
         </div>
       </Card>
 
       {/* Synthesis Configuration */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-gray-900">LLM Synthesis Settings</h3>
+        <h3 className="font-semibold text-gray-900">CrewAI Template Format</h3>
         <Card className="p-4 border-gray-200 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Synthesis Strategy
-            </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option>Combine all sources with equal weight</option>
-              <option>Prioritize recommendations over KB prompts</option>
-              <option>Prioritize KB prompts over recommendations</option>
-              <option>Merge with framework-specific focus</option>
-            </select>
+            <p className="text-sm text-gray-700">
+              Your CrewAI template will be synthesized from {selectedRecommendationIds.length} approved prompt{selectedRecommendationIds.length !== 1 ? 's' : ''}. 
+              Each prompt will become an actor with a defined role and task in the CrewAI workflow.
+            </p>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Template Format
-            </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option>CrewAI Task Definition</option>
-              <option>Prompt Engineering Template</option>
-              <option>RAG Pipeline Configuration</option>
-              <option>LangChain Template</option>
-            </select>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="w-4 h-4 rounded" defaultChecked />
-            <span className="text-gray-700">Include quality guidelines in output</span>
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="w-4 h-4 rounded" defaultChecked />
-            <span className="text-gray-700">Include evaluation criteria from selected frameworks</span>
-          </label>
         </Card>
       </div>
 
@@ -246,7 +149,7 @@ export function SynthesisConfig({
 
       {!canSynthesize && (
         <p className="text-xs text-gray-600 text-center">
-          Select at least one recommendation or KB prompt and choose evaluation frameworks to synthesize
+          Select at least one approved prompt to synthesize into a CrewAI template
         </p>
       )}
 

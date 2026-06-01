@@ -1213,4 +1213,147 @@ baReviewRouter.patch('/approve-prompt/:recordId', async (req: Request, res: Resp
   }
 });
 
+/**
+ * Get approved prompts for template building (only approved prompts)
+ * GET /api/ba-review/approved-prompts/:applicationId
+ */
+baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+
+    if (!applicationId) {
+      res.status(400).json({ success: false, error: 'applicationId is required' });
+      return;
+    }
+
+    const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+
+    // Fetch only approved prompts
+    const approvedPrompts = await EvaluationCollection.find(
+      {
+        applicationId,
+        'baReview.approvalStatus': 'approved',
+      },
+      {
+        projection: {
+          _id: 1,
+          applicationId: 1,
+          userPrompt: 1,
+          'baReview.approvedRevisedPrompt': 1,
+          'baReview.approvalReason': 1,
+          'baReview.promptImprovements': 1,
+          updatedAt: 1,
+        },
+      }
+    )
+      .sort({ 'baReview.approvedAt': -1 })
+      .toArray();
+
+    console.log(`[v0] Fetched ${approvedPrompts.length} approved prompts for app ${applicationId}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        prompts: approvedPrompts.map((p: any) => ({
+          _id: p._id?.toString?.(),
+          applicationId: p.applicationId,
+          originalPrompt: p.userPrompt,
+          revisedPrompt: p.baReview?.approvedRevisedPrompt || '',
+          improvementReason: p.baReview?.promptImprovements?.[0]?.improvementReason || '',
+          approvedAt: p.baReview?.approvedAt,
+        })),
+        count: approvedPrompts.length,
+      },
+      message: 'Approved prompts fetched successfully',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching approved prompts: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * Synthesize approved prompts into CrewAI template format
+ * POST /api/ba-review/synthesize-template
+ * Body: { applicationId: string, selectedPromptIds: string[], templateName: string }
+ */
+baReviewRouter.post('/synthesize-template', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, selectedPromptIds, templateName } = req.body as any;
+
+    if (!applicationId || !selectedPromptIds || selectedPromptIds.length === 0) {
+      res.status(400).json({ success: false, error: 'applicationId and selectedPromptIds are required' });
+      return;
+    }
+
+    const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+
+    // Fetch selected approved prompts
+    const objectIds = selectedPromptIds
+      .map((id: string) => {
+        try {
+          return id.length === 24 ? new mongoose.Types.ObjectId(id) : id;
+        } catch {
+          return id;
+        }
+      });
+
+    const selectedPrompts = await EvaluationCollection.find(
+      {
+        _id: { $in: objectIds },
+        'baReview.approvalStatus': 'approved',
+      }
+    ).toArray();
+
+    if (selectedPrompts.length === 0) {
+      res.status(400).json({ success: false, error: 'No approved prompts found' });
+      return;
+    }
+
+    // Synthesize into CrewAI format
+    const crewAITemplate = {
+      name: templateName || 'Generated Template',
+      description: `CrewAI template synthesized from ${selectedPrompts.length} approved prompts`,
+      actors: selectedPrompts.map((p: any, idx: number) => ({
+        id: `actor_${idx + 1}`,
+        role: `Specialist ${idx + 1}`,
+        goal: p.baReview?.approvedRevisedPrompt || p.userPrompt,
+      })),
+      tasks: selectedPrompts.map((p: any, idx: number) => ({
+        id: `task_${idx + 1}`,
+        description: p.baReview?.approvedRevisedPrompt || p.userPrompt,
+        expected_output: `Comprehensive analysis addressing: ${p.baReview?.promptImprovements?.[0]?.improvementReason || 'detailed response'}`,
+      })),
+      workflow: {
+        steps: selectedPrompts.map((_, idx: number) => ({
+          step: idx + 1,
+          task_id: `task_${idx + 1}`,
+          actor_id: `actor_${idx + 1}`,
+        })),
+      },
+      context: {
+        original_prompts: selectedPrompts.map((p: any) => p.userPrompt),
+        revision_count: selectedPrompts.length,
+        created_at: new Date().toISOString(),
+      },
+    };
+
+    console.log(`[v0] Synthesized CrewAI template from ${selectedPrompts.length} prompts`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        template: crewAITemplate,
+        promptsIncluded: selectedPrompts.length,
+      },
+      message: 'Template synthesized successfully',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error synthesizing template: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 export default baReviewRouter;
