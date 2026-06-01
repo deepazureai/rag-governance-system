@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import { LLMConfig, LLMConfigInput, ApiResponse } from '../types/models.js';
 import { LLMConfigSchema } from '../schemas/index.js';
 import { cryptoUtil } from '../utils/CryptoUtil.js';
+import { configManager } from '../utils/ConfigManager.js';
 
 /**
  * LLM Config Service
@@ -55,6 +56,11 @@ export class LLMConfigService {
       }
 
       console.log('[v0] Successfully upserted and retrieved config for applicationId:', applicationId);
+      
+      // CRITICAL: Invalidate the config cache so next request fetches fresh config from DB
+      configManager.invalidateLLMCache(applicationId);
+      console.log('[v0] Invalidated LLM config cache for app:', applicationId);
+      
       return savedConfig as LLMConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
