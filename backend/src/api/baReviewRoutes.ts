@@ -1071,10 +1071,7 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
           _id: 1,
           applicationId: 1,
           userPrompt: 1,
-          'promptImprovement.revisedPrompt': 1,
-          'promptImprovement.improvementReason': 1,
-          'promptImprovement.estimatedScoreIncrease': 1,
-          'promptImprovement.generatedAt': 1,
+          'baReview.promptImprovements': 1,
           llmResponse: 1,
           context: 1,
           deepEvalAnalysis: 1,
@@ -1089,22 +1086,27 @@ baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request
       .toArray();
 
     console.log(`[v0] Fetched ${prompts.length} prompts for app ${applicationId}, total: ${totalCount}`);
+    console.log('[v0] Sample prompt structure:', prompts[0]);
 
     res.status(200).json({
       success: true,
       data: {
-        prompts: prompts.map((p: any) => ({
-          _id: p._id?.toString?.(),
-          applicationId: p.applicationId,
-          userPrompt: p.userPrompt,
-          revisedPrompt: p.promptImprovement?.revisedPrompt || null,
-          improvementReason: p.promptImprovement?.improvementReason || null,
-          estimatedScoreIncrease: p.promptImprovement?.estimatedScoreIncrease || 0,
-          generatedAt: p.promptImprovement?.generatedAt || null,
-          llmResponse: p.llmResponse,
-          hasRevision: !!p.promptImprovement?.revisedPrompt,
-          updatedAt: p.updatedAt,
-        })),
+        prompts: prompts.map((p: any) => {
+          // Get the first improvement if available (array structure)
+          const firstImprovement = p.baReview?.promptImprovements?.[0];
+          return {
+            _id: p._id?.toString?.(),
+            applicationId: p.applicationId,
+            userPrompt: p.userPrompt,
+            revisedPrompt: firstImprovement?.revisedPrompt || null,
+            improvementReason: firstImprovement?.improvementReason || null,
+            estimatedScoreIncrease: firstImprovement?.estimatedScoreIncrease || 0,
+            generatedAt: firstImprovement?.generatedAt || null,
+            llmResponse: p.llmResponse,
+            hasRevision: !!firstImprovement?.revisedPrompt,
+            updatedAt: p.updatedAt,
+          };
+        }),
         pagination: {
           page,
           limit,
