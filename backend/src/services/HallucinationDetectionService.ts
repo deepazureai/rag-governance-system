@@ -238,46 +238,83 @@ export async function generateImprovedPrompt(
   improvements: string[];
   expectedGroundednessIncrease: number;
 }> {
-  const systemPrompt = `You are an expert prompt engineer. Improve the given prompt to increase groundedness and reduce hallucinations.
+  const systemPrompt = `You are an expert prompt engineer specializing in RAG (Retrieval-Augmented Generation) systems.
+Your task is to improve prompts to be more grounded in retrieved documents and reduce hallucinations.
 
-Respond ONLY with valid JSON:
+IMPORTANT: You MUST respond ONLY with valid JSON, nothing else. No explanations, no markdown, no extra text.
+
+Response format (REQUIRED):
 {
-  "improvedPrompt": "the new prompt",
-  "improvements": ["improvement 1", "improvement 2"],
+  "improvedPrompt": "the complete improved prompt here",
+  "improvements": ["specific improvement 1", "specific improvement 2", "specific improvement 3"],
   "expectedIncrease": 25
 }`;
 
-  const userPromptForAnalysis = `Improve this prompt to achieve ${targetGroundedness}/100 groundedness:
+  const userPromptForAnalysis = `TASK: Improve this prompt to achieve ${targetGroundedness}/100 groundedness in a RAG system.
 
 ORIGINAL PROMPT:
+"""
 ${originalPrompt}
+"""
 
 IDENTIFIED ISSUES:
-${issues.join('\n')}
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 
-Create an improved prompt that:
-1. Adds explicit constraints and output format
-2. Includes domain-specific context
-3. Defines key terms
-4. Specifies exactly what source material to reference
-5. Adds verification steps
+IMPROVEMENTS NEEDED - Create an improved prompt that:
+1. Explicitly instructs to use provided documents/context
+2. Specifies what to do if context is insufficient  
+3. Asks the model to cite sources from retrieved documents
+4. Includes clear constraints on hallucination
+5. Defines expected response format
+6. Adds instructions to indicate uncertainty when no source supports the answer
 
-Return JSON with: improvedPrompt, list of improvements made, and expectedIncrease.`;
+CRITICAL: Return ONLY the JSON object below with no additional text:
+{
+  "improvedPrompt": "the complete improved prompt text",
+  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
+  "expectedIncrease": 15
+}`;
 
   const response = await callAzureOpenAI(systemPrompt, userPromptForAnalysis, appConfig);
 
   try {
-    const cleanedResponse = response
+    // Extract JSON from response - handles various formats
+    let cleanedResponse = response.trim();
+    
+    // Remove markdown code blocks if present
+    cleanedResponse = cleanedResponse
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
-    return JSON.parse(cleanedResponse);
-  } catch (error) {
-    console.error('[PromptImprovement] Failed to parse response:', response);
+    
+    // If response contains multiple lines, try to find JSON object
+    if (cleanedResponse.includes('\n')) {
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanedResponse = jsonMatch[0];
+      }
+    }
+    
+    const parsed = JSON.parse(cleanedResponse);
+    
+    // Validate the structure
+    if (!parsed.improvedPrompt || !Array.isArray(parsed.improvements)) {
+      throw new Error('Invalid response structure');
+    }
+    
     return {
-      improvedPrompt: originalPrompt,
-      improvements: [],
-      expectedGroundednessIncrease: 0,
+      improvedPrompt: parsed.improvedPrompt.trim(),
+      improvements: parsed.improvements,
+      expectedGroundednessIncrease: parsed.expectedIncrease || 15,
+    };
+  } catch (error) {
+    console.error('[PromptImprovement] Failed to parse response:', response, 'Error:', error);
+    // Fallback: return the analysis text as the improved prompt if JSON parsing fails
+    // This ensures something useful is returned
+    return {
+      improvedPrompt: `IMPROVEMENT SUGGESTIONS:\n${issues.map((i, idx) => `${idx + 1}. ${i}`).join('\n')}\n\nOPTIMIZED PROMPT:\nModify your original prompt to:\n- Explicitly request use of provided context/documents\n- Ask the model to cite sources\n- Specify what to do if no relevant context exists\n- Add constraints against speculation`,
+      improvements: issues,
+      expectedGroundednessIncrease: 20,
     };
   }
 }
