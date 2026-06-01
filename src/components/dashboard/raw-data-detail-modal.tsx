@@ -144,11 +144,19 @@ export function RawDataDetailModal({
       // Now curate and generate a revised prompt based on the recommendations
       console.log('[v0] Curating prompt based on recommendations...');
       
-      // Extract issues from recommendations to feed into curate endpoint
-      const issues = llmRecommendationsText
-        .split('\n')
-        .filter((line: string) => line.trim().length > 0)
-        .slice(0, 5); // Take first 5 recommendation items
+      // Extract issues from recommendations text
+      // The recommendations text contains numbered items like "1. **Title**: Description"
+      // We need to extract just the titles/issue names for the curate endpoint
+      const issueMatches = llmRecommendationsText.match(/\d+\.\s+\*\*([^*]+)\*\*:/g);
+      const issues = issueMatches 
+        ? issueMatches.map((match: string) => {
+            // Extract just the text between ** marks
+            const titleMatch = match.match(/\*\*([^*]+)\*\*/);
+            return titleMatch && titleMatch[1] ? titleMatch[1].trim() : match.trim();
+          })
+        : [];
+
+      console.log('[v0] Extracted issues:', issues);
 
       if (issues.length > 0 && record.userPrompt) {
         try {
@@ -162,22 +170,30 @@ export function RawDataDetailModal({
             }),
           });
 
+          console.log('[v0] Curate response status:', curateResponse.status);
+
           if (curateResponse.ok) {
             const curateData = await curateResponse.json() as Record<string, unknown>;
+            console.log('[v0] Curate response data:', curateData);
             const curateResult = curateData.data as Record<string, unknown> | undefined;
             
             if (curateResult && typeof curateResult.revisedPrompt === 'string') {
-              console.log('[v0] Revised prompt generated successfully');
+              console.log('[v0] Revised prompt generated successfully, length:', curateResult.revisedPrompt.length);
               setImprovedPrompt(curateResult.revisedPrompt);
               setImprovementReason(typeof curateResult.reasoning === 'string' ? curateResult.reasoning : 'Refined based on LLM recommendations');
+            } else {
+              console.warn('[v0] Curate result missing revisedPrompt:', curateResult);
             }
           } else {
-            console.warn('[v0] Failed to generate revised prompt');
+            const errorText = await curateResponse.text();
+            console.warn('[v0] Failed to generate revised prompt, status:', curateResponse.status, 'error:', errorText);
           }
         } catch (curateError: unknown) {
           console.warn('[v0] Error curating prompt:', curateError instanceof Error ? curateError.message : String(curateError));
           // Don't fail the whole flow if curate fails
         }
+      } else {
+        console.warn('[v0] Issues extraction failed or no userPrompt. Issues count:', issues.length, 'userPrompt exists:', !!record.userPrompt);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to generate recommendations';

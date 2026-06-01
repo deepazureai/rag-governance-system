@@ -1008,7 +1008,8 @@ baReviewRouter.post('/curate-prompt', async (req: Request, res: Response): Promi
     }
 
     logger.info(`[baReviewRoutes] Curating prompt for app ${applicationId} with ${issues.length} issues`);
-    console.log('[v0] Curating prompt - originalPrompt length:', originalPrompt.length, 'issues:', issues.length);
+    console.log('[v0] Curating prompt - originalPrompt length:', originalPrompt.length, 'issues count:', issues.length);
+    console.log('[v0] Issues received:', JSON.stringify(issues, null, 2));
 
     // Call the service to curate and refine the prompt
     const result = await llmAssistanceService.curateAndRefinePrompt(
@@ -1019,6 +1020,7 @@ baReviewRouter.post('/curate-prompt', async (req: Request, res: Response): Promi
 
     logger.info(`[baReviewRoutes] Successfully curated prompt for app ${applicationId}`);
     console.log('[v0] Curated prompt result - revisedPrompt length:', result.revisedPrompt.length);
+    console.log('[v0] Curated prompt result - reasoning:', result.reasoning.substring(0, 100));
 
     res.status(200).json({
       success: true,
