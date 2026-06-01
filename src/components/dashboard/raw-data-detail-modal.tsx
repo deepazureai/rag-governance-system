@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,12 @@ export function RawDataDetailModal({
   } | null>(null);
   const [deepEvalSuggestions, setDeepEvalSuggestions] = useState<string>('');
   const [deepEvalReasoning, setDeepEvalReasoning] = useState<string>('');
+
+  useEffect(() => {
+    if (improvedPrompt) {
+      console.log('[v0] STATE DEBUG - improvedPrompt updated:', improvedPrompt.substring(0, 100), 'length:', improvedPrompt.length);
+    }
+  }, [improvedPrompt]);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
