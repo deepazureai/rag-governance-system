@@ -250,16 +250,13 @@ export class LLMConfigService {
    * @returns Configuration with encrypted sensitive fields
    */
   private encryptSensitiveFields(config: LLMConfigInput): LLMConfigInput {
-    const encrypted: LLMConfigInput = { ...config };
+    // First normalize legacy field names to exact format
+    const normalized = this.normalizeLegacyFieldNames(config as unknown as Record<string, unknown>);
+    const encrypted: LLMConfigInput = { ...normalized } as LLMConfigInput;
 
     // Encrypt new Azure OpenAI field names
     if (encrypted.api_key && typeof encrypted.api_key === 'string') {
       (encrypted as Record<string, unknown>).api_key = cryptoUtil.encrypt(encrypted.api_key);
-    }
-    
-    // Encrypt legacy Azure OpenAI field names
-    if (encrypted.azureApiKey && typeof encrypted.azureApiKey === 'string') {
-      encrypted.azureApiKey = cryptoUtil.encrypt(encrypted.azureApiKey);
     }
     
     // Encrypt Claude credentials
@@ -285,6 +282,39 @@ export class LLMConfigService {
     (encrypted as Record<string, unknown>).updatedAt = new Date();
 
     return encrypted;
+  }
+
+  /**
+   * Normalize legacy field names to exact format for LLMClientFactory
+   * Frontend sends: azureApiKey, azureEndpoint, azureDeploymentName, azureApiVersion
+   * LLMClientFactory expects: api_key, azure_endpoint, deployment, api_version
+   */
+  private normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
+    const normalized = { ...config };
+
+    // Convert Azure OpenAI legacy names to exact format
+    if (config.azureApiKey && !config.api_key) {
+      normalized.api_key = config.azureApiKey;
+    }
+    if (config.azureEndpoint && !config.azure_endpoint) {
+      normalized.azure_endpoint = config.azureEndpoint;
+    }
+    if (config.azureDeploymentName && !config.deployment) {
+      normalized.deployment = config.azureDeploymentName;
+    }
+    if (config.azureApiVersion && !config.api_version) {
+      normalized.api_version = config.azureApiVersion;
+    }
+
+    console.log('[v0] Normalized LLM config:', {
+      provider: normalized.provider,
+      has_api_key: !!normalized.api_key,
+      has_azure_endpoint: !!normalized.azure_endpoint,
+      has_deployment: !!normalized.deployment,
+      has_api_version: !!normalized.api_version,
+    });
+
+    return normalized as LLMConfigInput;
   }
 }
 

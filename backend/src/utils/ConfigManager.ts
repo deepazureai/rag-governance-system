@@ -334,8 +334,12 @@ export class ConfigManager {
   private decryptConfig(config: ILLMConfig): ILLMConfig {
     const decrypted: ILLMConfig = { ...config };
 
+    // Decrypt credentials
     if (decrypted.azureApiKey) {
       decrypted.azureApiKey = cryptoUtil.decrypt(decrypted.azureApiKey);
+    }
+    if (decrypted.api_key) {
+      (decrypted as unknown as Record<string, unknown>).api_key = cryptoUtil.decrypt(decrypted.api_key as string);
     }
     if (decrypted.claudeApiKey) {
       decrypted.claudeApiKey = cryptoUtil.decrypt(decrypted.claudeApiKey);
@@ -350,7 +354,41 @@ export class ConfigManager {
       decrypted.openaiApiKey = cryptoUtil.decrypt(decrypted.openaiApiKey);
     }
 
-    return decrypted;
+    // Normalize field names for LLMClientFactory
+    const normalized = this.normalizeLegacyFieldNames(decrypted as unknown as Record<string, unknown>);
+    
+    console.log('[ConfigManager] Decrypted and normalized LLM config:', {
+      provider: (normalized as Record<string, unknown>).provider,
+      has_api_key: !!(normalized as Record<string, unknown>).api_key,
+      has_azure_endpoint: !!(normalized as Record<string, unknown>).azure_endpoint,
+      has_deployment: !!(normalized as Record<string, unknown>).deployment,
+    });
+
+    return normalized as unknown as ILLMConfig;
+  }
+
+  /**
+   * Normalize legacy field names to exact format for LLMClientFactory
+   * Converts: azureApiKey → api_key, azureEndpoint → azure_endpoint, etc.
+   */
+  private normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
+    const normalized = { ...config };
+
+    // Convert Azure OpenAI legacy names to exact format
+    if (config.azureApiKey && !config.api_key) {
+      normalized.api_key = config.azureApiKey;
+    }
+    if (config.azureEndpoint && !config.azure_endpoint) {
+      normalized.azure_endpoint = config.azureEndpoint;
+    }
+    if (config.azureDeploymentName && !config.deployment) {
+      normalized.deployment = config.azureDeploymentName;
+    }
+    if (config.azureApiVersion && !config.api_version) {
+      normalized.api_version = config.azureApiVersion;
+    }
+
+    return normalized;
   }
 
   /**
