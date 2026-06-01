@@ -222,24 +222,25 @@ llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response)
     const config = await kbConfigService.getConfig(appId);
 
     if (!config) {
-      res.status(404).json({
-        success: false,
-        error: 'KB configuration not found',
-      } as ApiResponse<IKnowledgeBaseConfig>);
+      // Return with success: true and empty/default data so frontend can still parse it
+      res.json({
+        success: true,
+        data: null,
+      } as any);
       return;
     }
 
     res.json({
       success: true,
       data: config,
-      } as ApiResponse<IKnowledgeBaseConfig>);
+    } as ApiResponse<IKnowledgeBaseConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] GET /api/kb-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
       error: message,
-      } as ApiResponse<IKnowledgeBaseConfig>);
+    } as ApiResponse<IKnowledgeBaseConfig>);
   }
 });
 
@@ -282,7 +283,8 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     res.json({
       success: true,
       data: config,
-      } as ApiResponse<IKnowledgeBaseConfig>);
+      message: 'Knowledge Base configuration saved successfully',
+    } as ApiResponse<IKnowledgeBaseConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] POST /api/kb-config/app/:appId Error:', message);

@@ -109,7 +109,7 @@ export function KnowledgeBaseConfigTab({ applicationId: initialAppId }: Knowledg
       setIsLoading(true);
       setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${selectedAppId}`);
+      const response = await fetch(`${apiUrl}/api/kb-config/app/${selectedAppId}`);
 
       if (!response.ok) {
         setError('Failed to fetch configuration');
@@ -196,27 +196,36 @@ export function KnowledgeBaseConfigTab({ applicationId: initialAppId }: Knowledg
         }
       }
 
+      console.log('[v0] Saving KB config:', {
+        appId: selectedAppId,
+        ...config,
+      });
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/llm-config/knowledge-base/${selectedAppId}`, {
+      const response = await fetch(`${apiUrl}/api/kb-config/app/${selectedAppId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
 
+      const data = await response.json() as Record<string, unknown>;
+
       if (!response.ok) {
-        setError('Failed to save configuration');
+        const errorMsg = (data?.error as string) || 'Failed to save configuration';
+        console.error('[v0] Save failed:', errorMsg, data);
+        setError(errorMsg);
         setIsSaving(false);
         return;
       }
 
-      const data = await response.json() as { success: boolean; data?: KBConfig; message?: string };
-      if (data.success && data.data && data.message) {
-        setSuccess(data.message);
-        setConfig(data.data);
+      if ((data?.success) && (data?.data as KBConfig)) {
+        setSuccess('Knowledge Base configuration saved successfully!');
+        setConfig(data.data as KBConfig);
+        setTimeout(() => setSuccess(null), 5000);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('[v0] Error saving KB config:', message);
+      console.error('[v0] Error saving KB config:', message, error);
       setError(message);
     } finally {
       setIsSaving(false);
