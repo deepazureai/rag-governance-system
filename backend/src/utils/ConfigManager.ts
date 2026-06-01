@@ -370,6 +370,7 @@ export class ConfigManager {
   /**
    * Normalize legacy field names to exact format for LLMClientFactory
    * Converts: azureApiKey → api_key, azureEndpoint → azure_endpoint, etc.
+   * Also extracts base endpoint if full URL is provided
    */
   private normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
     const normalized = { ...config };
@@ -386,6 +387,22 @@ export class ConfigManager {
     }
     if (config.azureApiVersion && !config.api_version) {
       normalized.api_version = config.azureApiVersion;
+    }
+
+    // Also handle exact field names (not legacy)
+    // If azure_endpoint is provided but it's the full URL, extract just the base
+    if (normalized.azure_endpoint && typeof normalized.azure_endpoint === 'string') {
+      const endpoint = normalized.azure_endpoint;
+      
+      // If endpoint includes the full path with /openai/deployments/, extract just the base
+      if (endpoint.includes('/openai/deployments/')) {
+        const baseUrl = endpoint.split('/openai/deployments/')[0];
+        normalized.azure_endpoint = baseUrl;
+        console.log('[v0] ConfigManager: Extracted base endpoint from full URL:', {
+          original: endpoint,
+          extracted: baseUrl,
+        });
+      }
     }
 
     return normalized;
