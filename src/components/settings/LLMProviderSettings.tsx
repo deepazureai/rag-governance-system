@@ -26,10 +26,10 @@ interface ProviderField {
 
 const PROVIDER_FIELDS: Record<LLMProvider, ProviderField[]> = {
   'azure-openai': [
-    { name: 'azureEndpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
+    { name: 'azureEndpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com (just the base URL)' },
     { name: 'azureApiKey', label: 'API Key', type: 'password', required: true },
-    { name: 'azureDeploymentName', label: 'Deployment Name', type: 'text', required: true },
-    { name: 'azureApiVersion', label: 'API Version', type: 'text', required: true, placeholder: '2023-05-15' },
+    { name: 'azureDeploymentName', label: 'Deployment Name', type: 'text', required: true, placeholder: 'e.g., gpt-4-turbo' },
+    { name: 'azureApiVersion', label: 'API Version', type: 'text', required: true, placeholder: '2025-01-01-preview' },
   ],
   'openai': [
     { name: 'openaiApiKey', label: 'API Key', type: 'password', required: true },
@@ -111,13 +111,24 @@ export const LLMProviderSettings: React.FC<LLMProviderSettingsProps> = ({ applic
 
   const validateForm = (): boolean => {
     const fields = PROVIDER_FIELDS[provider];
-    return fields.every(field => {
-      if (field.required) {
-        const value = formData[field.name];
-        return typeof value === 'string' && value.trim().length > 0;
+    
+    for (const field of fields) {
+      if (field.required && !formData[field.name]?.trim()) {
+        return false;
       }
-      return true;
-    });
+    }
+    
+    // Validate Azure API version format
+    if (provider === 'azure-openai') {
+      const apiVersion = formData.azureApiVersion?.trim() || '';
+      // Azure API versions should be in format: YYYY-MM-DD-preview or similar
+      if (!apiVersion.match(/^\d{4}-\d{2}-\d{2}/)) {
+        setMessage({ type: 'error', text: 'Azure API Version must be in format like 2025-01-01-preview' });
+        return false;
+      }
+    }
+    
+    return true;
   };
 
   const handleSave = async (): Promise<void> => {
