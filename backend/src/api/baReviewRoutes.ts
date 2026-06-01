@@ -1258,6 +1258,7 @@ baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res:
           _id: p._id?.toString?.(),
           applicationId: p.applicationId,
           originalPrompt: p.userPrompt,
+          userPrompt: p.userPrompt,
           revisedPrompt: p.baReview?.approvedRevisedPrompt || '',
           improvementReason: p.baReview?.promptImprovements?.[0]?.improvementReason || '',
           approvedAt: p.baReview?.approvedAt,

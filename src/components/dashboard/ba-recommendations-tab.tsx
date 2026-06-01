@@ -51,6 +51,7 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
       if (!response.ok) throw new Error('Failed to fetch prompts');
       
       const data = await response.json() as any;
+      console.log('[v0] Fetched prompts:', data.data.prompts);
       setPrompts(data.data.prompts);
       setPagination(data.data.pagination);
       setError(null);
