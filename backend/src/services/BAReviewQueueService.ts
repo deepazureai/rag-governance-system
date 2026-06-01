@@ -268,6 +268,8 @@ export class BAReviewQueueService {
       const RawDataCollection = mongoose.connection.collection('rawdatarecords');
       const BAReviewQueueCollection = mongoose.connection.collection('bareviewqueue');
 
+      console.log('[v0] addPromptImprovement called with recordId:', rawDataRecordId);
+
       // Add improvement to raw data record
       const improvement = {
         originalPrompt: '', // Will fetch from record
@@ -279,15 +281,30 @@ export class BAReviewQueueService {
         createdAt: new Date(),
       };
 
-      const rawRecord = await RawDataCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataRecordId) });
+      // Try to parse the ObjectId - if invalid, try as string key
+      let rawRecord;
+      try {
+        rawRecord = await RawDataCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataRecordId) });
+      } catch (parseError) {
+        console.log('[v0] ObjectId parsing failed, trying string lookup:', rawDataRecordId);
+        // Fallback: try finding by recordId field (string)
+        rawRecord = await RawDataCollection.findOne({ recordId: rawDataRecordId });
+      }
+
       if (!rawRecord) {
+        console.error('[v0] Raw data record lookup failed. RecordId:', rawDataRecordId);
+        // Try to find any record to debug
+        const sampleRecords = await RawDataCollection.find({}).limit(1).toArray();
+        console.log('[v0] Sample record structure:', sampleRecords[0]?._id?.toString());
         throw new Error(`Raw data record not found: ${rawDataRecordId}`);
       }
 
-      improvement.originalPrompt = rawRecord.userPrompt;
+      console.log('[v0] Found raw record:', rawRecord._id?.toString());
+
+      improvement.originalPrompt = rawRecord.userPrompt || rawRecord.prompt || '';
 
       await RawDataCollection.updateOne(
-        { _id: new mongoose.Types.ObjectId(rawDataRecordId) },
+        { _id: rawRecord._id },
         [
           {
             $set: {

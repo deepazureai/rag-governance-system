@@ -491,7 +491,7 @@ export function RawDataDetailModal({
               onClick={() => toggleSection('recommendations')}
               className="w-full bg-gray-900 hover:bg-gray-800 px-4 py-3 flex items-center justify-between font-mono text-sm"
             >
-              <span className="text-purple-400">LLM_RECOMMENDATIONS</span>
+              <span className="text-purple-400">LLM_&amp;_DEEPEVAL_RECOMMENDATIONS</span>
               {expandedSections['recommendations'] ? (
                 <ChevronUp className="w-4 h-4" />
               ) : (
@@ -543,7 +543,7 @@ export function RawDataDetailModal({
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-xs text-gray-400 mb-4">
-                      Click button below to analyze metrics and generate recommendations using DeepEval and LLM
+                      Click to generate AI-powered analysis using DeepEval and LLM. This will provide insights on why metrics are low and recommendations for improvement.
                     </p>
                     <Button
                       onClick={handleGetRecommendations}
