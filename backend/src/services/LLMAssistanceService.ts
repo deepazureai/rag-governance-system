@@ -338,6 +338,15 @@ ${truncatedContent}`;
         throw new Error(`No LLM configuration found for application ${applicationId}. Please configure LLM settings in Settings→LLM tab.`);
       }
 
+      // Debug: Log the fetched config
+      console.log(`[v0] LLM Config fetched:`, {
+        provider: llmConfig.provider,
+        api_key: llmConfig.api_key ? '***' : 'MISSING',
+        azure_endpoint: llmConfig.azure_endpoint,
+        deployment: llmConfig.deployment,
+        api_version: llmConfig.api_version,
+      });
+
       // Create LLM client with saved config from database
       const llmClient = LLMClientFactory.create(llmConfig);
 
