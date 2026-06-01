@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { X, ThumbsUp, ThumbsDown, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { RawDataRecordDetail, BAPromptImprovement } from '@/types/index';
-import { EnhancedEvaluationPanel } from './enhanced-evaluation-panel';
 
 interface RawDataDetailModalProps {
   record: RawDataRecordDetail;
@@ -45,28 +44,6 @@ export function RawDataDetailModal({
   } | null>(null);
   const [deepEvalSuggestions, setDeepEvalSuggestions] = useState<string>('');
   const [deepEvalReasoning, setDeepEvalReasoning] = useState<string>('');
-
-  if (!isOpen) return null;
-
-  const handleDeepEvalComplete = (evalResult: unknown): void => {
-    console.log('[v0] DeepEval complete:', evalResult);
-    if (evalResult && typeof evalResult === 'object' && 'improvements' in evalResult) {
-      const improvements = evalResult.improvements as Record<string, unknown[]> | undefined;
-      if (improvements) {
-        const suggestions = Object.values(improvements)
-          .flat()
-          .map((imp: unknown) => {
-            if (imp && typeof imp === 'object' && 'category' in imp && 'suggestion' in imp) {
-              const imp_obj = imp as { category?: string; suggestion?: string };
-              return `• ${imp_obj.category ?? 'Unknown'}: ${imp_obj.suggestion ?? 'N/A'}`;
-            }
-            return '• Unknown suggestion';
-          })
-          .join('\n');
-        setDeepEvalSuggestions(suggestions);
-      }
-    }
-  };
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
@@ -507,15 +484,6 @@ export function RawDataDetailModal({
               )}
             </div>
           )}
-
-          {/* Evaluation Panel */}
-          <EnhancedEvaluationPanel 
-            record={record}
-            onEvaluationComplete={(scores) => {
-              console.log('[v0] Evaluation completed with scores:', scores);
-              handleDeepEvalComplete(scores);
-            }}
-          />
 
           {/* LLM Recommendations Section */}
           <div className="border border-gray-800 rounded overflow-hidden">
