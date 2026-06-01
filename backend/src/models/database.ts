@@ -240,6 +240,15 @@ export interface ApplicationMetric {
   context?: string; // Retrieved documents/context provided to LLM
   llmResponse: string; // LLM's response
   
+  // Prompt Improvements (NEW - from BA Review/LLM Curation)
+  promptImprovement?: {
+    revisedPrompt: string; // LLM-generated improved prompt
+    improvementReason: string; // Reasoning for the improvements
+    estimatedScoreIncrease: number; // Expected improvement percentage
+    generatedAt: Date; // When the revised prompt was generated
+    generatedBy: string; // LLM model used (e.g., "azure-openai-gpt35")
+  };
+  
   // Timestamps (REQUIRED for latency & throughput)
   promptTimestamp: Date; // When user submitted prompt
   contextRetrievalStartTime?: Date; // When context retrieval started

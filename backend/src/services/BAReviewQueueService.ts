@@ -265,38 +265,35 @@ export class BAReviewQueueService {
     estimatedScoreImpact?: number
   ): Promise<any> {
     try {
-      const RawDataCollection = mongoose.connection.collection('rawdatarecords');
-      const BAReviewQueueCollection = mongoose.connection.collection('bareviewqueue');
+      const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
 
-      console.log('[v0] addPromptImprovement - rawDataRecordId:', rawDataRecordId);
-      console.log('[v0] addPromptImprovement - rawDataRecordId length:', rawDataRecordId?.length);
-      console.log('[v0] addPromptImprovement - rawDataRecordId type:', typeof rawDataRecordId);
+      console.log('[v0] addPromptImprovement - recordId:', rawDataRecordId);
+      console.log('[v0] addPromptImprovement - recordId length:', rawDataRecordId?.length);
 
       // Validate the record ID
       if (!rawDataRecordId || rawDataRecordId.trim().length === 0) {
         throw new Error('rawDataRecordId is required and cannot be empty');
       }
 
-      // Add improvement to raw data record
+      // Build the improvement object to store
       const improvement = {
-        originalPrompt: '', // Will fetch from record
-        improvedPrompt,
-        reason,
-        baName,
-        baEmail,
-        estimatedScoreImpact,
-        createdAt: new Date(),
+        revisedPrompt: improvedPrompt,
+        improvementReason: reason,
+        estimatedScoreIncrease: estimatedScoreImpact || 0,
+        generatedAt: new Date(),
+        generatedBy: 'azure-openai-gpt35',
       };
 
       // Try multiple lookup strategies
-      let rawRecord = null;
+      let foundRecord = null;
+      let objectId = null;
 
-      // Strategy 1: Try as MongoDB ObjectId
+      // Strategy 1: Try as MongoDB ObjectId (24 chars)
       if (rawDataRecordId.length === 24) {
         try {
-          const objectId = new mongoose.Types.ObjectId(rawDataRecordId);
-          rawRecord = await RawDataCollection.findOne({ _id: objectId });
-          if (rawRecord) {
+          objectId = new mongoose.Types.ObjectId(rawDataRecordId);
+          foundRecord = await EvaluationCollection.findOne({ _id: objectId });
+          if (foundRecord) {
             console.log('[v0] Found record by _id ObjectId');
           }
         } catch (e) {
@@ -305,114 +302,60 @@ export class BAReviewQueueService {
       }
 
       // Strategy 2: Try as string _id
-      if (!rawRecord) {
+      if (!foundRecord && rawDataRecordId.length > 10) {
         try {
-          rawRecord = await RawDataCollection.findOne({ _id: rawDataRecordId } as any);
-          if (rawRecord) {
+          foundRecord = await EvaluationCollection.findOne({ _id: rawDataRecordId } as any);
+          if (foundRecord) {
             console.log('[v0] Found record by _id string');
+            objectId = foundRecord._id;
           }
         } catch (e) {
           console.log('[v0] String _id lookup failed');
         }
       }
 
-      // Strategy 3: Try as recordId field
-      if (!rawRecord) {
-        try {
-          rawRecord = await RawDataCollection.findOne({ recordId: rawDataRecordId });
-          if (rawRecord) {
-            console.log('[v0] Found record by recordId field');
-          }
-        } catch (e) {
-          console.log('[v0] recordId field lookup failed');
-        }
-      }
-
-      // Strategy 4: Try fuzzy match (in case ID is truncated or corrupted)
-      if (!rawRecord && rawDataRecordId.length > 10) {
-        try {
-          const pattern = new RegExp(`^${rawDataRecordId}`);
-          rawRecord = await RawDataCollection.findOne({
-            $or: [
-              { _id: pattern },
-              { recordId: pattern },
-            ],
-          } as any);
-          if (rawRecord) {
-            console.log('[v0] Found record by fuzzy match');
-          }
-        } catch (e) {
-          console.log('[v0] Fuzzy match lookup failed');
-        }
-      }
-
-      if (!rawRecord) {
-        console.error('[v0] Raw data record lookup failed with all strategies');
-        console.error('[v0] rawDataRecordId provided:', rawDataRecordId);
+      if (!foundRecord) {
+        console.error('[v0] Evaluation record lookup failed');
+        console.error('[v0] recordId provided:', rawDataRecordId);
         
         // Debug: show what records exist
-        const sampleRecords = await RawDataCollection.find({}).limit(3).toArray();
-        console.log('[v0] Sample records in database:');
+        const sampleRecords = await EvaluationCollection.find({}).limit(3).toArray();
+        console.log('[v0] Sample records in evaluationrecords collection:');
         sampleRecords.forEach((rec: any, idx: number) => {
-          console.log(`  [${idx}] _id:${rec._id?.toString()?.substring(0, 20)}... recordId:${rec.recordId}`);
+          console.log(`  [${idx}] _id:${rec._id?.toString()?.substring(0, 20)}...`);
         });
         
-        throw new Error(`Raw data record not found: ${rawDataRecordId} (tried ObjectId, string _id, recordId field, fuzzy match)`);
+        throw new Error(`Raw data record not found: ${rawDataRecordId}`);
       }
 
-      console.log('[v0] Found raw record:', rawRecord._id?.toString?.()?.substring(0, 20));
-
-      improvement.originalPrompt = rawRecord.userPrompt || rawRecord.prompt || '';
-
-      await RawDataCollection.updateOne(
-        { _id: rawRecord._id },
-        [
-          {
-            $set: {
-              'baReview.promptImprovements': {
-                $concatArrays: [
-                  { $ifNull: ['$baReview.promptImprovements', []] },
-                  [improvement],
-                ],
-              },
-              'baReview.reviewStatus': 'pending_approval',
-              'baReview.reviewedAt': new Date(),
-              updatedAt: new Date(),
-            },
+      // Update the record with the improvement
+      const updateResult = await EvaluationCollection.updateOne(
+        { _id: objectId! },
+        {
+          $set: {
+            'baReview.promptImprovements': [improvement],
+            'baReview.reviewStatus': 'reviewed',
+            'baReview.reviewedBy': baEmail,
+            'baReview.reviewedAt': new Date(),
+            updatedAt: new Date(),
           },
-        ]
+        }
       );
 
-      console.log('[v0] Updated raw record with improvement');
+      console.log('[v0] Update result:', updateResult);
 
-      // Update queue item status (if queueItemId is provided)
-      if (queueItemId && queueItemId.trim()) {
-        try {
-          await BAReviewQueueCollection.updateOne(
-            { _id: new mongoose.Types.ObjectId(queueItemId) },
-            {
-              $set: {
-                status: 'pending_review',
-                'reviewCompletedAt': new Date(),
-                updatedAt: new Date(),
-              },
-            }
-          );
-          console.log('[v0] Updated queue item to pending_review');
-        } catch (queueError: any) {
-          logger.warn(`[BAReviewQueueService] Warning: Could not update queue item ${queueItemId}: ${queueError.message}`);
-          // Don't throw - queue update is optional, record update is what matters
-        }
+      if (updateResult.modifiedCount === 0) {
+        throw new Error('Failed to update record with improvement');
       }
 
-      logger.info(`[BAReviewQueueService] Added prompt improvement for record ${rawDataRecordId}`);
-
       return {
+        recordId: rawDataRecordId,
         success: true,
         message: 'Prompt improvement added successfully',
+        improvement,
       };
     } catch (error: any) {
-      logger.error(`[BAReviewQueueService] Error adding improvement:`, error.message);
+      console.error('[v0] Error in addPromptImprovement:', error.message);
       throw error;
     }
   }
