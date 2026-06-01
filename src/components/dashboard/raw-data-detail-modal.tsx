@@ -95,6 +95,8 @@ export function RawDataDetailModal({
 
       const data = await response.json() as unknown;
       
+      console.log('[v0] Full API response:', JSON.stringify(data, null, 2));
+      
       // Type guard for API response
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid response format from recommendations endpoint');
@@ -107,11 +109,18 @@ export function RawDataDetailModal({
         throw new Error('No recommendation data in response');
       }
 
+      console.log('[v0] Response data keys:', Object.keys(responseData));
+      console.log('[v0] llmRecommendations type:', typeof responseData.llmRecommendations);
+      console.log('[v0] llmRecommendations:', responseData.llmRecommendations);
+
       // Extract DeepEval analysis and LLM recommendations
       const deepevalAnalysis = responseData.deepevalAnalysis as Record<string, unknown> | undefined;
       const llmRecommendationsText = typeof responseData.llmRecommendations === 'string' 
         ? responseData.llmRecommendations 
         : '';
+
+      console.log('[v0] Extracted llmRecommendationsText length:', llmRecommendationsText.length);
+      console.log('[v0] Extracted llmRecommendationsText first 200 chars:', llmRecommendationsText.substring(0, 200));
 
       console.log('[v0] Recommendations received:', {
         deepevalHealth: deepevalAnalysis?.overallHealth,
@@ -143,11 +152,17 @@ export function RawDataDetailModal({
 
       // Now curate and generate a revised prompt based on the recommendations
       console.log('[v0] Curating prompt based on recommendations...');
+      console.log('[v0] llmRecommendationsText for extraction:', llmRecommendationsText.substring(0, 500));
       
       // Extract issues from recommendations text
       // The recommendations text contains numbered items like "1. **Title**: Description"
       // We need to extract just the titles/issue names for the curate endpoint
       const issueMatches = llmRecommendationsText.match(/\d+\.\s+\*\*([^*]+)\*\*:/g);
+      console.log('[v0] Regex matches found:', issueMatches?.length || 0);
+      if (issueMatches) {
+        console.log('[v0] Raw matches:', issueMatches);
+      }
+      
       const issues = issueMatches 
         ? issueMatches.map((match: string) => {
             // Extract just the text between ** marks
@@ -157,6 +172,7 @@ export function RawDataDetailModal({
         : [];
 
       console.log('[v0] Extracted issues:', issues);
+      console.log('[v0] Issues count:', issues.length);
 
       if (issues.length > 0 && record.userPrompt) {
         try {
