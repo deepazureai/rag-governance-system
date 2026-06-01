@@ -1039,4 +1039,91 @@ baReviewRouter.post('/curate-prompt', async (req: Request, res: Response): Promi
   }
 });
 
+/**
+ * Get prompts with revisions for an application (for Recommendations tab)
+ * GET /api/ba-review/prompts-with-revisions/:applicationId
+ * Query params: page=1, limit=20
+ */
+baReviewRouter.get('/prompts-with-revisions/:applicationId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const pageStr = typeof req.query.page === 'string' ? req.query.page : '1';
+    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : '20';
+    const page = parseInt(pageStr, 10);
+    const limit = parseInt(limitStr, 10);
+    const skip = (page - 1) * limit;
+
+    if (!applicationId || typeof applicationId !== 'string') {
+      res.status(400).json({ success: false, error: 'applicationId is required' });
+      return;
+    }
+
+    const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+
+    // Fetch total count for pagination
+    const totalCount = await EvaluationCollection.countDocuments({ applicationId });
+
+    // Fetch prompts with revisions, with pagination
+    const prompts = await EvaluationCollection.find(
+      { applicationId },
+      {
+        projection: {
+          _id: 1,
+          applicationId: 1,
+          userPrompt: 1,
+          'promptImprovement.revisedPrompt': 1,
+          'promptImprovement.improvementReason': 1,
+          'promptImprovement.estimatedScoreIncrease': 1,
+          'promptImprovement.generatedAt': 1,
+          llmResponse: 1,
+          context: 1,
+          deepEvalAnalysis: 1,
+          'baReview.reviewStatus': 1,
+          updatedAt: 1,
+        },
+      }
+    )
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    console.log(`[v0] Fetched ${prompts.length} prompts for app ${applicationId}, total: ${totalCount}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        prompts: prompts.map((p: any) => ({
+          _id: p._id?.toString?.(),
+          applicationId: p.applicationId,
+          userPrompt: p.userPrompt,
+          revisedPrompt: p.promptImprovement?.revisedPrompt || null,
+          improvementReason: p.promptImprovement?.improvementReason || null,
+          estimatedScoreIncrease: p.promptImprovement?.estimatedScoreIncrease || 0,
+          generatedAt: p.promptImprovement?.generatedAt || null,
+          llmResponse: p.llmResponse,
+          hasRevision: !!p.promptImprovement?.revisedPrompt,
+          updatedAt: p.updatedAt,
+        })),
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          pages: Math.ceil(totalCount / limit),
+        },
+      },
+      message: 'Prompts fetched successfully',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error fetching prompts with revisions: ${message}`);
+    console.error('[v0] Error in prompts-with-revisions:', message);
+    res.status(500).json({
+      success: false,
+      error: message,
+      message: 'Failed to fetch prompts',
+    });
+  }
+});
+
 export default baReviewRouter;
