@@ -12,6 +12,30 @@ import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/mod
 const llmConfigRouter: ExpressRouter = Router();
 
 /**
+ * Normalize legacy field names to exact format for LLMClientFactory
+ * Converts: azureApiKey → api_key, azureEndpoint → azure_endpoint, etc.
+ */
+function normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
+  const normalized = { ...config };
+
+  // Convert Azure OpenAI legacy names to exact format
+  if (config.azureApiKey && !config.api_key) {
+    normalized.api_key = config.azureApiKey;
+  }
+  if (config.azureEndpoint && !config.azure_endpoint) {
+    normalized.azure_endpoint = config.azureEndpoint;
+  }
+  if (config.azureDeploymentName && !config.deployment) {
+    normalized.deployment = config.azureDeploymentName;
+  }
+  if (config.azureApiVersion && !config.api_version) {
+    normalized.api_version = config.azureApiVersion;
+  }
+
+  return normalized;
+}
+
+/**
  * GET /api/llm-config/app/:appId
  * Get LLM configuration for an application
  */
@@ -64,8 +88,12 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
     // Log incoming request for debugging
     console.error('[v0] LLM Config POST request body:', JSON.stringify(body, null, 2));
 
-    // Validate request body
-    const validation = LLMConfigSchema.safeParse({ ...body, applicationId: appId });
+    // Normalize legacy field names to exact format BEFORE validation
+    const normalized = normalizeLegacyFieldNames(body);
+    console.error('[v0] Normalized LLM Config:', JSON.stringify(normalized, null, 2));
+
+    // Validate request body with normalized names
+    const validation = LLMConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
       const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
       console.error('[v0] LLM Config validation errors:', errorDetails);
@@ -83,6 +111,7 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
       const requiredFields = ['api_key', 'azure_endpoint', 'api_version', 'deployment'];
       const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
       if (missing.length > 0) {
+        console.error('[v0] Missing Azure fields:', missing);
         res.status(400).json({
           success: false,
           error: `For Azure OpenAI, these fields are required: ${missing.join(', ')}`,
