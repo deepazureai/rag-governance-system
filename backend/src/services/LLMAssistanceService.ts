@@ -304,7 +304,9 @@ ${truncatedContent}`;
 
   /**
    * Generate LLM-powered recommendations based on DeepEval analysis
+   * Uses the application's saved LLM configuration from Settings->LLM tab
    * 
+   * @param applicationId - Application identifier (to fetch LLM config)
    * @param userPrompt - Original user query
    * @param llmResponse - LLM-generated response
    * @param contextRetrieved - Retrieved context chunks
@@ -312,6 +314,7 @@ ${truncatedContent}`;
    * @returns LLM suggestions for improving prompt/context/response
    */
   async generateRecommendations(
+    applicationId: string,
     userPrompt: string,
     llmResponse: string,
     contextRetrieved: string[],
@@ -319,38 +322,30 @@ ${truncatedContent}`;
   ): Promise<string> {
     try {
       // Validate inputs
+      if (!applicationId?.trim()) {
+        throw new Error('applicationId is required to fetch LLM configuration');
+      }
+
       if (!userPrompt?.trim() || !llmResponse?.trim() || !deepevalAnalysis) {
         throw new Error('userPrompt, llmResponse, and deepevalAnalysis are required');
       }
 
-      // Get LLM config from environment - recommendations can work without user-specific config
-      // by using Azure OpenAI from environment
-      const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
-      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-      const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'o4-mini';
-      const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-04-01-preview';
-
-      if (!azureApiKey || !azureEndpoint) {
-        throw new Error('Azure OpenAI credentials not configured in environment');
+      // Fetch LLM config from database for this application
+      console.log(`[LLMAssistanceService] Fetching LLM config for app ${applicationId}`);
+      const llmConfig = await configManager.getApplicationLLMConfig(applicationId);
+      
+      if (!llmConfig) {
+        throw new Error(`No LLM configuration found for application ${applicationId}. Please configure LLM settings in Settings→LLM tab.`);
       }
 
-      // Create LLM client with environment config
-      const llmClient = LLMClientFactory.create({
-        provider: 'azure-openai',
-        api_key: azureApiKey,
-        azure_endpoint: azureEndpoint,
-        deployment: deploymentName,
-        api_version: apiVersion,
-        applicationId: 'system-recommendations',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any);
+      // Create LLM client with saved config from database
+      const llmClient = LLMClientFactory.create(llmConfig);
 
       // Validate LLM connection
-      console.log('[LLMAssistanceService] Validating LLM connection for recommendations');
+      console.log(`[LLMAssistanceService] Validating LLM connection for app ${applicationId}`);
       const connectionTest = await llmClient.validate();
       if (!connectionTest.valid) {
-        throw new Error(`LLM connection validation failed: ${connectionTest.error}`);
+        throw new Error(`LLM connection validation failed: ${connectionTest.error}. Please verify your LLM settings are correct.`);
       }
 
       // Build comprehensive recommendation prompt
@@ -395,7 +390,7 @@ ${deepevalAnalysis.warnings.length > 0 ? deepevalAnalysis.warnings.join('\n') : 
 
 Based on this analysis, provide 3-5 specific, actionable recommendations to improve the RAG system.`;
 
-      console.log('[LLMAssistanceService] Generating LLM recommendations for RAG improvement');
+      console.log(`[LLMAssistanceService] Generating LLM recommendations for app ${applicationId}`);
 
       // Generate recommendations
       const recommendations = await llmClient.generate(userRecommendationPrompt, {
@@ -408,9 +403,10 @@ Based on this analysis, provide 3-5 specific, actionable recommendations to impr
         throw new Error('No recommendations generated from LLM');
       }
 
+      console.log(`[LLMAssistanceService] Successfully generated recommendations for app ${applicationId}`);
       return recommendations;
     } catch (error: unknown) {
-      throw this.handleError('generateRecommendations', error);
+      throw this.handleError('generateRecommendations', error, applicationId);
     }
   }
 

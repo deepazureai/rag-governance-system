@@ -942,8 +942,9 @@ baReviewRouter.post('/get-recommendations', async (req: Request, res: Response):
       warningsCount: deepevalAnalysis.warnings.length,
     });
 
-    // Generate LLM recommendations using Azure OpenAI
+    // Generate LLM recommendations using saved LLM config
     const llmRecommendations = await llmAssistanceService.generateRecommendations(
+      applicationId,
       userPrompt,
       llmResponse,
       contextRetrieved || [],
