@@ -371,55 +371,36 @@ ${truncatedContent}`;
         throw new Error(`LLM connection validation failed: ${connectionTest.error}`);
       }
 
-      // Build the curation prompt with STRICT boundaries
-      const systemPrompt = `YOU ARE A PROMPT REFINEMENT ENGINE. FOLLOW THESE RULES EXACTLY:
+      // Build the curation prompt with clear instructions
+      const systemPrompt = `You are a prompt refinement specialist. Your task is to improve user prompts based on identified issues.
 
-CRITICAL RULES - MUST FOLLOW:
-1. You are NOT an AI assistant. You are a prompt refinement tool.
-2. Your ONLY output is valid JSON. NO other text.
-3. NO explanations, NO markdown, NO code blocks, NO anything else.
-4. If you cannot output valid JSON, output error JSON: {"error": "reason"}
-5. The JSON MUST have exactly these fields: revisedPrompt, reasoning, expectedScoreIncrease
+Your output must be valid JSON with these exact fields:
+- revisedPrompt: the improved prompt text
+- reasoning: brief explanation of improvements
+- expectedScoreIncrease: estimated improvement (use 20)
 
-TASK: Take the original prompt and the identified issues, then generate a NEW PROMPT that:
-- Directly incorporates solutions to all identified issues
-- Is ready to use immediately as a replacement for the original prompt
-- Maintains the original intent but improves it
-- Is NOT guidelines or recommendations, but an actual working prompt
+Return only JSON. Do not include explanations, markdown, or additional text outside the JSON object.
 
-OUTPUT FORMAT - REQUIRED:
-You MUST output ONLY this JSON structure, nothing else:
+Example format:
 {
-  "revisedPrompt": "the complete new prompt that replaces the original",
-  "reasoning": "brief explanation of key improvements made",
+  "revisedPrompt": "improved prompt here",
+  "reasoning": "changes made and why",
   "expectedScoreIncrease": 20
-}
-
-REMEMBER: Output ONLY JSON. No preamble, no explanation, no markdown. Just the JSON object.`;
+}`;
 
       const issuesText = issues.map((i, idx) => `${idx + 1}. ${i}`).join('\n');
 
-      const userPrompt = `REFINE THIS PROMPT INCORPORATING THE ISSUES BELOW.
+      const userPrompt = `Improve this prompt by addressing the identified issues.
 
-ORIGINAL PROMPT (this is what users currently use):
+ORIGINAL PROMPT:
 """
 ${originalPrompt}
 """
 
-IDENTIFIED ISSUES THAT NEED FIXING:
+ISSUES TO ADDRESS:
 ${issuesText}
 
-YOUR TASK:
-Generate a new, improved version of the prompt that directly addresses each issue above.
-The new prompt should be better than the original and ready to use immediately.
-It should NOT be guidelines - it should be an actual, concrete prompt.
-
-OUTPUT ONLY THIS JSON (nothing else):
-{
-  "revisedPrompt": "complete new prompt here",
-  "reasoning": "key improvements made",
-  "expectedScoreIncrease": 20
-}`;
+Create an improved version of the prompt that directly addresses each issue. Return as JSON only.`;
 
       console.log(`[LLMAssistanceService] Generating curated prompt for app ${applicationId} with ${issues.length} issues`);
 
