@@ -191,15 +191,23 @@ export function RawDataDetailModal({
 
           if (curateResponse.ok) {
             const curateData = await curateResponse.json() as Record<string, unknown>;
-            console.log('[v0] Curate response data:', curateData);
+            console.log('[v0] Full curateData:', JSON.stringify(curateData, null, 2));
+            console.log('[v0] curateData.data:', curateData.data);
+            console.log('[v0] curateData keys:', Object.keys(curateData));
+            
             const curateResult = curateData.data as Record<string, unknown> | undefined;
+            console.log('[v0] Extracted curateResult:', curateResult);
             
             if (curateResult && typeof curateResult.revisedPrompt === 'string') {
               console.log('[v0] Revised prompt generated successfully, length:', curateResult.revisedPrompt.length);
+              console.log('[v0] About to set improved prompt with:', curateResult.revisedPrompt.substring(0, 100));
               setImprovedPrompt(curateResult.revisedPrompt);
               setImprovementReason(typeof curateResult.reasoning === 'string' ? curateResult.reasoning : 'Refined based on LLM recommendations');
+              console.log('[v0] State updated with revised prompt');
             } else {
               console.warn('[v0] Curate result missing revisedPrompt:', curateResult);
+              console.warn('[v0] revisedPrompt type:', typeof (curateResult as any)?.revisedPrompt);
+              console.warn('[v0] curateResult keys:', curateResult ? Object.keys(curateResult) : 'curateResult is null/undefined');
             }
           } else {
             const errorText = await curateResponse.text();
