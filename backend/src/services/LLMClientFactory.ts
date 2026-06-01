@@ -83,6 +83,7 @@ export class AzureOpenAIProvider implements ILLMProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          model: this.deploymentName,
           messages: [
             ...(options?.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
             { role: 'user', content: prompt },
