@@ -1,5 +1,5 @@
 import { Chroma } from '@langchain/community/vectorstores/chroma';
-import { OpenAIEmbeddings } from '@langchain/openai';
+import { OpenAIEmbeddings, AzureOpenAIEmbeddings } from '@langchain/openai';
 import { Document } from '@langchain/core/documents';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -46,20 +46,25 @@ export class VectorStoreService {
       let endpoint = process.env.AZURE_OPENAI_ENDPOINT;
       let apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
       let deploymentName = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-large';
+      let embeddingProvider = 'azure-openai'; // Default to Azure
 
       // Try to retrieve app-specific KB config from MongoDB (knowledgebaseconfigs collection)
       if (this.applicationId) {
         try {
           const kbConfig = await kbConfigService.getConfig(this.applicationId);
           if (kbConfig) {
+            logger.info(`[VectorStoreService] Found KB config for app ${this.applicationId}`);
+            
             // KB config stores embedding credentials separately
             if (kbConfig.embeddingProvider === 'azure-openai') {
-              // Use exact parameter names (new)
+              // Use exact parameter names from config
               if (kbConfig.embedding_api_key) {
                 apiKey = cryptoUtil.decrypt(kbConfig.embedding_api_key);
+                logger.info(`[VectorStoreService] Using KB config embedding API key`);
               }
               if (kbConfig.embedding_azure_endpoint) {
                 endpoint = kbConfig.embedding_azure_endpoint;
+                logger.info(`[VectorStoreService] Using KB config endpoint`);
               }
               if (kbConfig.embedding_api_version) {
                 apiVersion = kbConfig.embedding_api_version;
@@ -67,27 +72,63 @@ export class VectorStoreService {
               if (kbConfig.embedding_deployment) {
                 deploymentName = kbConfig.embedding_deployment;
               }
+              embeddingProvider = 'azure-openai';
               
-              logger.info(`[VectorStoreService] Using saved KB embedding config for app ${this.applicationId}`);
+              logger.info(`[VectorStoreService] Using Azure KB embedding config for app ${this.applicationId}`);
+            } else if (kbConfig.embeddingProvider === 'openai') {
+              // Standard OpenAI provider
+              if (kbConfig.embeddingOpenaiApiKey) {
+                apiKey = cryptoUtil.decrypt(kbConfig.embeddingOpenaiApiKey);
+              }
+              embeddingProvider = 'openai';
+              logger.info(`[VectorStoreService] Using OpenAI KB embedding config for app ${this.applicationId}`);
             }
           }
         } catch (error: unknown) {
           if (error instanceof Error) {
-            logger.info(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
+            logger.warn(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
           } else {
-            logger.info(`[VectorStoreService] No saved KB config found for app, using env variables`);
+            logger.warn(`[VectorStoreService] No saved KB config found for app, using env variables`);
           }
         }
       }
 
-      if (!apiKey || !endpoint) {
-        throw new Error('Azure OpenAI credentials not configured for embeddings. Required: api_key, azure_endpoint, api_version, deployment');
+      if (!apiKey) {
+        throw new Error(
+          'Embedding API key not configured. Please set AZURE_OPENAI_API_KEY env var or configure KB settings in Settings → Knowledge Base'
+        );
       }
 
-      this.embeddings = new OpenAIEmbeddings({
-        apiKey: apiKey,
-        model: deploymentName,
-      } as any);
+      // Initialize embeddings based on provider
+      if (embeddingProvider === 'azure-openai') {
+        if (!endpoint) {
+          throw new Error(
+            'Azure endpoint not configured. Please set AZURE_OPENAI_ENDPOINT env var or configure KB settings in Settings → Knowledge Base'
+          );
+        }
+
+        // Extract Azure instance name from endpoint
+        // Example: https://my-resource.openai.azure.com -> my-resource
+        const instanceName = this.extractAzureInstanceName(endpoint);
+
+        logger.info(
+          `[VectorStoreService] Initializing AzureOpenAIEmbeddings: instance=${instanceName}, deployment=${deploymentName}, apiVersion=${apiVersion}`
+        );
+
+        this.embeddings = new AzureOpenAIEmbeddings({
+          azureOpenAIApiKey: apiKey,
+          azureOpenAIApiInstanceName: instanceName,
+          azureOpenAIApiDeploymentName: deploymentName,
+          azureOpenAIApiVersion: apiVersion,
+        } as any);
+      } else {
+        // Standard OpenAI
+        logger.info(`[VectorStoreService] Initializing OpenAIEmbeddings with model: ${deploymentName}`);
+        this.embeddings = new OpenAIEmbeddings({
+          apiKey: apiKey,
+          model: deploymentName,
+        } as any);
+      }
 
       if (!fs.existsSync(this.persistDir)) {
         fs.mkdirSync(this.persistDir, { recursive: true });
@@ -99,10 +140,37 @@ export class VectorStoreService {
       });
 
       this.isInitialized = true;
-      logger.info(`[VectorStoreService] Initialized with collection: ${this.collectionName}, appId: ${this.applicationId}, using KB config`);
+      logger.info(
+        `[VectorStoreService] Initialized with collection: ${this.collectionName}, appId: ${this.applicationId}, provider: ${embeddingProvider}`
+      );
     } catch (error) {
       logger.error('[VectorStoreService] Initialization failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Extract Azure instance name from endpoint URL
+   * Example: https://my-resource.openai.azure.com -> my-resource
+   */
+  private extractAzureInstanceName(endpoint: string): string {
+    try {
+      const url = new URL(endpoint);
+      const hostname = url.hostname; // my-resource.openai.azure.com
+      const parts = hostname.split('.');
+      const instanceName = parts[0];
+      if (!instanceName) {
+        throw new Error('Empty instance name');
+      }
+      return instanceName; // my-resource
+    } catch (error) {
+      logger.warn(`[VectorStoreService] Failed to parse endpoint: ${endpoint}`, error);
+      // Fallback: try basic string parsing
+      const match = endpoint.match(/https?:\/\/([^.]+)\./);
+      if (match?.[1]) {
+        return match[1];
+      }
+      throw new Error(`Invalid Azure endpoint format: ${endpoint}`);
     }
   }
 
