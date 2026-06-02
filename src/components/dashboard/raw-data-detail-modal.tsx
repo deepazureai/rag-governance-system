@@ -33,6 +33,7 @@ export function RawDataDetailModal({
   const [improvementMode, setImprovementMode] = useState(false);
   const [improvedPrompt, setImprovedPrompt] = useState('');
   const [improvementReason, setImprovementReason] = useState('');
+  const [enrichWithKB, setEnrichWithKB] = useState(false); // NEW: KB enrichment checkbox
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [isSavingImprovement, setIsSavingImprovement] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -737,6 +738,21 @@ export function RawDataDetailModal({
                     <p className="text-xs text-gray-400 mb-4">
                       Click to generate AI-powered analysis using DeepEval and LLM. This will provide insights on why metrics are low and recommendations for improvement.
                     </p>
+                    
+                    {/* KB Enrichment Checkbox - Future Feature */}
+                    <div className="mb-4 flex items-center justify-center gap-2 bg-gray-900 p-3 rounded border border-purple-700">
+                      <input
+                        type="checkbox"
+                        id="enrichWithKB"
+                        checked={enrichWithKB}
+                        onChange={(e) => setEnrichWithKB(e.target.checked)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      <label htmlFor="enrichWithKB" className="text-xs text-purple-300 cursor-pointer">
+                        Enrich with Knowledge Base context (coming soon)
+                      </label>
+                    </div>
+                    
                     <Button
                       onClick={handleGetRecommendations}
                       disabled={isGeneratingRecommendations}
