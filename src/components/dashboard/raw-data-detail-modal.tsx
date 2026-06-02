@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +52,44 @@ export function RawDataDetailModal({
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  // Load saved recommendations when modal opens
+  useEffect(() => {
+    if (isOpen && record._id) {
+      loadSavedRecommendations();
+    }
+  }, [isOpen, record._id]);
+
+  const loadSavedRecommendations = async (): Promise<void> => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/ba-review/recommendations/${record.applicationId}/${record._id}`);
+
+      if (response.ok) {
+        const data = await response.json() as Record<string, unknown>;
+        const savedData = data.data as Record<string, unknown> | undefined;
+        
+        if (savedData) {
+          const recommendations = savedData.recommendations as any[] | undefined;
+          const improvement = savedData.improvement as string | undefined;
+          
+          // Load recommendations if saved
+          if (recommendations && recommendations.length > 0) {
+            setLlmRecommendations(recommendations[0]);
+            console.log('[v0] Loaded saved recommendations');
+          }
+          
+          // Load improvement if saved
+          if (improvement) {
+            setImprovedPrompt(improvement);
+            console.log('[v0] Loaded saved improvement');
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[v0] No saved recommendations found, first generation needed');
+    }
   };
 
   const handleGetRecommendations = async (): Promise<void> => {
@@ -260,6 +298,33 @@ export function RawDataDetailModal({
       
       const successData = await response.json() as Record<string, unknown>;
       console.log('[v0] Save response:', successData);
+
+      // Now save recommendations and improvements to RawDataRecord for persistence
+      if (llmRecommendations || improvedPrompt) {
+        try {
+          const saveRecommendationsBody = {
+            applicationId: record.applicationId,
+            rawDataId: record._id,
+            recommendations: llmRecommendations ? [llmRecommendations] : [],
+            improvement: improvedPrompt.trim(),
+          };
+
+          const recommendationsResponse = await fetch(`${apiUrl}/api/ba-review/save-recommendations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(saveRecommendationsBody),
+          });
+
+          if (recommendationsResponse.ok) {
+            console.log('[v0] Recommendations persisted successfully');
+          } else {
+            console.warn('[v0] Failed to persist recommendations, but improvement was saved');
+          }
+        } catch (persistError) {
+          console.warn('[v0] Error persisting recommendations:', persistError instanceof Error ? persistError.message : String(persistError));
+          // Don't fail the whole flow if persistence fails
+        }
+      }
       
       // Keep the improved prompt and reason displayed to show what was saved
       setImprovementMode(false);
@@ -821,7 +886,7 @@ export function RawDataDetailModal({
                 )}
 
                 {/* Improvement Form */}
-                {improvementMode && (
+                {improvementMode ? (
                   <div className="bg-black p-3 rounded border border-green-800 space-y-3 mt-4">
                     <div>
                       <label className="text-xs text-green-400 font-mono block mb-1">
@@ -833,6 +898,7 @@ export function RawDataDetailModal({
                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200 font-mono"
                         rows={8}
                         placeholder="Enter improved version of the prompt..."
+                        disabled={isSavingImprovement}
                       />
                     </div>
                     <div>
@@ -845,25 +911,67 @@ export function RawDataDetailModal({
                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200 font-mono"
                         rows={5}
                         placeholder="Why is this improvement better?"
+                        disabled={isSavingImprovement}
                       />
                     </div>
                     <div className="flex gap-2">
                       <Button
                         onClick={handleSubmitImprovement}
                         className="flex-1 bg-green-900 hover:bg-green-800 text-green-100 text-xs"
+                        disabled={isSavingImprovement}
                       >
-                        Save Improvement
+                        {isSavingImprovement ? (
+                          <>
+                            <Spinner className="w-3 h-3 mr-2" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Improvement'
+                        )}
                       </Button>
                       <Button
                         onClick={() => setImprovementMode(false)}
                         variant="outline"
                         className="flex-1 text-xs"
+                        disabled={isSavingImprovement}
                       >
                         Cancel
                       </Button>
                     </div>
                   </div>
-                )}
+                ) : improvedPrompt ? (
+                  // Read-only view after saving
+                  <div className="bg-black p-3 rounded border border-green-700 space-y-3 mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-green-400 font-mono">✓ Improvement Saved</span>
+                      <Button
+                        onClick={() => setImprovementMode(true)}
+                        variant="ghost"
+                        className="text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 font-mono block mb-1">
+                        Improved Prompt (Read-only)
+                      </label>
+                      <div className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-green-300 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        {improvedPrompt}
+                      </div>
+                    </div>
+                    {improvementReason && (
+                      <div>
+                        <label className="text-xs text-gray-500 font-mono block mb-1">
+                          Reason (Read-only)
+                        </label>
+                        <div className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-300 font-mono whitespace-pre-wrap max-h-20 overflow-y-auto">
+                          {improvementReason}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

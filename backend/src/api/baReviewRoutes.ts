@@ -1543,4 +1543,126 @@ baReviewRouter.post('/synthesize-template', async (req: Request, res: Response):
   }
 });
 
+/**
+ * Save recommendations and improvements to RawDataRecord
+ * POST /api/ba-review/save-recommendations
+ * Persists generated recommendations and user improvements to database for retrieval later
+ */
+baReviewRouter.post('/save-recommendations', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { applicationId, rawDataId, recommendations, improvement } = req.body as {
+      applicationId?: string;
+      rawDataId?: string;
+      recommendations?: any[];
+      improvement?: string;
+    };
+
+    if (!applicationId || typeof applicationId !== 'string') {
+      res.status(400).json({ success: false, error: 'applicationId is required' });
+      return;
+    }
+
+    if (!rawDataId || typeof rawDataId !== 'string') {
+      res.status(400).json({ success: false, error: 'rawDataId is required' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Saving recommendations for app ${applicationId}, rawData ${rawDataId}`);
+
+    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+
+    // Update the RawDataRecord with recommendations and improvements
+    const updateData: Record<string, any> = {
+      'baReview.recommendations': recommendations || [],
+      'baReview.improvement': improvement || '',
+      'baReview.lastSavedAt': new Date(),
+    };
+
+    const result = await RawDataRecordCollection.updateOne(
+      { _id: new mongoose.Types.ObjectId(rawDataId) },
+      { $set: updateData }
+    );
+
+    if (!result.matchedCount) {
+      res.status(404).json({
+        success: false,
+        error: 'RawDataRecord not found',
+      });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Successfully saved recommendations for rawData ${rawDataId}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        rawDataId,
+        recommendationsSaved: recommendations?.length || 0,
+        improvementSaved: !!improvement,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error saving recommendations: ${message}`);
+    res.status(500).json({
+      success: false,
+      error: message,
+      message: 'Failed to save recommendations',
+    });
+  }
+});
+
+/**
+ * Get saved recommendations for a RawDataRecord
+ * GET /api/ba-review/recommendations/:applicationId/:rawDataId
+ * Retrieves previously saved recommendations and improvements
+ */
+baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const rawDataId = asString(req.params.rawDataId);
+
+    if (!applicationId || !rawDataId) {
+      res.status(400).json({ success: false, error: 'applicationId and rawDataId are required' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] Getting recommendations for rawData ${rawDataId}`);
+
+    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+
+    const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
+
+    if (!record) {
+      res.status(404).json({
+        success: false,
+        error: 'RawDataRecord not found',
+      });
+      return;
+    }
+
+    const baReview = record.baReview || {};
+    const recommendations = baReview.recommendations || [];
+    const improvement = baReview.improvement || '';
+
+    logger.info(`[baReviewRoutes] Retrieved ${recommendations.length} recommendations for rawData ${rawDataId}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        recommendations,
+        improvement,
+        lastSavedAt: baReview.lastSavedAt,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error getting recommendations: ${message}`);
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
 export default baReviewRouter;
