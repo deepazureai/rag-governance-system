@@ -525,7 +525,9 @@ Create an improved version of the prompt that directly addresses each issue. Ret
       const llmConfig = await configManager.getApplicationLLMConfig(applicationId);
       
       if (!llmConfig) {
-        throw new Error(`No LLM configuration found for application ${applicationId}. Please configure LLM settings in Settings→LLM tab.`);
+        const errorMsg = `No LLM configuration found for application ${applicationId}. Please configure Azure OpenAI settings in Settings → LLM Configuration tab.`;
+        console.error(`[LLMAssistanceService] ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
       // Debug: Log the fetched config

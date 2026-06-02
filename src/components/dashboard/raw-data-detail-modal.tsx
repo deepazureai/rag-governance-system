@@ -130,7 +130,14 @@ export function RawDataDetailModal({
 
       if (!response.ok) {
         const errorData = await response.json() as Record<string, unknown>;
-        throw new Error((errorData?.error as string) || 'Failed to generate recommendations');
+        const errorMessage = (errorData?.error as string) || (errorData?.message as string) || 'Failed to generate recommendations';
+        
+        // Check if the error is due to missing LLM configuration
+        if (errorMessage.includes('No LLM configuration found') || errorMessage.includes('LLM connection validation failed')) {
+          throw new Error(`LLM Configuration Required: Please configure LLM settings in Settings → LLM Configuration tab for this application before generating recommendations.`);
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json() as unknown;
