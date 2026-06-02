@@ -1,10 +1,9 @@
-import { AzureOpenAI } from '@azure/openai';
 import { logger } from '../utils/logger.js';
 import { kbConfigService } from './KnowledgeBaseConfigService.js';
 import { getVectorStore } from './VectorStoreService.js';
 import { cryptoUtil } from '../utils/CryptoUtil.js';
 
-// Import DocumentChunk interface from VectorStoreService (local interface)
+// DocumentChunk interface for search results
 interface DocumentChunk {
   content: string;
   metadata: Record<string, string | number | boolean | string[]>;
@@ -143,7 +142,7 @@ Please answer the question based on the provided context. If the context doesn't
   }
 
   /**
-   * Call Azure OpenAI LLM with proper configuration
+   * Call Azure OpenAI LLM with proper configuration using REST API
    */
   private async callAzureOpenAI(
     kbConfig: any,
@@ -169,35 +168,51 @@ Please answer the question based on the provided context. If the context doesn't
         );
       }
 
-      // Initialize Azure OpenAI client
-      const client = new AzureOpenAI({
-        apiKey: apiKey,
-        endpoint: endpoint,
-        apiVersion: apiVersion,
-        defaultQuery: { 'api-version': apiVersion },
+      // Remove trailing slash from endpoint if present
+      const cleanEndpoint = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
+
+      // Build Azure OpenAI API URL
+      const url = `${cleanEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
+
+      logger.debug(`[RAGQueryService] Calling Azure OpenAI: ${url}`);
+
+      // Call Azure OpenAI REST API
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey,
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: temperature,
+          max_tokens: maxTokens,
+          top_p: 0.95,
+          frequency_penalty: 0,
+          presence_penalty: 0,
+        }),
       });
 
-      // Call chat completion
-      const response = await client.chat.completions.create({
-        model: deploymentName,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: temperature,
-        max_tokens: maxTokens,
-      } as any);
+      if (!response.ok) {
+        const errorData = await response.text();
+        logger.error(`[RAGQueryService] Azure OpenAI API error: status=${response.status}, body=${errorData}`);
+        throw new Error(`Azure OpenAI API failed: ${response.status} - ${errorData}`);
+      }
 
-      const messageContent = response.choices[0]?.message?.content;
-      if (!messageContent) {
+      const data = (await response.json()) as any;
+
+      if (!data.choices?.[0]?.message?.content) {
         throw new Error('Empty response from Azure OpenAI');
       }
 
       logger.info(
-        `[RAGQueryService] Azure OpenAI response: tokens=${response.usage?.total_tokens || 0}, finish_reason=${response.choices[0]?.finish_reason}`
+        `[RAGQueryService] Azure OpenAI response: tokens=${data.usage?.total_tokens || 0}, finish_reason=${data.choices[0]?.finish_reason}`
       );
 
-      return messageContent;
+      return data.choices[0].message.content;
     } catch (error) {
       logger.error('[RAGQueryService] Azure OpenAI call failed:', error);
       throw error;
