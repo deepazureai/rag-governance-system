@@ -11,6 +11,32 @@ export interface IBAPromptImprovement {
   updatedAt: Date;
 }
 
+export interface IBARecommendation {
+  reasoning: string;
+  suggestions: Array<{
+    issue: string;
+    suggestion: string;
+    expectedImprovement: string;
+  }>;
+  deepevalAnalysis?: Record<string, any>;
+  generatedAt: Date;
+  generatedBy: string;
+}
+
+export interface IBAReviewData {
+  promptImprovements: IBAPromptImprovement[];
+  recommendations?: IBARecommendation[];
+  improvement?: string;
+  revisedPrompt?: string;
+  improvementReason?: string;
+  lastSavedAt?: Date;
+  reviewStatus: 'pending' | 'reviewed' | 'improved' | 'approved';
+  reviewedAt?: Date;
+  approvedAt?: Date;
+  approvedBy?: string;
+  notes?: string;
+}
+
 export interface IKnowledgeBaseDocument {
   documentId: string;
   fileName: string;
@@ -66,6 +92,10 @@ export interface IRawDataRecord extends Document {
   status: 'pending' | 'processed' | 'failed';
   error?: string;
   
+  // Original prompt and response
+  userPrompt?: string;
+  llmResponse?: string;
+  
   // Authentic data representation - User interaction timestamps
   userPromptEnteredAt: Date;  // When end user submitted the prompt
   llmResponseGeneratedAt: Date;  // When LLM generated the response
@@ -94,14 +124,7 @@ export interface IRawDataRecord extends Document {
   }[];
   
   // BA Review and Improvement
-  baReview?: {
-    promptImprovements: IBAPromptImprovement[];
-    reviewStatus: 'pending' | 'reviewed' | 'improved' | 'approved';
-    reviewedAt?: Date;
-    approvedAt?: Date;
-    approvedBy?: string;
-    notes?: string;
-  };
+  baReview?: IBAReviewData;
   
   // Template usage
   templateId?: string;  // If response was generated using a prompt template
@@ -124,6 +147,38 @@ const BAPromptImprovementSchema = new Schema<IBAPromptImprovement>(
     estimatedScoreImpact: { type: Number },
   },
   { timestamps: true }
+);
+
+const BARecommendationSchema = new Schema<IBARecommendation>(
+  {
+    reasoning: { type: String, required: true },
+    suggestions: [
+      {
+        issue: { type: String, required: true },
+        suggestion: { type: String, required: true },
+        expectedImprovement: { type: String, required: true },
+      },
+    ],
+    deepevalAnalysis: { type: Schema.Types.Mixed },
+    generatedAt: { type: Date, default: Date.now },
+    generatedBy: { type: String, default: 'system' },
+  }
+);
+
+const BAReviewDataSchema = new Schema<IBAReviewData>(
+  {
+    promptImprovements: [BAPromptImprovementSchema],
+    recommendations: [BARecommendationSchema],
+    improvement: { type: String },
+    revisedPrompt: { type: String },
+    improvementReason: { type: String },
+    lastSavedAt: { type: Date },
+    reviewStatus: { type: String, enum: ['pending', 'reviewed', 'improved', 'approved'], default: 'pending' },
+    reviewedAt: { type: Date },
+    approvedAt: { type: Date },
+    approvedBy: { type: String },
+    notes: { type: String },
+  }
 );
 
 const KnowledgeBaseDocumentSchema = new Schema<IKnowledgeBaseDocument>(
@@ -194,6 +249,10 @@ const RawDataRecordSchema = new Schema<IRawDataRecord>(
     status: { type: String, enum: ['pending', 'processed', 'failed'], default: 'pending' },
     error: { type: String },
     
+    // Original prompt and response
+    userPrompt: { type: String },
+    llmResponse: { type: String },
+    
     // Authentic data timestamps
     userPromptEnteredAt: { type: Date, required: true },
     llmResponseGeneratedAt: { type: Date, required: true },
@@ -223,15 +282,8 @@ const RawDataRecordSchema = new Schema<IRawDataRecord>(
       },
     ],
     
-    // BA Review
-    baReview: {
-      promptImprovements: [BAPromptImprovementSchema],
-      reviewStatus: { type: String, enum: ['pending', 'reviewed', 'improved', 'approved'], default: 'pending' },
-      reviewedAt: { type: Date },
-      approvedAt: { type: Date },
-      approvedBy: { type: String },
-      notes: { type: String },
-    },
+    // BA Review - now using comprehensive schema
+    baReview: BAReviewDataSchema,
     
     // Template usage
     templateId: { type: String },

@@ -64,7 +64,7 @@ promptTemplateRouter.post('/create', async (req: Request, res: Response): Promis
       applicationId,
       name: (body.templateName as string) || 'Untitled Template',
       description: (body.description as string) || '',
-      templateText,
+      templateText: templateText,
       category: (body.category as string) || '',
       tags: Array.isArray(body.tags) ? body.tags : [],
       sourceRecommendationIds: [],
@@ -77,7 +77,7 @@ promptTemplateRouter.post('/create', async (req: Request, res: Response): Promis
       createdBy: (body.baEmail as string) || 'system',
       // Provide default values for required fields
       crewAITemplate,
-      llmConfigUsedForRefinement: null as any, // Will be filled later during refinement
+      llmConfigUsedForRefinement: undefined, // Allow undefined to use defaults
       rawUserInput: body.promptTemplate as string,
     });
 

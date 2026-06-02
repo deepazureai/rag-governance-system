@@ -927,6 +927,30 @@ baReviewRouter.post('/get-recommendations', async (req: Request, res: Response):
 
     logger.info(`[baReviewRoutes] Generating recommendations for app ${applicationId}, record ${recordId || 'new'}`);
 
+    // Check if recommendations already exist for this record (duplicate prevention)
+    if (recordId && mongoose.Types.ObjectId.isValid(recordId)) {
+      const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+      const existingRecord = await RawDataRecordCollection.findOne({ 
+        _id: new mongoose.Types.ObjectId(recordId) 
+      });
+      
+      if (existingRecord?.baReview?.recommendations && existingRecord.baReview.recommendations.length > 0) {
+        logger.info(`[baReviewRoutes] Recommendations already exist for record ${recordId}, returning cached`);
+        res.status(200).json({
+          success: true,
+          data: {
+            recordId,
+            applicationId,
+            deepevalAnalysis: existingRecord.baReview.recommendations[0]?.deepevalAnalysis || {},
+            llmRecommendations: existingRecord.baReview.recommendations[0]?.suggestions?.[0]?.suggestion || '',
+            generatedAt: existingRecord.baReview.recommendations[0]?.generatedAt || new Date().toISOString(),
+            cached: true,
+          },
+        });
+        return;
+      }
+    }
+
     // Convert evaluation scores to metrics object for analysis
     const metricsObject: Record<string, number> = {};
     evaluationScores.forEach(score => {
@@ -959,6 +983,7 @@ baReviewRouter.post('/get-recommendations', async (req: Request, res: Response):
         deepevalAnalysis,
         llmRecommendations,
         generatedAt: new Date().toISOString(),
+        cached: false,
       },
     };
 
@@ -1550,11 +1575,12 @@ baReviewRouter.post('/synthesize-template', async (req: Request, res: Response):
  */
 baReviewRouter.post('/save-recommendations', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationId, rawDataId, recommendations, improvement } = req.body as {
+    const { applicationId, rawDataId, recommendations, improvement, improvementReason } = req.body as {
       applicationId?: string;
       rawDataId?: string;
       recommendations?: any[];
       improvement?: string;
+      improvementReason?: string;
     };
 
     if (!applicationId || typeof applicationId !== 'string') {
@@ -1569,14 +1595,34 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
 
     logger.info(`[baReviewRoutes] Saving recommendations for app ${applicationId}, rawData ${rawDataId}`);
 
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(rawDataId)) {
+      logger.warn(`[baReviewRoutes] Invalid ObjectId format: ${rawDataId}`);
+      res.status(400).json({ success: false, error: 'Invalid rawDataId format' });
+      return;
+    }
+
     const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
 
-    // Update the RawDataRecord with recommendations and improvements
+    // Build update data - only set fields that have values
     const updateData: Record<string, any> = {
-      'baReview.recommendations': recommendations || [],
-      'baReview.improvement': improvement || '',
       'baReview.lastSavedAt': new Date(),
     };
+
+    // Add recommendations if provided
+    if (recommendations && Array.isArray(recommendations) && recommendations.length > 0) {
+      updateData['baReview.recommendations'] = recommendations;
+    }
+
+    // Add improvement if provided
+    if (improvement && typeof improvement === 'string' && improvement.trim()) {
+      updateData['baReview.improvement'] = improvement.trim();
+    }
+
+    // Add improvement reason if provided
+    if (improvementReason && typeof improvementReason === 'string' && improvementReason.trim()) {
+      updateData['baReview.improvementReason'] = improvementReason.trim();
+    }
 
     const result = await RawDataRecordCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(rawDataId) },
@@ -1599,6 +1645,7 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
         rawDataId,
         recommendationsSaved: recommendations?.length || 0,
         improvementSaved: !!improvement,
+        savedAt: new Date(),
       },
     });
   } catch (error: unknown) {
@@ -1607,7 +1654,6 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
     res.status(500).json({
       success: false,
       error: message,
-      message: 'Failed to save recommendations',
     });
   }
 });
@@ -1655,15 +1701,22 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
     const baReview = record.baReview || {};
     const recommendations = baReview.recommendations || [];
     const improvement = baReview.improvement || '';
+    const improvementReason = baReview.improvementReason || '';
+    const userPrompt = record.userPrompt || 'No original prompt available';
+    const llmResponse = record.llmResponse || '';
 
     logger.info(`[baReviewRoutes] Retrieved ${recommendations.length} recommendations for rawData ${rawDataId}`);
 
     res.status(200).json({
       success: true,
       data: {
+        userPrompt,
+        llmResponse,
         recommendations,
         improvement,
+        improvementReason,
         lastSavedAt: baReview.lastSavedAt,
+        hasRecommendations: recommendations.length > 0,
       },
     });
   } catch (error: unknown) {

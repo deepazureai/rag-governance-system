@@ -64,6 +64,8 @@ export function RawDataDetailModal({
   const loadSavedRecommendations = async (): Promise<void> => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      console.log('[v0] Loading recommendations for record:', record._id);
+      
       const response = await fetch(`${apiUrl}/api/ba-review/recommendations/${record.applicationId}/${record._id}`);
 
       if (response.ok) {
@@ -71,28 +73,56 @@ export function RawDataDetailModal({
         const savedData = data.data as Record<string, unknown> | undefined;
         
         if (savedData) {
-          const recommendations = savedData.recommendations as any[] | undefined;
-          const improvement = savedData.improvement as string | undefined;
+          console.log('[v0] Saved recommendations data:', savedData);
+          
+          // Load original prompt
+          const userPrompt = savedData.userPrompt as string | undefined;
+          if (userPrompt && userPrompt !== 'No original prompt available') {
+            console.log('[v0] Found original prompt');
+          }
           
           // Load recommendations if saved
+          const recommendations = savedData.recommendations as any[] | undefined;
           if (recommendations && recommendations.length > 0) {
             setLlmRecommendations(recommendations[0]);
-            console.log('[v0] Loaded saved recommendations');
+            console.log('[v0] Loaded saved recommendations:', recommendations.length);
           }
           
           // Load improvement if saved
+          const improvement = savedData.improvement as string | undefined;
+          const improvementReason = savedData.improvementReason as string | undefined;
+          
           if (improvement) {
             setImprovedPrompt(improvement);
+            setImprovementReason(improvementReason || '');
             console.log('[v0] Loaded saved improvement');
           }
+          
+          // Log what was loaded
+          const hasRecommendations = savedData.hasRecommendations as boolean | undefined;
+          if (hasRecommendations) {
+            console.log('[v0] Record has recommendations and improvements from previous session');
+          }
         }
+      } else if (response.status === 404) {
+        console.log('[v0] No previous recommendations saved for this record');
+      } else {
+        const error = await response.json() as Record<string, unknown>;
+        console.warn('[v0] Error loading recommendations:', error.error || response.statusText);
       }
-    } catch (error) {
-      console.log('[v0] No saved recommendations found, first generation needed');
+    } catch (error: unknown) {
+      console.warn('[v0] Error loading recommendations:', error instanceof Error ? error.message : String(error));
+      // Don't fail - just continue without loaded data
     }
   };
 
   const handleGetRecommendations = async (): Promise<void> => {
+    // Check if recommendations already exist
+    if (llmRecommendations) {
+      alert('Recommendations have already been generated for this record. They are displayed below. Click "Edit Improvements" to modify them.');
+      return;
+    }
+
     setIsGeneratingRecommendations(true);
 
     try {
@@ -309,12 +339,13 @@ export function RawDataDetailModal({
       // Now save recommendations and improvements to RawDataRecord for persistence
       if (llmRecommendations || improvedPrompt) {
         try {
-          const saveRecommendationsBody = {
-            applicationId: record.applicationId,
-            rawDataId: record._id,
-            recommendations: llmRecommendations ? [llmRecommendations] : [],
-            improvement: improvedPrompt.trim(),
-          };
+      const saveRecommendationsBody = {
+        applicationId: record.applicationId,
+        rawDataId: record._id,
+        recommendations: llmRecommendations ? [llmRecommendations] : [],
+        improvement: improvedPrompt.trim(),
+        improvementReason: improvementReason.trim(),
+      };
 
           const recommendationsResponse = await fetch(`${apiUrl}/api/ba-review/save-recommendations`, {
             method: 'POST',
