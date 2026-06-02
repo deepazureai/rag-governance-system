@@ -1627,16 +1627,16 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
 
     const result = await RawDataRecordCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(rawDataId) },
-      { $set: updateData }
+      { $set: updateData },
+      { upsert: true } // Create record if it doesn't exist
     );
 
-    if (!result.matchedCount) {
-      res.status(404).json({
-        success: false,
-        error: 'RawDataRecord not found',
-      });
-      return;
-    }
+    // Log result for debugging
+    console.log('[v0] Save recommendations result:', {
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+      upsertedId: result.upsertedId,
+    });
 
     logger.info(`[baReviewRoutes] Successfully saved recommendations for rawData ${rawDataId}`);
 
@@ -1691,10 +1691,20 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
     const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
 
     if (!record) {
-      logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}`);
-      res.status(404).json({
-        success: false,
-        error: 'RawDataRecord not found',
+      logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}, returning empty data`);
+      // Return empty data instead of 404 so frontend can still work
+      res.status(200).json({
+        success: true,
+        data: {
+          userPrompt: '',
+          llmResponse: '',
+          recommendations: [],
+          improvement: '',
+          improvementReason: '',
+          IsImprovementSaved: 0,
+          lastSavedAt: null,
+          hasRecommendations: false,
+        },
       });
       return;
     }
