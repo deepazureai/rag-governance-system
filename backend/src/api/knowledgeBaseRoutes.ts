@@ -100,7 +100,28 @@ knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, 
       return;
     }
 
-    const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
+    if (!applicationId || typeof applicationId !== 'string') {
+      res.status(400).json({ error: 'applicationId is required' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Starting upload for app ${applicationId}, ${files.length} files`);
+
+    let vectorStore: VectorStoreService;
+    try {
+      vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
+      logger.info(`[KnowledgeBase] Vector store initialized for app ${applicationId}`);
+    } catch (initError) {
+      const message = initError instanceof Error ? initError.message : 'Vector store initialization failed';
+      logger.error(`[KnowledgeBase] Failed to initialize vector store: ${message}`);
+      res.status(503).json({
+        error: 'Knowledge Base service unavailable',
+        details: message,
+        message: 'Please ensure Azure OpenAI credentials are configured in Settings → Knowledge Base Configuration. Check your API key, endpoint, and deployment name.',
+      });
+      return;
+    }
+
     const results: UploadResult[] = [];
 
     for (const file of files) {
@@ -140,9 +161,20 @@ knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, 
         }));
 
         // Add to vector store
-        const ids = await vectorStore.addDocuments(documentChunks, namespace);
-
-        logger.info(`[KnowledgeBase] Successfully vectorized ${file.originalname} (${ids.length} chunks)`);
+        let ids: string[] = [];
+        try {
+          ids = await vectorStore.addDocuments(documentChunks, namespace);
+          logger.info(`[KnowledgeBase] Successfully vectorized ${file.originalname} (${ids.length} chunks)`);
+        } catch (vectorError) {
+          const message = vectorError instanceof Error ? vectorError.message : 'Vectorization failed';
+          logger.error(`[KnowledgeBase] Failed to vectorize ${file.originalname}: ${message}`);
+          results.push({
+            filename: file.originalname,
+            status: 'error',
+            error: `Vectorization failed: ${message}`,
+          });
+          continue;
+        }
 
         results.push({
           filename: file.originalname,
@@ -163,16 +195,27 @@ knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, 
       }
     }
 
-    res.json({
+    // Check if any files succeeded
+    const successCount = results.filter((r) => r.status === 'success').length;
+    const allFailed = successCount === 0;
+
+    res.status(allFailed ? 500 : 200).json({
       uploadedAt: new Date().toISOString(),
       applicationId,
       namespace: namespace ?? 'default',
       results,
       totalChunksCreated: results.reduce((sum, r) => sum + (r.chunksCreated ?? 0), 0),
+      success: successCount > 0,
+      message: allFailed ? 'All files failed to upload' : `${successCount}/${files.length} files uploaded successfully`,
     });
   } catch (error) {
-    logger.error('[KnowledgeBase] Upload failed:', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Upload failed' });
+    logger.error('[KnowledgeBase] Upload request failed:', error);
+    const message = error instanceof Error ? error.message : 'Upload failed';
+    res.status(500).json({
+      error: 'Upload failed',
+      details: message,
+      message: 'Server error during upload. Check KB configuration and try again.',
+    });
   }
 });
 
