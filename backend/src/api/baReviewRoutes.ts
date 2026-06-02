@@ -1691,20 +1691,10 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
     const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
 
     if (!record) {
-      logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}, returning empty data`);
-      // Return empty data instead of 404 so frontend can still work
-      res.status(200).json({
-        success: true,
-        data: {
-          userPrompt: '',
-          llmResponse: '',
-          recommendations: [],
-          improvement: '',
-          improvementReason: '',
-          IsImprovementSaved: 0,
-          lastSavedAt: null,
-          hasRecommendations: false,
-        },
+      logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}`);
+      res.status(404).json({
+        success: false,
+        error: 'RawDataRecord not found',
       });
       return;
     }
