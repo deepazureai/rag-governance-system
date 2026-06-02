@@ -36,9 +36,9 @@ export function SynthesisConfig({
       setSynthesizedTemplate(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const applicationId = new URLSearchParams(window.location.search).get('appId') || 'default-app';
 
       // Call the new synthesize-template endpoint with approved prompts
+      // Use applicationId from props (passed from CreateTemplateWizard)
       const response = await fetch(`${apiUrl}/api/ba-review/synthesize-template`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
