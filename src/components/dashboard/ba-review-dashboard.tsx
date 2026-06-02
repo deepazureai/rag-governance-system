@@ -24,6 +24,7 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
   const [kbPrompts, setKBPrompts] = useState<any[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
   const [isLoadingKB, setIsLoadingKB] = useState(false);
+  const [approvingKBId, setApprovingKBId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<BAReviewQueueItem | null>(null);
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -129,6 +130,53 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
     }
   };
 
+  // KB Prompt Approval Handlers
+  const handleApproveKBPrompt = async (promptId: string): Promise<void> => {
+    try {
+      setApprovingKBId(promptId);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/ba-review/kb-prompts/${promptId}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approvalStatus: 'approved',
+          approvalReason: 'Approved by BA for template usage',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to approve KB prompt');
+      
+      await fetchKBPrompts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to approve');
+    } finally {
+      setApprovingKBId(null);
+    }
+  };
+
+  const handleRejectKBPrompt = async (promptId: string): Promise<void> => {
+    try {
+      setApprovingKBId(promptId);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/ba-review/kb-prompts/${promptId}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approvalStatus: 'rejected',
+          approvalReason: 'Rejected by BA',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to reject KB prompt');
+      
+      await fetchKBPrompts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reject');
+    } finally {
+      setApprovingKBId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as 'queue' | 'kb' | 'templates')} className="w-full">
@@ -210,13 +258,33 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
                       </div>
 
                       {/* Use in Template Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-4 flex-shrink-0 bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
-                      >
-                        Use in Template
-                      </Button>
+                      <div className="ml-4 flex-shrink-0 flex gap-2">
+                        {prompt.badgeStatus !== 'approved' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              disabled={approvingKBId === prompt._id}
+                              onClick={() => handleApproveKBPrompt(prompt._id)}
+                            >
+                              {approvingKBId === prompt._id ? 'Approving...' : 'Approve'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-red-700 hover:bg-red-50"
+                              disabled={approvingKBId === prompt._id}
+                              onClick={() => handleRejectKBPrompt(prompt._id)}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-800 border-green-300">
+                            Approved
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 ))}

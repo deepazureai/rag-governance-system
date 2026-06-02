@@ -1214,8 +1214,85 @@ baReviewRouter.patch('/approve-prompt/:recordId', async (req: Request, res: Resp
 });
 
 /**
- * Get approved prompts for template building (only approved prompts)
+ * PATCH /api/ba-review/kb-prompts/:promptId/approve
+ * Approve or reject a KB prompt (same structure as recommendation approval)
+ * Body: { approvalStatus: 'approved'|'rejected', approvalReason: string }
+ */
+baReviewRouter.patch('/kb-prompts/:promptId/approve', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const promptId = asString(req.params.promptId);
+    const { approvalStatus, approvalReason } = req.body as any;
+
+    if (!promptId) {
+      res.status(400).json({ success: false, error: 'promptId is required' });
+      return;
+    }
+
+    if (!['approved', 'rejected'].includes(approvalStatus)) {
+      res.status(400).json({ success: false, error: 'approvalStatus must be "approved" or "rejected"' });
+      return;
+    }
+
+    const KBPromptCollection = mongoose.connection.collection('kbprompts');
+
+    let objectId: mongoose.Types.ObjectId | null = null;
+    try {
+      if (promptId.length === 24) {
+        objectId = new mongoose.Types.ObjectId(promptId);
+      }
+    } catch (e) {
+      // Not a valid ObjectId
+    }
+
+    const query = objectId ? { _id: objectId } : { _id: promptId };
+    const prompt = await KBPromptCollection.findOne(query as any);
+
+    if (!prompt) {
+      res.status(404).json({ success: false, error: `KB Prompt not found: ${promptId}` });
+      return;
+    }
+
+    // Update KB prompt with approval status
+    const updateData: any = {
+      $set: {
+        badgeStatus: approvalStatus,
+        approvalReason: approvalReason,
+        approvedBy: 'ba@company.com',
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+
+    const updateResult = await KBPromptCollection.updateOne(query as any, updateData);
+
+    if (updateResult.modifiedCount === 0) {
+      res.status(500).json({ success: false, error: 'Failed to update KB prompt' });
+      return;
+    }
+
+    logger.info(`[baReviewRoutes] KB Prompt ${approvalStatus} for ID ${promptId}`);
+
+    res.status(200).json({
+      success: true,
+      message: `KB Prompt ${approvalStatus} successfully`,
+      data: {
+        promptId,
+        approvalStatus,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(`[baReviewRoutes] Error approving KB prompt: ${message}`);
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * Get approved prompts for template building from BOTH sources
  * GET /api/ba-review/approved-prompts/:applicationId
+ * 
+ * UNIFIED ENDPOINT: Fetches from BOTH evaluationrecords (recommendations) AND kbprompts
+ * Returns unified array with source field indicating origin
  */
 baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1227,9 +1304,10 @@ baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res:
     }
 
     const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+    const KBPromptCollection = mongoose.connection.collection('kbprompts');
 
-    // Fetch only approved prompts
-    const approvedPrompts = await EvaluationCollection.find(
+    // Fetch approved RECOMMENDATIONS
+    const approvedRecommendations = await EvaluationCollection.find(
       {
         applicationId,
         'baReview.approvalStatus': 'approved',
@@ -1249,21 +1327,70 @@ baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res:
       .sort({ 'baReview.approvedAt': -1 })
       .toArray();
 
-    console.log(`[v0] Fetched ${approvedPrompts.length} approved prompts for app ${applicationId}`);
+    // Fetch approved KB PROMPTS
+    const approvedKBPrompts = await KBPromptCollection.find(
+      {
+        applicationId,
+        badgeStatus: 'approved',
+      },
+      {
+        projection: {
+          _id: 1,
+          applicationId: 1,
+          userQuery: 1,
+          llmGeneratedResponse: 1,
+          contextRetrieved: 1,
+          approvalReason: 1,
+          badgedAt: 1,
+        },
+      }
+    )
+      .sort({ approvedAt: -1, badgedAt: -1 })
+      .toArray();
+
+    // Normalize recommendations to unified format
+    const normalizedRecommendations = approvedRecommendations.map((p: any) => ({
+      _id: p._id?.toString?.(),
+      applicationId: p.applicationId,
+      source: 'recommendation',
+      originalPrompt: p.userPrompt,
+      userPrompt: p.userPrompt,
+      revisedPrompt: p.baReview?.approvedRevisedPrompt || '',
+      improvementReason: p.baReview?.promptImprovements?.[0]?.improvementReason || '',
+      approvedAt: p.baReview?.approvedAt,
+      approvalReason: p.baReview?.approvalReason,
+    }));
+
+    // Normalize KB prompts to unified format
+    const normalizedKBPrompts = approvedKBPrompts.map((p: any) => ({
+      _id: p._id?.toString?.(),
+      applicationId: p.applicationId,
+      source: 'kb_prompt',
+      originalPrompt: p.userQuery,
+      userPrompt: p.userQuery,
+      revisedPrompt: p.llmGeneratedResponse,
+      improvementReason: `Generated from RAG: ${p.contextRetrieved?.length || 0} sources`,
+      approvedAt: p.approvedAt || p.badgedAt,
+      approvalReason: p.approvalReason || 'KB Prompt',
+      contextUsed: p.contextRetrieved,
+    }));
+
+    // Combine and deduplicate (if any)
+    const allApprovedPrompts = [...normalizedRecommendations, ...normalizedKBPrompts];
+
+    logger.info(
+      `[baReviewRoutes] Fetched ${normalizedRecommendations.length} recommendations + ${normalizedKBPrompts.length} KB prompts for app ${applicationId}`
+    );
 
     res.status(200).json({
       success: true,
       data: {
-        prompts: approvedPrompts.map((p: any) => ({
-          _id: p._id?.toString?.(),
-          applicationId: p.applicationId,
-          originalPrompt: p.userPrompt,
-          userPrompt: p.userPrompt,
-          revisedPrompt: p.baReview?.approvedRevisedPrompt || '',
-          improvementReason: p.baReview?.promptImprovements?.[0]?.improvementReason || '',
-          approvedAt: p.baReview?.approvedAt,
-        })),
-        count: approvedPrompts.length,
+        prompts: allApprovedPrompts,
+        count: allApprovedPrompts.length,
+        breakdown: {
+          recommendations: normalizedRecommendations.length,
+          kbPrompts: normalizedKBPrompts.length,
+        },
       },
       message: 'Approved prompts fetched successfully',
     });
@@ -1274,10 +1401,13 @@ baReviewRouter.get('/approved-prompts/:applicationId', async (req: Request, res:
   }
 });
 
+
 /**
  * Synthesize approved prompts into CrewAI template format
  * POST /api/ba-review/synthesize-template
  * Body: { applicationId: string, selectedPromptIds: string[], templateName: string }
+ * 
+ * UNIFIED: Handles prompts from BOTH sources (recommendations + KB prompts)
  */
 baReviewRouter.post('/synthesize-template', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1289,8 +1419,9 @@ baReviewRouter.post('/synthesize-template', async (req: Request, res: Response):
     }
 
     const EvaluationCollection = mongoose.connection.collection('evaluationrecords');
+    const KBPromptCollection = mongoose.connection.collection('kbprompts');
 
-    // Fetch selected approved prompts
+    // Convert IDs to ObjectIds for recommendations
     const objectIds = selectedPromptIds
       .map((id: string) => {
         try {
@@ -1300,55 +1431,110 @@ baReviewRouter.post('/synthesize-template', async (req: Request, res: Response):
         }
       });
 
-    const selectedPrompts = await EvaluationCollection.find(
-      {
-        _id: { $in: objectIds },
-        'baReview.approvalStatus': 'approved',
-      }
-    ).toArray();
+    // Fetch BOTH approved recommendations AND KB prompts
+    const [selectedRecommendations, selectedKBPrompts] = await Promise.all([
+      EvaluationCollection.find(
+        {
+          _id: { $in: objectIds },
+          'baReview.approvalStatus': 'approved',
+        }
+      ).toArray(),
+      KBPromptCollection.find(
+        {
+          _id: { $in: objectIds },
+          badgeStatus: 'approved',
+        }
+      ).toArray(),
+    ]);
 
-    if (selectedPrompts.length === 0) {
-      res.status(400).json({ success: false, error: 'No approved prompts found' });
+    // Combine prompts from both sources
+    const allSelectedPrompts = [...selectedRecommendations, ...selectedKBPrompts];
+
+    if (allSelectedPrompts.length === 0) {
+      res.status(400).json({ success: false, error: 'No approved prompts found with provided IDs' });
       return;
     }
 
-    // Synthesize into CrewAI format
+    // Normalize prompts to extraction logic that handles both types
+    const normalizePrompt = (p: any, isKB: boolean = false) => {
+      if (isKB) {
+        return {
+          promptText: p.llmGeneratedResponse,
+          originalPrompt: p.userQuery,
+          goal: p.llmGeneratedResponse.substring(0, 200),
+          source: 'KB Prompt',
+        };
+      } else {
+        return {
+          promptText: p.baReview?.approvedRevisedPrompt || p.userPrompt,
+          originalPrompt: p.userPrompt,
+          goal: p.baReview?.approvedRevisedPrompt || p.userPrompt,
+          source: 'Recommendation',
+        };
+      }
+    };
+
+    const normalizedPrompts = [
+      ...selectedRecommendations.map((p) => ({ ...normalizePrompt(p, false), _id: p._id })),
+      ...selectedKBPrompts.map((p) => ({ ...normalizePrompt(p, true), _id: p._id })),
+    ];
+
+    // Synthesize into CrewAI format with mixed sources
     const crewAITemplate = {
-      name: templateName || 'Generated Template',
-      description: `CrewAI template synthesized from ${selectedPrompts.length} approved prompts`,
-      actors: selectedPrompts.map((p: any, idx: number) => ({
+      name: templateName || 'Unified Template',
+      description: `CrewAI template synthesized from ${selectedRecommendations.length} recommendations + ${selectedKBPrompts.length} KB prompts`,
+      metadata: {
+        sourceBreakdown: {
+          recommendations: selectedRecommendations.length,
+          kbPrompts: selectedKBPrompts.length,
+          total: allSelectedPrompts.length,
+        },
+        createdAt: new Date().toISOString(),
+        applicationId,
+      },
+      actors: normalizedPrompts.map((p: any, idx: number) => ({
         id: `actor_${idx + 1}`,
-        role: `Specialist ${idx + 1}`,
-        goal: p.baReview?.approvedRevisedPrompt || p.userPrompt,
+        role: `${p.source} Specialist ${idx + 1}`,
+        goal: p.goal,
+        source: p.source,
       })),
-      tasks: selectedPrompts.map((p: any, idx: number) => ({
+      tasks: normalizedPrompts.map((p: any, idx: number) => ({
         id: `task_${idx + 1}`,
-        description: p.baReview?.approvedRevisedPrompt || p.userPrompt,
-        expected_output: `Comprehensive analysis addressing: ${p.baReview?.promptImprovements?.[0]?.improvementReason || 'detailed response'}`,
+        description: p.promptText,
+        source: p.source,
+        expected_output: `Comprehensive response addressing task from ${p.source}`,
       })),
       workflow: {
-        steps: selectedPrompts.map((_, idx: number) => ({
+        steps: normalizedPrompts.map((_, idx: number) => ({
           step: idx + 1,
           task_id: `task_${idx + 1}`,
           actor_id: `actor_${idx + 1}`,
         })),
       },
       context: {
-        original_prompts: selectedPrompts.map((p: any) => p.userPrompt),
-        revision_count: selectedPrompts.length,
-        created_at: new Date().toISOString(),
+        all_prompts: normalizedPrompts.map((p: any) => ({
+          text: p.promptText,
+          source: p.source,
+          original: p.originalPrompt,
+        })),
+        template_type: 'unified_mixed_source',
       },
     };
 
-    console.log(`[v0] Synthesized CrewAI template from ${selectedPrompts.length} prompts`);
+    logger.info(
+      `[baReviewRoutes] Synthesized CrewAI template from ${selectedRecommendations.length} recommendations + ${selectedKBPrompts.length} KB prompts`
+    );
 
     res.status(200).json({
       success: true,
       data: {
         template: crewAITemplate,
-        promptsIncluded: selectedPrompts.length,
+        promptsIncluded: allSelectedPrompts.length,
+        breakdown: {
+          recommendations: selectedRecommendations.length,
+          kbPrompts: selectedKBPrompts.length,
+        },
       },
-      message: 'Template synthesized successfully',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

@@ -8,6 +8,7 @@ import { AlertCircle, CheckCircle2, Loader } from 'lucide-react';
 
 interface ApprovedPrompt {
   _id: string;
+  source: 'recommendation' | 'kb_prompt';
   originalPrompt: string;
   revisedPrompt: string;
   improvementReason: string;
@@ -93,7 +94,7 @@ export function RecommendationSelector({
   if (prompts.length === 0) {
     return (
       <Card className="p-6 border-gray-200 bg-gray-50">
-        <p className="text-gray-600 text-center">No approved prompts available. Please approve prompts in the Recommendations tab first.</p>
+        <p className="text-gray-600 text-center">No approved prompts available. Please approve prompts in the Recommendations or KB tabs first.</p>
       </Card>
     );
   }
@@ -139,6 +140,9 @@ export function RecommendationSelector({
                 {/* Approved Badge */}
                 <div className="flex items-center gap-2 mb-2">
                   <Badge className="bg-green-900 text-green-200">Approved</Badge>
+                  <Badge className={prompt.source === 'kb_prompt' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
+                    {prompt.source === 'kb_prompt' ? 'KB Prompt' : 'Recommendation'}
+                  </Badge>
                   <span className="text-xs text-gray-500">
                     {new Date(prompt.approvedAt).toLocaleDateString()}
                   </span>
