@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { VectorStoreService, getVectorStore } from '../services/VectorStoreService.js';
 import { DocumentProcessorService } from '../services/DocumentProcessorService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
+import { ragQueryService } from '../services/RAGQueryService.js';
 import { logger } from '../utils/logger.js';
 
 const knowledgeBaseRouter: ExpressRouter = Router();
@@ -583,6 +584,64 @@ knowledgeBaseRouter.get('/badged-prompts/:applicationId', async (req: Request, r
   } catch (error) {
     logger.error('[KnowledgeBase] Failed to retrieve badged prompts:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to retrieve badged prompts' });
+  }
+});
+
+/**
+ * POST /api/knowledge-base/chat
+ * Execute RAG query: retrieve context, call LLM, return response with sources
+ * Complete RAG pipeline: semantic search → context formatting → LLM call → response
+ */
+knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as any;
+    const { applicationId, threadId, userMessage } = body;
+    const { temperature, maxTokens } = body;
+
+    if (!applicationId || !userMessage?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'applicationId and userMessage are required',
+      });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Chat query: app=${applicationId}, thread=${threadId}, query="${userMessage.substring(0, 100)}"`);
+
+    // Execute full RAG pipeline
+    const ragResponse = await ragQueryService.query({
+      applicationId,
+      query: userMessage,
+      topK: 5,
+      temperature,
+      maxTokens,
+    });
+
+    // TODO: Store chat history in RAG session if threadId provided
+    if (threadId) {
+      logger.debug(`[KnowledgeBase] TODO: Store message in RAG session ${threadId}`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        applicationId,
+        threadId,
+        userMessage,
+        assistantMessage: ragResponse.assistantMessage,
+        contextUsed: ragResponse.contextUsed,
+        searchResults: ragResponse.searchResults,
+        tokensUsed: ragResponse.tokensUsed,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Chat query failed:', error);
+    const message = error instanceof Error ? error.message : 'Chat query failed';
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
   }
 });
 
