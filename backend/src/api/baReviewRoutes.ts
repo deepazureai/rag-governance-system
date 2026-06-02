@@ -1629,11 +1629,22 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
 
     logger.info(`[baReviewRoutes] Getting recommendations for rawData ${rawDataId}`);
 
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(rawDataId)) {
+      logger.warn(`[baReviewRoutes] Invalid ObjectId format: ${rawDataId}`);
+      res.status(400).json({
+        success: false,
+        error: 'Invalid rawDataId format',
+      });
+      return;
+    }
+
     const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
 
     const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
 
     if (!record) {
+      logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}`);
       res.status(404).json({
         success: false,
         error: 'RawDataRecord not found',

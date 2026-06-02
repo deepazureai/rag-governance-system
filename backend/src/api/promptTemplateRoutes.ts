@@ -13,6 +13,90 @@ import type { ApiResponse } from '../types/models.js';
 const promptTemplateRouter: ExpressRouter = Router();
 
 /**
+ * POST /api/prompt-templates/create
+ * Create a new template from wizard (with default values for required fields)
+ */
+promptTemplateRouter.post('/create', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const applicationId = body.applicationId as string;
+
+    if (!applicationId?.toString().trim()) {
+      res.status(400).json({ success: false, message: 'Application ID is required' });
+      return;
+    }
+
+    const templateText = (body.promptTemplate as string) || '';
+    if (!templateText.trim()) {
+      res.status(400).json({ success: false, message: 'Prompt template is required' });
+      return;
+    }
+
+    // Create default CrewAI template structure
+    const crewAITemplate = {
+      agents: [
+        {
+          name: 'DefaultAgent',
+          role: 'Assistant',
+          goal: body.description as string || 'Assist with the given task',
+          backstory: 'You are a helpful assistant',
+          tools: [],
+          allowDelegation: false,
+          verbose: false,
+        },
+      ],
+      tasks: [
+        {
+          name: 'DefaultTask',
+          description: body.description as string || 'Execute the task',
+          expectedOutput: 'Task completion result',
+          agent: 'DefaultAgent',
+        },
+      ],
+      workflow: 'sequential',
+      metadata: {
+        version: '1.0',
+        description: body.description as string || '',
+      },
+    };
+
+    const newTemplate = new PromptTemplate({
+      applicationId,
+      name: (body.templateName as string) || 'Untitled Template',
+      description: (body.description as string) || '',
+      templateText,
+      category: (body.category as string) || '',
+      tags: Array.isArray(body.tags) ? body.tags : [],
+      sourceRecommendationIds: [],
+      sourceKBPromptIds: [],
+      sources: [],
+      status: 'draft',
+      version: 1,
+      isPublic: false,
+      usageMetrics: { totalUsageCount: 0 },
+      createdBy: (body.baEmail as string) || 'system',
+      // Provide default values for required fields
+      crewAITemplate,
+      llmConfigUsedForRefinement: null as any, // Will be filled later during refinement
+      rawUserInput: body.promptTemplate as string,
+    });
+
+    await newTemplate.save();
+    logger.info(`[promptTemplateRoutes] Template created via wizard: ${newTemplate._id}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Template created successfully',
+      data: newTemplate,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[promptTemplateRoutes] Error creating template via wizard: ${message}`);
+    res.status(500).json({ success: false, message });
+  }
+});
+
+/**
  * POST /api/prompt-templates/app/:appId
  * Create a new prompt template with source tracking
  */

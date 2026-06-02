@@ -131,7 +131,13 @@ export class VectorStoreService {
       }
 
       if (!fs.existsSync(this.persistDir)) {
-        fs.mkdirSync(this.persistDir, { recursive: true });
+        try {
+          fs.mkdirSync(this.persistDir, { recursive: true });
+          logger.info(`[VectorStoreService] Created vectorstore directory: ${this.persistDir}`);
+        } catch (mkdirError) {
+          logger.warn(`[VectorStoreService] Could not create directory ${this.persistDir}, will use memory-only mode`);
+          // Continue with memory-only mode (Chroma supports in-memory storage)
+        }
       }
 
       this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
@@ -365,9 +371,12 @@ export async function getVectorStore(collectionName: string = 'knowledge-base', 
   const instanceKey = applicationId || 'default';
   
   if (!vectorStoreInstances.has(instanceKey)) {
+    // Use /tmp directory with fallback to memory-only if needed
+    const tmpDir = path.join('/tmp', 'vectorstore', applicationId || 'default');
+    
     const instance = new VectorStoreService({
       collectionName,
-      persistDir: path.join(process.cwd(), 'data', 'vectorstore'),
+      persistDir: tmpDir,
       applicationId,
     });
     await instance.initialize();
