@@ -1688,16 +1688,28 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
 
     const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
 
+    console.log('[v0] GET recommendations - Looking for recordId:', rawDataId);
     const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
 
     if (!record) {
+      console.log('[v0] GET recommendations - Record NOT found for:', rawDataId);
       logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}`);
+      
+      // Try alternative query method as fallback
+      const allRecords = await RawDataRecordCollection.find({ applicationId }).limit(5).toArray();
+      console.log('[v0] Alternative query - Found records with same appId:', allRecords.length);
+      if (allRecords.length > 0) {
+        console.log('[v0] Sample record IDs:', allRecords.map(r => r._id.toString()));
+      }
+      
       res.status(404).json({
         success: false,
         error: 'RawDataRecord not found',
       });
       return;
     }
+    
+    console.log('[v0] GET recommendations - Record FOUND for:', rawDataId);
 
     const baReview = record.baReview || {};
     const recommendations = baReview.recommendations || [];
