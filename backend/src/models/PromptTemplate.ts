@@ -90,7 +90,7 @@ export interface IPromptTemplate extends Document {
   sources: readonly TemplateSource[];  // Denormalized source info
   
   // LLM refinement and synthesis tracking
-  llmConfigUsedForRefinement: Types.ObjectId;  // Reference to LLMConfig
+  llmConfigUsedForRefinement?: Types.ObjectId;  // Reference to LLMConfig (optional)
   rawUserInput?: string;    // Template before LLM refinement
   llmRefinedOutput?: string; // Template after LLM refinement
   synthesisMetadata?: ISynthesisMetadata;  // Synthesis details when created via LLM
@@ -234,7 +234,7 @@ export const PromptTemplateSchema = new Schema<IPromptTemplate>(
     llmConfigUsedForRefinement: {
       type: Schema.Types.ObjectId,
       ref: 'LLMConfig',
-      required: true,
+      // Optional - will be filled later during refinement or left empty
     },
     rawUserInput: { type: String },
     llmRefinedOutput: { type: String },

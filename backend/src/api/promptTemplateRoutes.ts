@@ -32,32 +32,15 @@ promptTemplateRouter.post('/create', async (req: Request, res: Response): Promis
       return;
     }
 
-    // Create default CrewAI template structure
+    // Create default CrewAI template structure (matching ICrewAITemplate interface)
     const crewAITemplate = {
-      agents: [
-        {
-          name: 'DefaultAgent',
-          role: 'Assistant',
-          goal: body.description as string || 'Assist with the given task',
-          backstory: 'You are a helpful assistant',
-          tools: [],
-          allowDelegation: false,
-          verbose: false,
-        },
-      ],
-      tasks: [
-        {
-          name: 'DefaultTask',
-          description: body.description as string || 'Execute the task',
-          expectedOutput: 'Task completion result',
-          agent: 'DefaultAgent',
-        },
-      ],
-      workflow: 'sequential',
-      metadata: {
-        version: '1.0',
-        description: body.description as string || '',
-      },
+      actor: (body.baName as string) || 'Assistant',
+      objective: body.description as string || 'Execute the task',
+      task: (body.promptTemplate as string)?.substring(0, 500) || 'Execute the task',
+      context: 'This is a system-generated template from RAG evaluation recommendations.',
+      expectedOutput: 'Structured output as per the template requirements',
+      crewAIVersion: '0.1.0',
+      toolsRequired: [],
     };
 
     const newTemplate = new PromptTemplate({
@@ -146,12 +129,12 @@ promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Pr
 
 /**
  * GET /api/prompt-templates/app/:appId
- * List templates for an application with filters
+ * List templates for an application with filters (includes draft and published)
  */
 promptTemplateRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { appId } = req.params;
-    const { status = 'published', limit = 50, skip = 0 } = req.query;
+    const { status, limit = 50, skip = 0 } = req.query;
 
     if (!appId?.toString().trim()) {
       res.status(400).json({ success: false, message: 'Application ID is required' });
@@ -161,20 +144,23 @@ promptTemplateRouter.get('/app/:appId', async (req: Request, res: Response): Pro
     const numLimit = Math.min(parseInt(limit as string) || 50, 100);
     const numSkip = parseInt(skip as string) || 0;
 
-    const templates = await PromptTemplate.find({
+    // Build query - include all statuses if not specified
+    const query: Record<string, unknown> = {
       applicationId: appId.toString(),
-      status: (status as string) || 'published',
-    } as Record<string, unknown>)
+    };
+
+    if (status) {
+      query.status = status as string;
+    }
+
+    const templates = await PromptTemplate.find(query)
       .sort({ createdAt: -1 })
       .skip(numSkip)
       .limit(numLimit);
 
-    const total = await PromptTemplate.countDocuments({
-      applicationId: appId.toString(),
-      status: (status as string) || 'published',
-    } as Record<string, unknown>);
+    const total = await PromptTemplate.countDocuments(query);
 
-    logger.info(`[promptTemplateRoutes] Retrieved ${templates.length} templates for app ${appId}`);
+    logger.info(`[promptTemplateRoutes] Retrieved ${templates.length} templates for app ${appId} (status: ${status || 'all'})`);
 
     res.json({
       success: true,

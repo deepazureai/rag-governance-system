@@ -364,7 +364,7 @@ baReviewRouter.get('/app/:applicationId', async (req: Request, res: Response): P
     logger.info(`[baReviewRoutes] Fetching recommendations for app: ${applicationId}`);
 
     // Fetch raw data records with evaluation data for this application
-    const RawDataRecordCollection = require('mongoose').connection.collection('rawdatarecords');
+    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
     const records = await RawDataRecordCollection.find({
       applicationId: applicationId.toString(),
       'llm_recommendations': { $exists: true, $ne: null }
@@ -430,7 +430,7 @@ baReviewRouter.get('/recommendations/:applicationId', async (req: Request, res: 
     logger.info(`[baReviewRoutes] Fetching recommendations for template synthesis: ${applicationId}`);
 
     // Fetch BA improvements/recommendations for this application
-    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+    const BAImprovementCollection = mongoose.connection.collection('baimprovements');
     const improvements = await BAImprovementCollection.find({
       applicationId: applicationId,
       status: { $in: ['approved', 'suggested'] }
@@ -501,7 +501,7 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
 
     logger.info(`[baReviewRoutes] Fetching single recommendation: ${recommendationId} for app ${applicationId}`);
 
-    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+    const BAImprovementCollection = mongoose.connection.collection('baimprovements');
     
     let query: Record<string, unknown> = {
       applicationId: applicationId,
@@ -510,7 +510,7 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
 
     // Try to match by MongoDB ObjectId if recommendationId looks like one
     if (recommendationId.match(/^[0-9a-f]{24}$/i)) {
-      query._id = new (require('mongoose')).Types.ObjectId(recommendationId);
+      query._id = new mongoose.Types.ObjectId(recommendationId);
     } else {
       // Fallback to string comparison
       query._id = recommendationId;
@@ -645,7 +645,7 @@ baReviewRouter.get('/low-score-prompts/:applicationId', async (req: Request, res
 
     logger.info(`[baReviewRoutes] Fetching low-score prompts for app ${applicationId} (threshold: ${threshold})`);
 
-    const RawDataCollection = require('mongoose').connection.collection('rawdatas');
+    const RawDataCollection = mongoose.connection.collection('rawdatas');
 
     // Query for prompts with low scores
     const lowScorePrompts = await RawDataCollection.find({
@@ -717,7 +717,7 @@ baReviewRouter.post('/process-low-score-prompt', async (req: Request, res: Respo
     );
 
     // Add to BA review queue
-    const BAImprovementCollection = require('mongoose').connection.collection('baimprovements');
+    const BAImprovementCollection = mongoose.connection.collection('baimprovements');
 
     const improvement = {
       applicationId,
