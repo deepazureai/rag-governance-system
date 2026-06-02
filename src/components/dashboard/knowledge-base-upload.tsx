@@ -390,37 +390,14 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
               onChange={handleFileInput}
               accept=".pdf,.docx,.txt,.md"
               className="hidden"
-              disabled={isUploading}
+              disabled={uploadingFiles.length > 0}
             />
           </div>
-
-          {isUploading && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 justify-center">
-                <Spinner className="w-4 h-4" />
-                <span className="text-sm text-blue-700">Processing document...</span>
-              </div>
-              <div className="bg-blue-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-blue-600 h-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {uploadProgress === 100 && (
-            <div className="flex items-center gap-2 justify-center text-green-700">
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="text-sm">Document uploaded successfully!</span>
-            </div>
-          )}
         </div>
-      </Card>
 
-      {/* Upload Progress - Batch */}
-      {uploadingFiles.length > 0 && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
+        {/* Upload Progress - Batch */}
+        {uploadingFiles.length > 0 && (
+            <Card className="p-4 bg-blue-50 border-blue-200">
           <h3 className="text-sm font-semibold text-blue-900 mb-3">Uploading Files ({uploadingFiles.length})</h3>
           <div className="space-y-3">
             {uploadingFiles.map((file) => (
@@ -456,6 +433,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
           </div>
         </Card>
       )}
+      </Card>
 
       {/* Statistics */}
       {documents.length > 0 && (
@@ -531,7 +509,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       )}
 
       {/* Empty State */}
-      {documents.length === 0 && !isUploading && (
+      {documents.length === 0 && uploadingFiles.length === 0 && (
         <Card className="p-12 text-center bg-gray-50 border-gray-200">
           <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>

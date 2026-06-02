@@ -291,7 +291,8 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
         content: m.content,
         timestamp: m.timestamp,
         contextUsed: m.contextUsed?.map((c) => ({
-          source: c.source,
+          documentId: c.documentId,
+          chunkId: c.chunkId,
           relevanceScore: c.relevanceScore,
         })),
       })),
