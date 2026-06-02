@@ -54,7 +54,7 @@ class PromptTemplateClient {
     if (options?.pageSize) params.append('pageSize', String(options.pageSize));
 
     const response = await fetch(
-      `${API_URL}/api/prompt-templates/${applicationId}?${params.toString()}`
+      `${API_URL}/api/prompt-templates/app/${applicationId}?${params.toString()}`
     );
 
     if (!response.ok) {
@@ -158,7 +158,7 @@ class PromptTemplateClient {
     if (status) params.append('status', status);
 
     const response = await fetch(
-      `${API_URL}/api/prompt-templates/${applicationId}/export?${params.toString()}`
+      `${API_URL}/api/prompt-templates/app/${applicationId}/export?${params.toString()}`
     );
 
     if (!response.ok) {

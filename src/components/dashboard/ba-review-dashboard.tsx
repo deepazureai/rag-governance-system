@@ -320,12 +320,14 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
         isOpen={builderOpen}
         onClose={() => setBuilderOpen(false)}
         baEmail="user@company.com"
-        similarPrompts={queueItems.map((item) => ({
-          id: item._id,
-          prompt: item.userPrompt,
-          improvement: 'Improved version',
-          score: item.averageScore || 0,
-        }))}
+        similarPrompts={queueItems
+          .filter((item) => item.status === 'approved')
+          .map((item) => ({
+            id: item._id,
+            prompt: item.userPrompt,
+            improvement: 'Improved version',
+            score: item.averageScore || 0,
+          }))}
       />
     </div>
   );
