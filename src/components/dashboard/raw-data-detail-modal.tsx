@@ -37,6 +37,7 @@ export function RawDataDetailModal({
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [isSavingImprovement, setIsSavingImprovement] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [IsImprovementSaved, setIsImprovementSaved] = useState(0); // 0 = not saved, 1 = saved
   const [llmRecommendations, setLlmRecommendations] = useState<{
     reasoning: string;
     suggestions: Array<{
@@ -92,11 +93,18 @@ export function RawDataDetailModal({
           // Load improvement if saved
           const improvement = savedData.improvement as string | undefined;
           const improvementReason = savedData.improvementReason as string | undefined;
+          const SavedFlag = savedData.IsImprovementSaved as number | undefined;
           
           if (improvement) {
             setImprovedPrompt(improvement);
             setImprovementReason(improvementReason || '');
             console.log('[v0] Loaded saved improvement');
+          }
+          
+          // Load the IsImprovementSaved flag
+          if (SavedFlag !== undefined) {
+            setIsImprovementSaved(SavedFlag);
+            console.log('[v0] IsImprovementSaved flag:', SavedFlag);
           }
           
           // Log what was loaded
@@ -367,6 +375,7 @@ export function RawDataDetailModal({
       
       // Keep the improved prompt and reason displayed to show what was saved
       setImprovementMode(false);
+      setIsImprovementSaved(1); // Set flag to 1 after successful save
       setSaveSuccess(true);
       
       // Auto-clear success message after 5 seconds
@@ -755,14 +764,17 @@ export function RawDataDetailModal({
                     
                     <Button
                       onClick={handleGetRecommendations}
-                      disabled={isGeneratingRecommendations}
-                      className="bg-purple-900 hover:bg-purple-800 text-purple-100"
+                      disabled={isGeneratingRecommendations || IsImprovementSaved === 1}
+                      className={`${IsImprovementSaved === 1 ? 'opacity-50 cursor-not-allowed' : ''} bg-purple-900 hover:bg-purple-800 text-purple-100`}
+                      title={IsImprovementSaved === 1 ? 'Improvements already saved. Review saved data or close and reopen modal to start over.' : ''}
                     >
                       {isGeneratingRecommendations ? (
                         <>
                           <Spinner className="w-4 h-4 mr-2" />
                           Generating Recommendations...
                         </>
+                      ) : IsImprovementSaved === 1 ? (
+                        'Improvements Saved ✓'
                       ) : (
                         'Generate Recommendations'
                       )}
@@ -913,7 +925,7 @@ export function RawDataDetailModal({
                 )}
 
                 {/* Add Improvement Button */}
-                {!improvementMode && (
+                {!improvementMode && IsImprovementSaved !== 1 && (
                   <Button
                     onClick={() => {
                       // Only populate with recommendations if we don't already have a revised prompt from LLM
@@ -937,6 +949,13 @@ export function RawDataDetailModal({
                   >
                     + Add Improvement
                   </Button>
+                )}
+                
+                {/* Show saved indicator when improvements are saved */}
+                {IsImprovementSaved === 1 && !improvementMode && (
+                  <div className="w-full mt-4 bg-green-900 bg-opacity-50 text-green-100 p-3 rounded text-center text-xs font-mono">
+                    ✓ Improvements Saved - Cannot modify further in this session
+                  </div>
                 )}
 
                 {/* Improvement Form */}

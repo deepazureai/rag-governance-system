@@ -1604,9 +1604,10 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
 
     const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
 
-    // Build update data - only set fields that have values
+    // Build update data - set flag to 1 when saving, only set fields that have values
     const updateData: Record<string, any> = {
       'baReview.lastSavedAt': new Date(),
+      'baReview.IsImprovementSaved': 1, // Mark as saved
     };
 
     // Add recommendations if provided
@@ -1702,6 +1703,7 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
     const recommendations = baReview.recommendations || [];
     const improvement = baReview.improvement || '';
     const improvementReason = baReview.improvementReason || '';
+    const IsImprovementSaved = baReview.IsImprovementSaved || 0; // 0 or 1
     const userPrompt = record.userPrompt || 'No original prompt available';
     const llmResponse = record.llmResponse || '';
 
@@ -1715,6 +1717,7 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
         recommendations,
         improvement,
         improvementReason,
+        IsImprovementSaved, // 0 = not saved, 1 = saved
         lastSavedAt: baReview.lastSavedAt,
         hasRecommendations: recommendations.length > 0,
       },

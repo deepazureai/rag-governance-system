@@ -35,6 +35,7 @@ export interface IBAReviewData {
   approvedAt?: Date;
   approvedBy?: string;
   notes?: string;
+  IsImprovementSaved?: number; // 0 = not saved, 1 = saved (flag for UI state)
 }
 
 export interface IKnowledgeBaseDocument {
@@ -178,6 +179,7 @@ const BAReviewDataSchema = new Schema<IBAReviewData>(
     approvedAt: { type: Date },
     approvedBy: { type: String },
     notes: { type: String },
+    IsImprovementSaved: { type: Number, enum: [0, 1], default: 0 }, // 0 = not saved, 1 = saved
   }
 );
 
