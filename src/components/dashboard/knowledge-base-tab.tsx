@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, MessageSquare, Search } from 'lucide-react';
+import { Upload, MessageSquare } from 'lucide-react';
 import { KnowledgeBaseUpload } from './knowledge-base-upload';
 import { KnowledgeBaseChat } from './knowledge-base-chat';
 
 export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
-  const [activeTab, setActiveTab] = useState<'upload' | 'chat' | 'search'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'chat'>('upload');
 
   return (
     <div className="w-full">
-      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'upload' | 'chat' | 'search')}>
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'upload' | 'chat')}>
+        <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Upload & Manage</span>
@@ -23,11 +23,6 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
             <span className="hidden sm:inline">Knowledge Chat</span>
             <span className="sm:hidden">Chat</span>
           </TabsTrigger>
-          <TabsTrigger value="search" className="flex items-center gap-2">
-            <Search className="w-4 h-4" />
-            <span className="hidden sm:inline">Search & Validate</span>
-            <span className="sm:hidden">Search</span>
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="mt-0">
@@ -36,13 +31,6 @@ export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
 
         <TabsContent value="chat" className="mt-0">
           <KnowledgeBaseChat applicationId={applicationId} />
-        </TabsContent>
-
-        <TabsContent value="search" className="mt-0">
-          <div className="text-center py-12 text-gray-500">
-            <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Search & Validate feature coming soon...</p>
-          </div>
         </TabsContent>
       </Tabs>
     </div>

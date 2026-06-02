@@ -57,20 +57,28 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   };
 
   const handleFile = async (file: File) => {
+    // Reset error
+    setError(null);
+
     // Validate file type
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Invalid file type. Please upload PDF, DOCX, TXT, or MD files.');
+      setError('❌ Invalid file type. Supported formats: PDF, DOCX, TXT, and Markdown (.md) files.');
       return;
     }
 
     // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
-      setError('File too large. Maximum size is 50MB.');
+      setError(`❌ File too large (${formatFileSize(file.size)}). Maximum size is 50MB.`);
       return;
     }
 
-    setError(null);
+    // Validate file name
+    if (!file.name || file.name.trim().length === 0) {
+      setError('❌ Invalid file name. Please select a file with a valid name.');
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -78,11 +86,13 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       const formData = new FormData();
       formData.append('file', file);
       formData.append('applicationId', applicationId);
-      formData.append('append', 'true'); // Append mode by default
+      formData.append('append', 'true');
+
+      if (!applicationId || applicationId.trim().length === 0) {
+        throw new Error('Application ID is missing. Please refresh the page.');
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      console.log('[v0] Uploading knowledge base document:', file.name);
 
       const response = await fetch(`${apiUrl}/api/knowledge-base/upload`, {
         method: 'POST',
@@ -90,12 +100,23 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        if (response.status === 400) {
+          throw new Error('KB Config not configured. Please set up Azure credentials in Settings first.');
+        } else if (response.status === 413) {
+          throw new Error('File too large for server. Please reduce file size.');
+        } else if (response.status === 500) {
+          throw new Error('Server error during upload. Azure service may be unavailable.');
+        }
+        throw new Error(`Upload failed (${response.status}). Please try again.`);
       }
 
       const rawData = await response.json();
-      const data = validateResponse(UploadResponseSchema, rawData);
-      console.log('[v0] Document uploaded successfully:', data);
+      
+      if (!rawData.success) {
+        throw new Error(rawData.error || 'Upload validation failed');
+      }
+
+      const data = validateResponse(UploadResponseSchema, rawData.data);
 
       // Add document to list
       setDocuments((prev) => [
@@ -122,7 +143,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         fileInputRef.current.value = '';
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      const errorMessage = err instanceof Error ? err.message : '❌ Upload failed. Please try again.';
       setError(errorMessage);
       console.error('[v0] Upload error:', err);
     } finally {
@@ -131,7 +152,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   };
 
   const handleDeleteDocument = async (documentId: string, fileName: string) => {
-    if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) {
+    if (!confirm(`Delete "${fileName}"? This cannot be undone and will remove all related embeddings.`)) {
       return;
     }
 
@@ -145,17 +166,26 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Document not found. It may have already been deleted.');
+        } else if (response.status === 500) {
+          throw new Error('Server error during deletion. Please try again.');
+        }
         throw new Error('Failed to delete document');
       }
 
       const rawData = await response.json();
-      validateResponse(DeleteResponseSchema, rawData);
+      
+      if (!rawData.success) {
+        throw new Error(rawData.error || 'Delete validation failed');
+      }
 
+      // Remove from UI
       setDocuments((prev) => prev.filter((doc) => doc.documentId !== documentId));
-      console.log('[v0] Document deleted:', fileName);
+      console.log('[v0] Document deleted:', documentId);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Delete failed';
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete document';
+      setError(`❌ ${errorMessage}`);
       console.error('[v0] Delete error:', err);
     }
   };

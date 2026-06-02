@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle } from 'lucide-react';
 import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
 interface ContextSource {
@@ -47,6 +47,8 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
   const [showNewChatForm, setShowNewChatForm] = useState(false);
   const [badgingMessageId, setBadgingMessageId] = useState<string | null>(null);
   const [badgeNotes, setBadgeNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [kbConfigValid, setKbConfigValid] = useState(true);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -94,7 +96,18 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
   };
 
   const sendMessage = async () => {
-    if (!userInput.trim() || !activeThreadId) {
+    if (!userInput.trim()) {
+      setError('Please enter a message');
+      return;
+    }
+
+    if (!activeThreadId) {
+      setError('No active chat thread. Please create a new chat first.');
+      return;
+    }
+
+    if (!applicationId) {
+      setError('Application ID missing. Please refresh the page.');
       return;
     }
 
@@ -109,11 +122,10 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     setMessages((prev) => [...prev, userMessage]);
     setUserInput('');
     setIsLoading(true);
+    setError(null);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      console.log('[v0] Sending chat message:', userMessage.content);
 
       const response = await fetch(`${apiUrl}/api/knowledge-base/chat`, {
         method: 'POST',
@@ -126,11 +138,24 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const errorText = await response.text();
+        if (response.status === 400) {
+          throw new Error('Invalid request. KB Config may not be configured.');
+        } else if (response.status === 404) {
+          throw new Error('Knowledge base not found for this application.');
+        } else if (response.status === 500) {
+          throw new Error('Server error. Azure service may be unavailable.');
+        }
+        throw new Error(`Server error (${response.status}): ${errorText}`);
       }
 
       const rawData = await response.json();
-      const data = validateResponse(ChatResponseSchema, rawData);
+      
+      if (!rawData.success) {
+        throw new Error(rawData.error || 'Failed to generate response');
+      }
+
+      const data = validateResponse(ChatResponseSchema, rawData.data);
 
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
@@ -141,16 +166,15 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-
-      console.log('[v0] Assistant message received with', data.contextUsed?.length || 0, 'context sources');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate response from KB';
       console.error('[v0] Chat error:', err);
+      setError(errorMessage);
 
       const errorMessage_: Message = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: `Error: ${errorMessage}`,
+        content: `⚠️ Error: ${errorMessage}. Please check your KB Config settings and try again.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage_]);
@@ -400,6 +424,23 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Error Banner */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-900">{error}</p>
+                    <p className="text-xs text-red-700 mt-1">Check KB settings and ensure Azure credentials are configured.</p>
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-600 hover:text-red-800 flex-shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <MessageSquare className="w-12 h-12 text-gray-300 mb-3" />
