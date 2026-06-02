@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle, Download } from 'lucide-react';
 import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
 interface ContextSource {
@@ -49,6 +49,43 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
   const [badgeNotes, setBadgeNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [kbConfigValid, setKbConfigValid] = useState(true);
+  const [performanceMetrics, setPerformanceMetrics] = useState<{
+    avgQueryTime: number;
+    totalQueries: number;
+    avgSearchTime: number;
+    lastQueryTime: number;
+  }>({
+    avgQueryTime: 0,
+    totalQueries: 0,
+    avgSearchTime: 0,
+    lastQueryTime: 0,
+  });
+
+  // Load threads from localStorage on mount
+  useEffect(() => {
+    const storageKey = `kb-threads-${applicationId}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setThreads(parsed);
+        console.log('[v0] Loaded', parsed.length, 'threads from storage');
+      }
+    } catch (err) {
+      console.error('[v0] Error loading threads from storage:', err);
+    }
+  }, [applicationId]);
+
+  // Save threads to localStorage whenever they change
+  useEffect(() => {
+    const storageKey = `kb-threads-${applicationId}`;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(threads));
+      console.log('[v0] Saved', threads.length, 'threads to storage');
+    } catch (err) {
+      console.error('[v0] Error saving threads to storage:', err);
+    }
+  }, [threads, applicationId]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -111,6 +148,7 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       return;
     }
 
+    const queryStartTime = performance.now();
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
@@ -166,6 +204,19 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Calculate and track performance
+      const queryEndTime = performance.now();
+      const queryDuration = queryEndTime - queryStartTime;
+      
+      setPerformanceMetrics((prev) => ({
+        lastQueryTime: queryDuration,
+        totalQueries: prev.totalQueries + 1,
+        avgQueryTime: (prev.avgQueryTime * prev.totalQueries + queryDuration) / (prev.totalQueries + 1),
+        avgSearchTime: prev.avgSearchTime,
+      }));
+
+      console.log('[v0] Query completed in', Math.round(queryDuration), 'ms');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate response from KB';
       console.error('[v0] Chat error:', err);
@@ -214,6 +265,50 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       console.error('[v0] Error finalizing thread:', err);
       alert('Failed to finalize thread');
     }
+  };
+
+  const exportChatHistory = () => {
+    if (!activeThreadId || messages.length === 0) {
+      alert('No messages to export');
+      return;
+    }
+
+    const thread = threads.find((t) => t.threadId === activeThreadId);
+    if (!thread) return;
+
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      applicationId,
+      thread: {
+        threadId: thread.threadId,
+        topic: thread.topic,
+        createdAt: thread.createdAt,
+        messageCount: messages.length,
+      },
+      messages: messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        contextUsed: m.contextUsed?.map((c) => ({
+          source: c.source,
+          relevanceScore: c.relevanceScore,
+        })),
+      })),
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `kb-chat-${thread.topic.replace(/\s+/g, '-')}-${new Date().getTime()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    console.log('[v0] Chat history exported');
   };
 
   const badgePrompt = async (messageId: string) => {
@@ -398,7 +493,21 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{threads.find((t) => t.threadId === activeThreadId)?.topic}</h2>
-                <p className="text-xs text-gray-500 mt-1">{messages.length} messages</p>
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  <span>{messages.length} messages</span>
+                  {performanceMetrics.totalQueries > 0 && (
+                    <>
+                      <span>•</span>
+                      <span title="Average response time">⏱ {Math.round(performanceMetrics.avgQueryTime)}ms avg</span>
+                      {performanceMetrics.lastQueryTime > 0 && (
+                        <>
+                          <span>•</span>
+                          <span title="Last response time">{Math.round(performanceMetrics.lastQueryTime)}ms last</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -411,6 +520,15 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
                     Finalize
                   </Button>
                 )}
+
+                <Button
+                  onClick={exportChatHistory}
+                  variant="outline"
+                  className="text-blue-600 hover:bg-blue-50 text-sm gap-2 border-blue-200"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </Button>
 
                 <Button
                   onClick={() => deleteThread(activeThreadId)}

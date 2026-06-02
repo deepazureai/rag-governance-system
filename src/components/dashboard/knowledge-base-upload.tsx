@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle, Download } from 'lucide-react';
 import { validateResponse, UploadResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
 interface UploadedDocument {
@@ -17,14 +17,22 @@ interface UploadedDocument {
   status: 'indexed' | 'processing' | 'failed';
 }
 
+interface UploadingFile {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  progress: number;
+  startTime: Date;
+  uploadSpeed: number; // bytes/sec
+}
+
 interface KnowledgeBaseUploadProps {
   applicationId: string;
 }
 
 export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps) {
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -51,8 +59,10 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   };
 
   const handleFileInput = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files) {
+      Array.from(e.target.files).forEach((file) => {
+        handleFile(file);
+      });
     }
   };
 
@@ -79,8 +89,21 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       return;
     }
 
-    setIsUploading(true);
-    setUploadProgress(0);
+    // Create upload tracking entry
+    const uploadId = `upload-${Date.now()}-${Math.random()}`;
+    const startTime = new Date();
+    
+    setUploadingFiles((prev) => [
+      ...prev,
+      {
+        id: uploadId,
+        fileName: file.name,
+        fileSize: file.size,
+        progress: 0,
+        startTime,
+        uploadSpeed: 0,
+      },
+    ]);
 
     try {
       const formData = new FormData();
@@ -118,6 +141,11 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
 
       const data = validateResponse(UploadResponseSchema, rawData.data);
 
+      // Calculate upload speed
+      const endTime = new Date();
+      const durationSec = (endTime.getTime() - startTime.getTime()) / 1000;
+      const uploadSpeed = durationSec > 0 ? file.size / durationSec : 0;
+
       // Add document to list
       setDocuments((prev) => [
         ...prev,
@@ -131,11 +159,18 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         },
       ]);
 
-      setUploadProgress(100);
+      // Update upload progress to 100%
+      setUploadingFiles((prev) =>
+        prev.map((uf) =>
+          uf.id === uploadId
+            ? { ...uf, progress: 100, uploadSpeed }
+            : uf
+        )
+      );
 
-      // Reset progress after delay
+      // Remove from uploading after delay
       setTimeout(() => {
-        setUploadProgress(0);
+        setUploadingFiles((prev) => prev.filter((uf) => uf.id !== uploadId));
       }, 2000);
 
       // Reset file input
@@ -145,9 +180,22 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '❌ Upload failed. Please try again.';
       setError(errorMessage);
+      
+      // Mark as failed
+      setUploadingFiles((prev) =>
+        prev.map((uf) =>
+          uf.id === uploadId
+            ? { ...uf, progress: -1 } // -1 indicates failure
+            : uf
+        )
+      );
+
       console.error('[v0] Upload error:', err);
-    } finally {
-      setIsUploading(false);
+
+      // Remove after delay
+      setTimeout(() => {
+        setUploadingFiles((prev) => prev.filter((uf) => uf.id !== uploadId));
+      }, 5000);
     }
   };
 
@@ -188,6 +236,49 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       setError(`❌ ${errorMessage}`);
       console.error('[v0] Delete error:', err);
     }
+  };
+
+  const exportDocumentsList = () => {
+    if (documents.length === 0) {
+      alert('No documents to export');
+      return;
+    }
+
+    const exportData = documents.map((doc) => ({
+      documentId: doc.documentId,
+      fileName: doc.fileName,
+      fileSizeBytes: doc.fileSize,
+      fileSizeMB: (doc.fileSize / (1024 * 1024)).toFixed(2),
+      uploadDate: doc.uploadDate,
+      totalChunks: doc.totalChunks,
+      status: doc.status,
+    }));
+
+    const csv = [
+      ['Document ID', 'File Name', 'File Size (MB)', 'Upload Date', 'Total Chunks', 'Status'].join(','),
+      ...exportData.map((doc) =>
+        [
+          doc.documentId,
+          `"${doc.fileName}"`,
+          doc.fileSizeMB,
+          new Date(doc.uploadDate).toLocaleString(),
+          doc.totalChunks,
+          doc.status,
+        ].join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `kb-documents-${new Date().getTime()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    console.log('[v0] Documents list exported as CSV');
   };
 
   const handleDeleteAllKnowledge = async () => {
@@ -327,6 +418,45 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         </div>
       </Card>
 
+      {/* Upload Progress - Batch */}
+      {uploadingFiles.length > 0 && (
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <h3 className="text-sm font-semibold text-blue-900 mb-3">Uploading Files ({uploadingFiles.length})</h3>
+          <div className="space-y-3">
+            {uploadingFiles.map((file) => (
+              <div key={file.id} className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-blue-900 truncate">{file.fileName}</span>
+                  <span className="text-xs text-blue-700">
+                    {file.progress === -1
+                      ? 'Failed'
+                      : file.progress === 100
+                        ? 'Complete'
+                        : `${Math.round(file.progress)}%`}
+                  </span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      file.progress === -1 ? 'bg-red-500' : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${Math.max(0, file.progress)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-600">{formatFileSize(file.fileSize)}</span>
+                  {file.uploadSpeed > 0 && file.progress > 0 && file.progress < 100 && (
+                    <span className="text-xs text-blue-600">
+                      {formatFileSize(file.uploadSpeed)}/s
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Statistics */}
       {documents.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -429,8 +559,17 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       {documents.length > 0 && (
         <div className="pt-4 border-t border-gray-200">
           <Button
+            onClick={exportDocumentsList}
             variant="outline"
+            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Documents List
+          </Button>
+
+          <Button
             onClick={() => setShowDeleteConfirm(true)}
+            variant="outline"
             className="text-red-600 border-red-300 hover:bg-red-50"
           >
             <Trash2 className="w-4 h-4 mr-2" />
