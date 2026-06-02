@@ -193,38 +193,65 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
   };
 
   const badgePrompt = async (messageId: string) => {
-    if (!confirm('Badge this prompt as approved for template creation?')) {
+    if (!confirm('Badge this prompt for BA Review? It will be sent to the review queue.')) {
       return;
     }
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      
+      // Find the message to get its context
+      const message = messages.find((m) => m.id === messageId);
+      if (!message) {
+        alert('Message not found');
+        return;
+      }
 
-      // For now, use messageId as promptId (would be replaced with actual prompt ID in production)
-      const response = await fetch(`${apiUrl}/api/knowledge-base/prompts/${messageId}/badge`, {
-        method: 'PATCH',
+      if (message.role !== 'assistant') {
+        alert('Only assistant responses can be badged');
+        return;
+      }
+
+      // Find the user query (previous message)
+      const messageIndex = messages.findIndex((m) => m.id === messageId);
+      const userMessage = messageIndex > 0 ? messages[messageIndex - 1] : null;
+      const userQuery = userMessage?.content || 'Unknown query';
+
+      console.log(`[v0] Badging prompt: query="${userQuery.substring(0, 50)}", response="${message.content.substring(0, 50)}"`);
+
+      // POST to create/badge a KB prompt record
+      const response = await fetch(`${apiUrl}/api/knowledge-base/prompts/badge`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          applicationId,
+          userQuery,
+          llmGeneratedResponse: message.content,
+          contextRetrieved: message.contextUsed || [],
           badgeStatus: 'approved',
           badgedBy: 'tester',
           badgeNotes: badgeNotes,
+          embeddingModelUsed: 'text-embedding-3-large',
+          ragSessionId: activeThreadId || 'transient-session',
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to badge prompt');
+        const error = await response.text();
+        console.error('[v0] Badge response error:', error);
+        throw new Error(`Failed to badge prompt: ${response.status} ${error}`);
       }
 
       const data = await response.json();
       console.log('[v0] Prompt badged successfully:', data);
 
-      // Update UI to show badge
+      // Clear state
       setBadgingMessageId(null);
       setBadgeNotes('');
-      alert('Prompt badged successfully!');
+      alert('Prompt badged and sent to BA Review Queue!');
     } catch (err) {
       console.error('[v0] Error badging prompt:', err);
-      alert('Failed to badge prompt');
+      alert(`Failed to badge prompt: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 

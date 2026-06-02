@@ -645,4 +645,140 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
   }
 });
 
+/**
+ * POST /api/knowledge-base/prompts/badge
+ * Create and badge a KB prompt from RAG chat response
+ * Used when user badges a response in KB Chat to send to BA Review
+ */
+knowledgeBaseRouter.post('/prompts/badge', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = req.body as any;
+    const {
+      applicationId,
+      userQuery,
+      llmGeneratedResponse,
+      contextRetrieved,
+      embeddingModelUsed,
+      ragSessionId,
+      badgeStatus,
+      badgedBy,
+      badgeNotes,
+      kbLlmConfigUsed,
+    } = body;
+
+    if (!applicationId || !userQuery || !llmGeneratedResponse) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required fields: applicationId, userQuery, llmGeneratedResponse',
+      });
+      return;
+    }
+
+    logger.info(
+      `[KnowledgeBase] Creating badged KB prompt: app=${applicationId}, query="${userQuery.substring(0, 50)}"`
+    );
+
+    const KBPromptCollection = require('mongoose').connection.collection('kbprompts');
+
+    const promptData = {
+      applicationId,
+      userQuery,
+      llmGeneratedResponse,
+      contextRetrieved: contextRetrieved || [],
+      embeddingModelUsed: embeddingModelUsed || 'text-embedding-3-large',
+      ragSessionId: ragSessionId || 'transient-session',
+      badgeStatus: badgeStatus || 'approved',
+      badgedBy: badgedBy || 'system',
+      badgedAt: new Date(),
+      badgeNotes: badgeNotes || '',
+      kbLlmConfigUsed: kbLlmConfigUsed || null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Insert the badged prompt
+    const result = await KBPromptCollection.insertOne(promptData);
+
+    logger.info(`[KnowledgeBase] Badged KB prompt created with ID: ${result.insertedId}`);
+
+    res.json({
+      success: true,
+      data: {
+        promptId: result.insertedId.toString(),
+        ...promptData,
+        badgedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to create badged prompt:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create badged prompt',
+    });
+  }
+});
+
+/**
+ * GET /api/knowledge-base/kb-prompts/approved
+ * Fetch approved KB prompts for BA Review Queue
+ * Used by BA Review Dashboard to populate KB Prompts tab
+ */
+knowledgeBaseRouter.get('/kb-prompts/approved', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = req.query.appId as string;
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId query parameter' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching approved KB prompts for app: ${applicationId}`);
+
+    const KBPromptCollection = require('mongoose').connection.collection('kbprompts');
+
+    // Find all approved prompts for the application
+    const prompts = await KBPromptCollection.find({
+      applicationId,
+      badgeStatus: { $in: ['approved', 'pending'] },
+    })
+      .sort({ badgedAt: -1, createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    logger.info(`[KnowledgeBase] Found ${prompts.length} approved KB prompts for app`);
+
+    // Format response to match BA Review expectations
+    const formattedPrompts = prompts.map((p: any) => ({
+      id: p._id.toString(),
+      source: 'kb_prompt',
+      userQuery: p.userQuery,
+      llmGeneratedResponse: p.llmGeneratedResponse,
+      contextRetrieved: p.contextRetrieved || [],
+      badgeStatus: p.badgeStatus || 'pending',
+      badgedAt: p.badgedAt,
+      badgedBy: p.badgedBy,
+      badgeNotes: p.badgeNotes,
+      embeddingModelUsed: p.embeddingModelUsed,
+      ragSessionId: p.ragSessionId,
+      documentSource: p.contextRetrieved?.[0]?.source || 'Unknown',
+      relevanceScores: p.contextRetrieved?.map((c: any) => c.relevanceScore) || [],
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        prompts: formattedPrompts,
+        count: formattedPrompts.length,
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to fetch approved prompts:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch approved prompts',
+    });
+  }
+});
+
 export default knowledgeBaseRouter;
