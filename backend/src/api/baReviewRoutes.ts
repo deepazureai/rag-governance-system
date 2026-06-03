@@ -1642,6 +1642,15 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
       modifiedCount: result.modifiedCount,
       upsertedId: result.upsertedId,
     });
+    
+    // Verify the record was actually saved
+    const savedRecord = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
+    console.log('[v0] Verification after save - Record found:', !!savedRecord);
+    if (savedRecord) {
+      console.log('[v0] Verification - Record has baReview:', !!savedRecord.baReview);
+      console.log('[v0] Verification - Improvement saved:', savedRecord.baReview?.improvement ? 'YES' : 'NO');
+      console.log('[v0] Verification - IsImprovementSaved flag:', savedRecord.baReview?.IsImprovementSaved);
+    }
 
     logger.info(`[baReviewRoutes] Successfully saved recommendations for rawData ${rawDataId}`);
 
@@ -1693,12 +1702,25 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
 
     const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
 
-    console.log('[v0] GET recommendations - Looking for recordId:', rawDataId);
+    console.log('[v0] GET recommendations - Looking for recordId:', rawDataId, 'applicationId:', applicationId);
+    console.log('[v0] MongoDB connection state:', mongoose.connection.readyState, '(1=connected, 0=disconnected)');
+    
+    // Debug: Check total records in collection
+    const totalRecords = await RawDataRecordCollection.countDocuments();
+    console.log('[v0] Total records in rawdatarecords collection:', totalRecords);
+    
     const record = await RawDataRecordCollection.findOne({ _id: new mongoose.Types.ObjectId(rawDataId) });
 
     if (!record) {
       console.log('[v0] GET recommendations - Record NOT found for:', rawDataId);
       logger.info(`[baReviewRoutes] RawDataRecord not found for ${rawDataId}`);
+      
+      // Debug: Show what records exist for this application
+      const appRecords = await RawDataRecordCollection.find({ applicationId }).toArray();
+      console.log('[v0] Records for applicationId:', applicationId, '- count:', appRecords.length);
+      if (appRecords.length > 0) {
+        console.log('[v0] Record IDs for this app:', appRecords.slice(0, 5).map(r => ({ id: r._id.toString(), hasBarReview: !!r.baReview })));
+      }
       
       // Try alternative query method as fallback
       const allRecords = await RawDataRecordCollection.find({ applicationId }).limit(5).toArray();
