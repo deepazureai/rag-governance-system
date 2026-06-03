@@ -3,10 +3,12 @@ import { asString } from '../utils/queryParamUtils.js';
 import multer, { Multer, StorageEngine } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
+import mongoose from 'mongoose';
 import { VectorStoreService, getVectorStore } from '../services/VectorStoreService.js';
 import { DocumentProcessorService } from '../services/DocumentProcessorService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { ragQueryService } from '../services/RAGQueryService.js';
+import { kbPromptService } from '../services/KBPromptService.js';
 import { logger } from '../utils/logger.js';
 
 const knowledgeBaseRouter: ExpressRouter = Router();
@@ -820,6 +822,144 @@ knowledgeBaseRouter.get('/kb-prompts/approved', async (req: Request, res: Respon
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch approved prompts',
+    });
+  }
+});
+
+/**
+ * Create and badge a KB prompt (combined operation)
+ * POST /api/knowledge-base/prompts/badge
+ */
+knowledgeBaseRouter.post('/prompts/badge', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      applicationId,
+      userQuery,
+      llmGeneratedResponse,
+      contextRetrieved,
+      embeddingModelUsed,
+      ragSessionId,
+      badgeNotes,
+      badgedBy = 'tester',
+    } = req.body;
+
+    if (!applicationId?.trim()) {
+      res.status(400).json({ error: 'Application ID is required' });
+      return;
+    }
+    if (!userQuery?.trim()) {
+      res.status(400).json({ error: 'User query is required' });
+      return;
+    }
+    if (!llmGeneratedResponse?.trim()) {
+      res.status(400).json({ error: 'LLM response is required' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Creating and badging KB prompt for app: ${applicationId}`);
+
+    const db = mongoose.connection;
+    const kbConfigCollection = db.collection('knowledgebaseconfigs');
+    
+    // Get the KB config for this app
+    const kbConfig = await kbConfigCollection.findOne({ applicationId });
+    
+    if (!kbConfig) {
+      res.status(400).json({ error: 'No KB configuration found for this application' });
+      return;
+    }
+
+    // Create the KB prompt with all fields
+    const kbPromptData = {
+      applicationId,
+      ragSessionId: ragSessionId || `transient-${Date.now()}`,
+      userQuery,
+      llmGeneratedResponse,
+      contextRetrieved: (contextRetrieved || []).map((ctx: any) => ({
+        source: ctx.source || ctx.documentId || 'Unknown',
+        content: ctx.content || '',
+        relevanceScore: ctx.relevanceScore || 0,
+      })),
+      embeddingModelUsed: embeddingModelUsed || 'text-embedding-3-large',
+      kbLlmConfigUsed: kbConfig._id,
+      isActive: true,
+      badgeStatus: 'approved',
+      badgedAt: new Date(),
+      badgedBy,
+      badgeNotes,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const kbPromptCollection = db.collection('kbprompts');
+    const result = await kbPromptCollection.insertOne(kbPromptData);
+
+    if (!result.insertedId) {
+      throw new Error('Failed to create KB prompt');
+    }
+
+    const savedPrompt = await kbPromptCollection.findOne({ _id: result.insertedId });
+
+    logger.info(`[KnowledgeBase] Successfully created and badged prompt: ${result.insertedId}`);
+
+    res.json({
+      success: true,
+      data: savedPrompt,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to create and badge prompt:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create and badge prompt',
+    });
+  }
+});
+
+/**
+ * Badge a KB prompt as approved or rejected
+ * PATCH /api/knowledge-base/prompts/:applicationId/:promptId/badge
+ */
+knowledgeBaseRouter.patch('/prompts/:applicationId/:promptId/badge', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = asString(req.params.applicationId);
+    const promptId = asString(req.params.promptId);
+    const { status, badgedBy, notes } = req.body as { status: string; badgedBy: string; notes?: string };
+
+    if (!applicationId?.trim()) {
+      res.status(400).json({ error: 'Application ID is required' });
+      return;
+    }
+    if (!promptId?.trim()) {
+      res.status(400).json({ error: 'Prompt ID is required' });
+      return;
+    }
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      res.status(400).json({ error: 'Status must be approved or rejected' });
+      return;
+    }
+    if (!badgedBy?.trim()) {
+      res.status(400).json({ error: 'Badged by user is required' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Badging prompt ${promptId} as ${status}`);
+
+    const updatedPrompt = await kbPromptService.badgeKBPrompt(
+      promptId,
+      status as 'approved' | 'rejected',
+      badgedBy,
+      notes
+    );
+
+    res.json({
+      success: true,
+      data: updatedPrompt,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to badge prompt:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to badge prompt',
     });
   }
 });

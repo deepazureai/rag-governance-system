@@ -182,6 +182,54 @@ export class KBPromptService {
   }
 
   /**
+   * Update KB prompt badge status
+   */
+  async badgeKBPrompt(
+    id: string,
+    status: 'approved' | 'rejected',
+    badgedBy: string,
+    notes?: string
+  ): Promise<KBPrompt> {
+    try {
+      if (!id?.trim()) {
+        throw new Error('KB Prompt ID is required');
+      }
+      if (!badgedBy?.trim()) {
+        throw new Error('Badged by user is required');
+      }
+      if (!['approved', 'rejected'].includes(status)) {
+        throw new Error('Badge status must be approved or rejected');
+      }
+
+      const db = mongoose.connection;
+      const collection = db.collection(this.collection);
+      const objectId = new Types.ObjectId(id);
+
+      const updates: Record<string, unknown> = {
+        badgeStatus: status,
+        badgedAt: new Date(),
+        badgedBy,
+        updatedAt: new Date(),
+      };
+      if (notes !== undefined) updates.badgeNotes = notes;
+
+      const result = await collection.findOneAndUpdate(
+        { _id: objectId },
+        { $set: updates },
+        { returnDocument: 'after' }
+      );
+
+      if (!result || !result.value) {
+        throw new Error('KB Prompt not found');
+      }
+
+      return result.value as KBPrompt;
+    } catch (error: unknown) {
+      throw this.handleError('badgeKBPrompt', error);
+    }
+  }
+
+  /**
    * Delete KB prompt (soft delete - mark as inactive)
    */
   async deleteKBPrompt(id: string): Promise<void> {
