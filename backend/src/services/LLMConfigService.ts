@@ -17,9 +17,13 @@ export class LLMConfigService {
    */
   async upsertConfig(input: LLMConfigInput): Promise<LLMConfig> {
     try {
+      console.log('[v0] upsertConfig starting with input:', { applicationId: (input as any).applicationId, provider: (input as any).provider });
+      
       const validation = LLMConfigSchema.safeParse(input);
       if (!validation.success) {
-        throw new Error(`Validation failed: ${JSON.stringify(validation.error.errors)}`);
+        const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+        console.error('[v0] upsertConfig validation failed:', errors);
+        throw new Error(`Validation failed: ${errors}`);
       }
 
       // Encrypt sensitive fields
@@ -28,30 +32,50 @@ export class LLMConfigService {
 
       const db = mongoose.connection;
       if (!db || !db.collection) {
+        console.error('[v0] Database connection not available');
         throw new Error('Database connection not available');
       }
       
       const collection = db.collection(this.collection);
       if (!collection) {
+        console.error('[v0] Collection not available:', this.collection);
         throw new Error('Collection not available');
       }
 
       const applicationId = (config as Record<string, unknown>).applicationId as string;
       console.log('[v0] Upserting config for applicationId:', applicationId);
       
-      // Use replaceOne to upsert (replaces entire document or creates new one)
-      const upsertResult = await collection.updateOne(
-        { applicationId },
-        { $set: config },
-        { upsert: true }
-      );
+      // Use updateOne with upsert to upsert
+      try {
+        const upsertResult = await collection.updateOne(
+          { applicationId },
+          { $set: config },
+          { upsert: true }
+        );
 
-      console.log('[v0] Upsert acknowledged:', upsertResult.acknowledged, 'Modified:', upsertResult.modifiedCount, 'Upserted ID:', upsertResult.upsertedId);
+        console.log('[v0] Upsert result:', {
+          acknowledged: upsertResult.acknowledged,
+          modifiedCount: upsertResult.modifiedCount,
+          upsertedCount: upsertResult.upsertedCount,
+          upsertedId: upsertResult.upsertedId,
+        });
+      } catch (updateError) {
+        console.error('[v0] updateOne failed:', updateError);
+        throw updateError;
+      }
 
       // Now fetch the document to return
-      const savedConfig = await collection.findOne({ applicationId }) as unknown;
+      let savedConfig: unknown;
+      try {
+        savedConfig = await collection.findOne({ applicationId }) as unknown;
+        console.log('[v0] Retrieved saved config, type:', typeof savedConfig, 'has keys:', savedConfig ? Object.keys(savedConfig as any).length : 0);
+      } catch (findError) {
+        console.error('[v0] findOne failed:', findError);
+        throw findError;
+      }
       
       if (!savedConfig) {
+        console.error('[v0] Failed to retrieve saved configuration for applicationId:', applicationId);
         throw new Error('Failed to retrieve saved configuration');
       }
 
@@ -63,6 +87,7 @@ export class LLMConfigService {
       
       return savedConfig as LLMConfig;
     } catch (error: unknown) {
+      console.error('[v0] upsertConfig caught error:', error instanceof Error ? error.message : String(error));
       throw this.handleError('upsertConfig', error);
     }
   }
