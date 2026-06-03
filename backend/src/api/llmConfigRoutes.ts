@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { llmConfigService } from '../services/LLMConfigService.js';
-import { kbConfigService } from '../services/KnowledgeBaseConfigService.js';
+import { kbConfigService } from '../services/KBConfigService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
 import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index.js';
@@ -267,9 +267,10 @@ function normalizeKBConfigFieldNames(config: Record<string, unknown>): Record<st
 }
 
 /**
- * Get Knowledge Base configuration
+ * GET /api/kb-config/app/:appId
+ * Get Knowledge Base configuration for an application
  */
-llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
@@ -280,7 +281,6 @@ llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<
     const config = await kbConfigService.getConfig(appId);
 
     if (!config) {
-      // Return with success: true and empty/default data so frontend can still parse it
       res.json({
         success: true,
         data: null,
@@ -306,7 +306,7 @@ llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<
  * POST /api/kb-config/app/:appId
  * Save or update Knowledge Base configuration
  */
-llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
@@ -316,34 +316,36 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 
     const body = req.body as Record<string, unknown>;
 
-    // Log incoming request for debugging
-    console.log('[v0] KB Config POST request body:', JSON.stringify(body, null, 2));
-
-    // Normalize camelCase field names to standard format BEFORE validation
+    // Normalize field names to standard format BEFORE validation
     const normalized = normalizeKBConfigFieldNames(body);
-    console.log('[v0] Normalized KB Config:', JSON.stringify(normalized, null, 2));
 
-    // Validate request body with normalized names
+    // Validate request body
     const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
+      const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
       res.status(400).json({
         success: false,
-        error: `Validation failed: ${JSON.stringify(validation.error.errors)}`,
+        error: `Validation failed: ${errorDetails}`,
       } as ApiResponse<IKnowledgeBaseConfig>);
       return;
     }
 
-    // Validate KB configuration
-    const configValidation = kbConfigService['validateConfig'](validation.data);
-    if (!configValidation.valid) {
-      res.status(400).json({
-        success: false,
-        error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
-      } as ApiResponse<IKnowledgeBaseConfig>);
-      return;
+    const configData = validation.data;
+
+    // Validate provider-specific required fields
+    if (configData.kbLlmProvider === 'azure-openai') {
+      const requiredFields = ['kbllm_api_key', 'kbllm_azure_endpoint', 'kbllm_deployment'];
+      const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
+      if (missing.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: `For Azure OpenAI, these fields are required: ${missing.join(', ')}`,
+        } as ApiResponse<IKnowledgeBaseConfig>);
+        return;
+      }
     }
 
-    const config = await kbConfigService.upsertConfig(validation.data);
+    const config = await kbConfigService.upsertConfig(configData);
 
     res.json({
       success: true,
@@ -356,15 +358,15 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
     res.status(500).json({
       success: false,
       error: message,
-      } as ApiResponse<IKnowledgeBaseConfig>);
+    } as ApiResponse<IKnowledgeBaseConfig>);
   }
 });
 
 /**
- * POST /api/kb-config/validate-kb/:appId
- * Test KB NLP LLM connection
+ * POST /api/kb-config/validate/:appId
+ * Test KB LLM connection
  */
-llmConfigRouter.post('/validate-kb/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
