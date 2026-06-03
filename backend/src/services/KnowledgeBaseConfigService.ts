@@ -56,7 +56,75 @@ export class KnowledgeBaseConfigService {
       const collection = db.collection(this.collection);
 
       const config = await collection.findOne({ applicationId }) as KnowledgeBaseConfig | null;
-      return config;
+      
+      if (!config) {
+        return null;
+      }
+
+      // Decrypt sensitive fields before returning
+      const decrypted = { ...config };
+      
+      // Decrypt KB LLM credentials
+      if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
+        try {
+          (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbllm_api_key:', e);
+        }
+      }
+      if (decrypted.kbLlmAzureApiKey && typeof decrypted.kbLlmAzureApiKey === 'string') {
+        try {
+          decrypted.kbLlmAzureApiKey = cryptoUtil.decrypt(decrypted.kbLlmAzureApiKey);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbLlmAzureApiKey:', e);
+        }
+      }
+      if (decrypted.kbLlmClaudeApiKey && typeof decrypted.kbLlmClaudeApiKey === 'string') {
+        try {
+          decrypted.kbLlmClaudeApiKey = cryptoUtil.decrypt(decrypted.kbLlmClaudeApiKey);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbLlmClaudeApiKey:', e);
+        }
+      }
+      if (decrypted.kbLlmAwsAccessKeyId && typeof decrypted.kbLlmAwsAccessKeyId === 'string') {
+        try {
+          decrypted.kbLlmAwsAccessKeyId = cryptoUtil.decrypt(decrypted.kbLlmAwsAccessKeyId);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbLlmAwsAccessKeyId:', e);
+        }
+      }
+      if (decrypted.kbLlmAwsSecretAccessKey && typeof decrypted.kbLlmAwsSecretAccessKey === 'string') {
+        try {
+          decrypted.kbLlmAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.kbLlmAwsSecretAccessKey);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbLlmAwsSecretAccessKey:', e);
+        }
+      }
+      if (decrypted.kbLlmOpenaiApiKey && typeof decrypted.kbLlmOpenaiApiKey === 'string') {
+        try {
+          decrypted.kbLlmOpenaiApiKey = cryptoUtil.decrypt(decrypted.kbLlmOpenaiApiKey);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt kbLlmOpenaiApiKey:', e);
+        }
+      }
+
+      // Decrypt embedding credentials
+      if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
+        try {
+          (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt embedding_api_key:', e);
+        }
+      }
+      if (decrypted.embeddingAzureApiKey && typeof decrypted.embeddingAzureApiKey === 'string') {
+        try {
+          decrypted.embeddingAzureApiKey = cryptoUtil.decrypt(decrypted.embeddingAzureApiKey);
+        } catch (e) {
+          console.error('[v0] Failed to decrypt embeddingAzureApiKey:', e);
+        }
+      }
+
+      return decrypted;
     } catch (error: unknown) {
       throw this.handleError('getConfig', error);
     }
