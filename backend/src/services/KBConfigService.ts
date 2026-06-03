@@ -95,6 +95,7 @@ export class KBConfigService {
 
   /**
    * Get KB configuration for an application
+   * Decrypts sensitive fields before returning
    */
   async getConfig(applicationId: string): Promise<KnowledgeBaseConfig | null> {
     try {
@@ -106,6 +107,12 @@ export class KBConfigService {
       const collection = db.collection(this.collection);
 
       const config = await collection.findOne({ applicationId }) as KnowledgeBaseConfig | null;
+      
+      // Decrypt sensitive fields before returning
+      if (config) {
+        return this.decryptSensitiveFields(config);
+      }
+      
       return config;
     } catch (error: unknown) {
       throw this.handleError('getConfig', error);
@@ -416,6 +423,93 @@ export class KBConfigService {
     });
 
     return normalized as KnowledgeBaseConfigInput;
+  }
+
+  /**
+   * Decrypt sensitive credential fields for display
+   * @param config - Configuration object with encrypted fields
+   * @returns Configuration with decrypted sensitive fields
+   */
+  private decryptSensitiveFields(config: KnowledgeBaseConfig): KnowledgeBaseConfig {
+    const decrypted: any = { ...config };
+
+    try {
+      // Decrypt KB Azure OpenAI credentials - ALL variants
+      if (decrypted.kbllm_api_key && typeof decrypted.kbllm_api_key === 'string') {
+        decrypted.kbllm_api_key = cryptoUtil.decrypt(decrypted.kbllm_api_key);
+      }
+      if (decrypted.kbLlmAzureApiKey && typeof decrypted.kbLlmAzureApiKey === 'string') {
+        decrypted.kbLlmAzureApiKey = cryptoUtil.decrypt(decrypted.kbLlmAzureApiKey);
+      }
+
+      // Decrypt Azure endpoint fields - ALL variants
+      if (decrypted.kbllm_azure_endpoint && typeof decrypted.kbllm_azure_endpoint === 'string') {
+        decrypted.kbllm_azure_endpoint = cryptoUtil.decrypt(decrypted.kbllm_azure_endpoint);
+      }
+      if (decrypted.kbLlmAzureEndpoint && typeof decrypted.kbLlmAzureEndpoint === 'string') {
+        decrypted.kbLlmAzureEndpoint = cryptoUtil.decrypt(decrypted.kbLlmAzureEndpoint);
+      }
+
+      // Decrypt Azure deployment fields - ALL variants
+      if (decrypted.kbllm_deployment && typeof decrypted.kbllm_deployment === 'string') {
+        decrypted.kbllm_deployment = cryptoUtil.decrypt(decrypted.kbllm_deployment);
+      }
+      if (decrypted.kbLlmAzureDeploymentName && typeof decrypted.kbLlmAzureDeploymentName === 'string') {
+        decrypted.kbLlmAzureDeploymentName = cryptoUtil.decrypt(decrypted.kbLlmAzureDeploymentName);
+      }
+
+      // Decrypt Azure API version fields - ALL variants
+      if (decrypted.kbllm_api_version && typeof decrypted.kbllm_api_version === 'string') {
+        decrypted.kbllm_api_version = cryptoUtil.decrypt(decrypted.kbllm_api_version);
+      }
+      if (decrypted.kbLlmAzureApiVersion && typeof decrypted.kbLlmAzureApiVersion === 'string') {
+        decrypted.kbLlmAzureApiVersion = cryptoUtil.decrypt(decrypted.kbLlmAzureApiVersion);
+      }
+      
+      // Decrypt Claude credentials - ALL variants
+      if (decrypted.kbLlmClaudeApiKey && typeof decrypted.kbLlmClaudeApiKey === 'string') {
+        decrypted.kbLlmClaudeApiKey = cryptoUtil.decrypt(decrypted.kbLlmClaudeApiKey);
+      }
+      if (decrypted.kbLlmClaudeModel && typeof decrypted.kbLlmClaudeModel === 'string') {
+        decrypted.kbLlmClaudeModel = cryptoUtil.decrypt(decrypted.kbLlmClaudeModel);
+      }
+      
+      // Decrypt AWS credentials - ALL variants
+      if (decrypted.kbLlmAwsAccessKeyId && typeof decrypted.kbLlmAwsAccessKeyId === 'string') {
+        decrypted.kbLlmAwsAccessKeyId = cryptoUtil.decrypt(decrypted.kbLlmAwsAccessKeyId);
+      }
+      if (decrypted.kbLlmAwsSecretAccessKey && typeof decrypted.kbLlmAwsSecretAccessKey === 'string') {
+        decrypted.kbLlmAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.kbLlmAwsSecretAccessKey);
+      }
+      if (decrypted.kbLlmAwsRegion && typeof decrypted.kbLlmAwsRegion === 'string') {
+        decrypted.kbLlmAwsRegion = cryptoUtil.decrypt(decrypted.kbLlmAwsRegion);
+      }
+      if (decrypted.kbLlmBedrockModelId && typeof decrypted.kbLlmBedrockModelId === 'string') {
+        decrypted.kbLlmBedrockModelId = cryptoUtil.decrypt(decrypted.kbLlmBedrockModelId);
+      }
+      
+      // Decrypt OpenAI credentials - ALL variants
+      if (decrypted.kbLlmOpenaiApiKey && typeof decrypted.kbLlmOpenaiApiKey === 'string') {
+        decrypted.kbLlmOpenaiApiKey = cryptoUtil.decrypt(decrypted.kbLlmOpenaiApiKey);
+      }
+      if (decrypted.kbLlmOpenaiModel && typeof decrypted.kbLlmOpenaiModel === 'string') {
+        decrypted.kbLlmOpenaiModel = cryptoUtil.decrypt(decrypted.kbLlmOpenaiModel);
+      }
+
+      // Decrypt embedding credentials - ALL variants
+      if (decrypted.embedding_api_key && typeof decrypted.embedding_api_key === 'string') {
+        decrypted.embedding_api_key = cryptoUtil.decrypt(decrypted.embedding_api_key);
+      }
+      if (decrypted.embeddingAzureApiKey && typeof decrypted.embeddingAzureApiKey === 'string') {
+        decrypted.embeddingAzureApiKey = cryptoUtil.decrypt(decrypted.embeddingAzureApiKey);
+      }
+    } catch (error) {
+      console.error('[v0] Error decrypting KB config fields:', error instanceof Error ? error.message : String(error));
+      // Return as-is if decryption fails
+      return config;
+    }
+
+    return decrypted;
   }
 }
 
