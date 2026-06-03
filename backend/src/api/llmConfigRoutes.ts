@@ -361,10 +361,10 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 });
 
 /**
- * POST /api/kb-config/validate/:appId
+ * POST /api/kb-config/validate-kb/:appId
  * Test KB NLP LLM connection
  */
-llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/validate-kb/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {

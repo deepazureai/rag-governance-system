@@ -53,18 +53,6 @@ export class LLMProviderService {
         throw new Error(`No Knowledge Base configuration found for application: ${applicationId}`);
       }
 
-      console.log('[v0] Retrieved KB config for validation:', {
-        applicationId,
-        kbLlmProvider: kbConfig.kbLlmProvider,
-        has_kbllm_api_key: !!kbConfig.kbllm_api_key,
-        has_kbLlmAzureApiKey: !!kbConfig.kbLlmAzureApiKey,
-        has_kbllm_azure_endpoint: !!kbConfig.kbllm_azure_endpoint,
-        has_kbLlmAzureEndpoint: !!kbConfig.kbLlmAzureEndpoint,
-        has_kbllm_deployment: !!kbConfig.kbllm_deployment,
-        has_kbLlmAzureDeploymentName: !!kbConfig.kbLlmAzureDeploymentName,
-        configKeys: Object.keys(kbConfig).filter(k => k.includes('api') || k.includes('endpoint') || k.includes('deployment') || k.includes('kbllm') || k.includes('kbL'))
-      });
-
       // Validate KB NLP LLM fields
       const validation = kbConfigService['validateConfig'](kbConfig);
       if (!validation.valid) {
@@ -100,16 +88,6 @@ export class LLMProviderService {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
-      console.log('[v0] Created LLM config from KB config:', {
-        provider: llmConfig.provider,
-        has_api_key: !!llmConfig.api_key,
-        has_azureApiKey: !!llmConfig.azureApiKey,
-        has_azure_endpoint: !!llmConfig.azure_endpoint,
-        has_azureEndpoint: !!llmConfig.azureEndpoint,
-        has_deployment: !!llmConfig.deployment,
-        has_azureDeploymentName: !!llmConfig.azureDeploymentName,
-      });
 
       const provider = LLMClientFactory.create(llmConfig);
       return { provider, config: kbConfig };
