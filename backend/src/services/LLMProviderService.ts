@@ -59,29 +59,30 @@ export class LLMProviderService {
         throw new Error(`Invalid KB NLP LLM configuration: ${validation.errors.join(', ')}`);
       }
 
-      // Create a temporary LLMConfig from KB NLP settings using exact parameter names
+      // Create a temporary LLMConfig from KB NLP settings using standard field names
+      // (normalization already done in route handler, so fields are in standard format)
       const llmConfig: LLMConfig = {
         applicationId,
         provider: kbConfig.kbLlmProvider as 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai',
-        // New simplified schema (camelCase from KBLLMSettings component)
-        api_key: kbConfig.azureApiKey || kbConfig.openaiApiKey || kbConfig.claudeApiKey || kbConfig.kbllm_api_key,
-        azure_endpoint: kbConfig.azureEndpoint || kbConfig.kbllm_azure_endpoint,
-        api_version: kbConfig.azureApiVersion || kbConfig.kbllm_api_version,
-        deployment: kbConfig.azureDeploymentName || kbConfig.kbllm_deployment,
+        // Standard field names (kbllm_* for exact params, legacy names for compatibility)
+        api_key: kbConfig.kbllm_api_key || kbConfig.kbLlmAzureApiKey || kbConfig.kbLlmOpenaiApiKey || kbConfig.kbLlmClaudeApiKey || kbConfig.kbLlmAwsAccessKeyId,
+        azure_endpoint: kbConfig.kbllm_azure_endpoint || kbConfig.kbLlmAzureEndpoint,
+        api_version: kbConfig.kbllm_api_version,
+        deployment: kbConfig.kbllm_deployment || kbConfig.kbLlmAzureDeploymentName,
         skipSslVerification: kbConfig.kbllm_skipSslVerification,
         // Legacy fields for backward compatibility
-        azureEndpoint: kbConfig.azureEndpoint || kbConfig.kbllm_azure_endpoint || kbConfig.kbLlmAzureEndpoint,
-        azureApiKey: kbConfig.azureApiKey || kbConfig.kbllm_api_key || kbConfig.kbLlmAzureApiKey,
-        azureDeploymentName: kbConfig.azureDeploymentName || kbConfig.kbllm_deployment || kbConfig.kbLlmAzureDeploymentName,
-        azureApiVersion: kbConfig.azureApiVersion || kbConfig.kbllm_api_version,
-        claudeApiKey: kbConfig.claudeApiKey || kbConfig.kbLlmClaudeApiKey,
-        claudeModel: kbConfig.claudeModel || kbConfig.kbLlmClaudeModel,
-        awsRegion: kbConfig.awsRegion || kbConfig.kbLlmAwsRegion,
-        awsAccessKeyId: kbConfig.awsAccessKeyId || kbConfig.kbLlmAwsAccessKeyId,
-        awsSecretAccessKey: kbConfig.awsSecretAccessKey || kbConfig.kbLlmAwsSecretAccessKey,
-        bedrockModelId: kbConfig.bedrockModelId || kbConfig.kbLlmBedrockModelId,
-        openaiApiKey: kbConfig.openaiApiKey || kbConfig.kbLlmOpenaiApiKey,
-        openaiModel: kbConfig.openaiModel || kbConfig.kbLlmOpenaiModel,
+        azureEndpoint: kbConfig.kbllm_azure_endpoint || kbConfig.kbLlmAzureEndpoint,
+        azureApiKey: kbConfig.kbllm_api_key || kbConfig.kbLlmAzureApiKey,
+        azureDeploymentName: kbConfig.kbllm_deployment || kbConfig.kbLlmAzureDeploymentName,
+        azureApiVersion: kbConfig.kbllm_api_version,
+        claudeApiKey: kbConfig.kbLlmClaudeApiKey,
+        claudeModel: kbConfig.kbLlmClaudeModel,
+        awsRegion: kbConfig.kbLlmAwsRegion,
+        awsAccessKeyId: kbConfig.kbLlmAwsAccessKeyId,
+        awsSecretAccessKey: kbConfig.kbLlmAwsSecretAccessKey,
+        bedrockModelId: kbConfig.kbLlmBedrockModelId,
+        openaiApiKey: kbConfig.kbLlmOpenaiApiKey,
+        openaiModel: kbConfig.kbLlmOpenaiModel,
         temperature: kbConfig.temperature,
         maxTokens: kbConfig.maxTokens,
         createdAt: new Date(),

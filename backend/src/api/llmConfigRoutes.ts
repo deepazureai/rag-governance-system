@@ -208,7 +208,65 @@ llmConfigRouter.get('/providers', (_req: Request, res: Response): void => {
 });
 
 /**
- * GET /api/kb-config/app/:appId
+ * Normalize KB config legacy field names to exact format before validation
+ * Maps camelCase fields from UI to snake_case format for storage
+ */
+function normalizeKBConfigFieldNames(config: Record<string, unknown>): Record<string, unknown> {
+  const normalized = { ...config };
+
+  // Ensure kbLlmProvider is set (use 'provider' if kbLlmProvider not provided)
+  if (!normalized.kbLlmProvider && normalized.provider) {
+    normalized.kbLlmProvider = normalized.provider;
+  }
+
+  // Azure OpenAI fields: map camelCase to snake_case
+  if (normalized.azureEndpoint && !normalized.kbllm_azure_endpoint) {
+    normalized.kbllm_azure_endpoint = normalized.azureEndpoint;
+  }
+  if (normalized.azureApiKey && !normalized.kbllm_api_key) {
+    normalized.kbllm_api_key = normalized.azureApiKey;
+  }
+  if (normalized.azureDeploymentName && !normalized.kbllm_deployment) {
+    normalized.kbllm_deployment = normalized.azureDeploymentName;
+  }
+  if (normalized.azureApiVersion && !normalized.kbllm_api_version) {
+    normalized.kbllm_api_version = normalized.azureApiVersion;
+  }
+
+  // OpenAI fields
+  if (normalized.openaiApiKey && !normalized.kbLlmOpenaiApiKey) {
+    normalized.kbLlmOpenaiApiKey = normalized.openaiApiKey;
+  }
+  if (normalized.openaiModel && !normalized.kbLlmOpenaiModel) {
+    normalized.kbLlmOpenaiModel = normalized.openaiModel;
+  }
+
+  // Claude fields
+  if (normalized.claudeApiKey && !normalized.kbLlmClaudeApiKey) {
+    normalized.kbLlmClaudeApiKey = normalized.claudeApiKey;
+  }
+  if (normalized.claudeModel && !normalized.kbLlmClaudeModel) {
+    normalized.kbLlmClaudeModel = normalized.claudeModel;
+  }
+
+  // AWS Bedrock fields
+  if (normalized.awsRegion && !normalized.kbLlmAwsRegion) {
+    normalized.kbLlmAwsRegion = normalized.awsRegion;
+  }
+  if (normalized.awsAccessKeyId && !normalized.kbLlmAwsAccessKeyId) {
+    normalized.kbLlmAwsAccessKeyId = normalized.awsAccessKeyId;
+  }
+  if (normalized.awsSecretAccessKey && !normalized.kbLlmAwsSecretAccessKey) {
+    normalized.kbLlmAwsSecretAccessKey = normalized.awsSecretAccessKey;
+  }
+  if (normalized.bedrockModelId && !normalized.kbLlmBedrockModelId) {
+    normalized.kbLlmBedrockModelId = normalized.bedrockModelId;
+  }
+
+  return normalized;
+}
+
+/**
  * Get Knowledge Base configuration
  */
 llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
@@ -258,8 +316,15 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 
     const body = req.body as Record<string, unknown>;
 
-    // Validate request body
-    const validation = KnowledgeBaseConfigSchema.safeParse({ ...body, applicationId: appId });
+    // Log incoming request for debugging
+    console.log('[v0] KB Config POST request body:', JSON.stringify(body, null, 2));
+
+    // Normalize camelCase field names to standard format BEFORE validation
+    const normalized = normalizeKBConfigFieldNames(body);
+    console.log('[v0] Normalized KB Config:', JSON.stringify(normalized, null, 2));
+
+    // Validate request body with normalized names
+    const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
       res.status(400).json({
         success: false,
