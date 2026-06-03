@@ -286,30 +286,69 @@ export class KBConfigService {
     const normalized = this.normalizeLegacyFieldNames(config as unknown as Record<string, unknown>);
     const encrypted: KnowledgeBaseConfigInput = { ...normalized } as KnowledgeBaseConfigInput;
 
-    // Encrypt new KB Azure OpenAI field names
+    // Encrypt KB Azure OpenAI credentials - ALL variants
     if ((encrypted as any).kbllm_api_key && typeof (encrypted as any).kbllm_api_key === 'string') {
       (encrypted as Record<string, unknown>).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
     }
+    if (encrypted.kbLlmAzureApiKey && typeof encrypted.kbLlmAzureApiKey === 'string') {
+      encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
+    }
+
+    // Encrypt Azure endpoint fields - ALL variants
+    if ((encrypted as any).kbllm_azure_endpoint && typeof (encrypted as any).kbllm_azure_endpoint === 'string') {
+      (encrypted as Record<string, unknown>).kbllm_azure_endpoint = cryptoUtil.encrypt((encrypted as any).kbllm_azure_endpoint);
+    }
+    if (encrypted.kbLlmAzureEndpoint && typeof encrypted.kbLlmAzureEndpoint === 'string') {
+      encrypted.kbLlmAzureEndpoint = cryptoUtil.encrypt(encrypted.kbLlmAzureEndpoint);
+    }
+
+    // Encrypt Azure deployment fields - ALL variants
+    if ((encrypted as any).kbllm_deployment && typeof (encrypted as any).kbllm_deployment === 'string') {
+      (encrypted as Record<string, unknown>).kbllm_deployment = cryptoUtil.encrypt((encrypted as any).kbllm_deployment);
+    }
+    if (encrypted.kbLlmAzureDeploymentName && typeof encrypted.kbLlmAzureDeploymentName === 'string') {
+      encrypted.kbLlmAzureDeploymentName = cryptoUtil.encrypt(encrypted.kbLlmAzureDeploymentName);
+    }
+
+    // Encrypt Azure API version fields - ALL variants
+    if ((encrypted as any).kbllm_api_version && typeof (encrypted as any).kbllm_api_version === 'string') {
+      (encrypted as Record<string, unknown>).kbllm_api_version = cryptoUtil.encrypt((encrypted as any).kbllm_api_version);
+    }
+    if ((encrypted as any).kbLlmAzureApiVersion && typeof (encrypted as any).kbLlmAzureApiVersion === 'string') {
+      (encrypted as any).kbLlmAzureApiVersion = cryptoUtil.encrypt((encrypted as any).kbLlmAzureApiVersion);
+    }
     
-    // Encrypt Claude credentials
+    // Encrypt Claude credentials - ALL variants
     if (encrypted.kbLlmClaudeApiKey && typeof encrypted.kbLlmClaudeApiKey === 'string') {
       encrypted.kbLlmClaudeApiKey = cryptoUtil.encrypt(encrypted.kbLlmClaudeApiKey);
     }
+    if (encrypted.kbLlmClaudeModel && typeof encrypted.kbLlmClaudeModel === 'string') {
+      encrypted.kbLlmClaudeModel = cryptoUtil.encrypt(encrypted.kbLlmClaudeModel);
+    }
     
-    // Encrypt AWS credentials
+    // Encrypt AWS credentials - ALL variants
     if (encrypted.kbLlmAwsAccessKeyId && typeof encrypted.kbLlmAwsAccessKeyId === 'string') {
       encrypted.kbLlmAwsAccessKeyId = cryptoUtil.encrypt(encrypted.kbLlmAwsAccessKeyId);
     }
     if (encrypted.kbLlmAwsSecretAccessKey && typeof encrypted.kbLlmAwsSecretAccessKey === 'string') {
       encrypted.kbLlmAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.kbLlmAwsSecretAccessKey);
     }
+    if (encrypted.kbLlmAwsRegion && typeof encrypted.kbLlmAwsRegion === 'string') {
+      encrypted.kbLlmAwsRegion = cryptoUtil.encrypt(encrypted.kbLlmAwsRegion);
+    }
+    if (encrypted.kbLlmBedrockModelId && typeof encrypted.kbLlmBedrockModelId === 'string') {
+      encrypted.kbLlmBedrockModelId = cryptoUtil.encrypt(encrypted.kbLlmBedrockModelId);
+    }
     
-    // Encrypt OpenAI credentials
+    // Encrypt OpenAI credentials - ALL variants
     if (encrypted.kbLlmOpenaiApiKey && typeof encrypted.kbLlmOpenaiApiKey === 'string') {
       encrypted.kbLlmOpenaiApiKey = cryptoUtil.encrypt(encrypted.kbLlmOpenaiApiKey);
     }
+    if (encrypted.kbLlmOpenaiModel && typeof encrypted.kbLlmOpenaiModel === 'string') {
+      encrypted.kbLlmOpenaiModel = cryptoUtil.encrypt(encrypted.kbLlmOpenaiModel);
+    }
 
-    // Encrypt embedding credentials
+    // Encrypt embedding credentials - ALL variants
     if ((encrypted as Record<string, unknown>).embedding_api_key && typeof (encrypted as Record<string, unknown>).embedding_api_key === 'string') {
       (encrypted as Record<string, unknown>).embedding_api_key = cryptoUtil.encrypt((encrypted as Record<string, unknown>).embedding_api_key as string);
     }
