@@ -8,6 +8,18 @@ import mongoose from 'mongoose';
 
 const baReviewRouter: ExpressRouter = Router();
 
+// Module-level collection reference (initialized once, reused across all endpoints)
+// This ensures consistency and avoids connection/cache issues
+let RawDataRecordCollection: any = null;
+
+const getRawDataRecordCollection = () => {
+  if (!RawDataRecordCollection) {
+    RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+    console.log('[v0] RawDataRecordCollection initialized at module load');
+  }
+  return RawDataRecordCollection;
+};
+
 /**
  * Populate BA review queue from raw data records
  * POST /api/ba-review/populate-queue
@@ -364,7 +376,7 @@ baReviewRouter.get('/app/:applicationId', async (req: Request, res: Response): P
     logger.info(`[baReviewRoutes] Fetching recommendations for app: ${applicationId}`);
 
     // Fetch raw data records with evaluation data for this application
-    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+    const RawDataRecordCollection = getRawDataRecordCollection();
     const records = await RawDataRecordCollection.find({
       applicationId: applicationId.toString(),
       'llm_recommendations': { $exists: true, $ne: null }
@@ -503,7 +515,7 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
     logger.info(`[baReviewRoutes] Fetching recommendation: ${recommendationId} for app ${applicationId}`);
 
     // Query the RawDataRecord collection (contains all recommendations + improvements)
-    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+    const RawDataRecordCollection = getRawDataRecordCollection();
 
     let query: Record<string, unknown> = {
       applicationId: applicationId,
@@ -934,7 +946,7 @@ baReviewRouter.post('/get-recommendations', async (req: Request, res: Response):
 
     // Check if recommendations already exist for this record (duplicate prevention)
     if (recordId && mongoose.Types.ObjectId.isValid(recordId)) {
-      const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+      const RawDataRecordCollection = getRawDataRecordCollection();
       const existingRecord = await RawDataRecordCollection.findOne({ 
         _id: new mongoose.Types.ObjectId(recordId) 
       });
@@ -1607,7 +1619,7 @@ baReviewRouter.post('/save-recommendations', async (req: Request, res: Response)
       return;
     }
 
-    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+    const RawDataRecordCollection = getRawDataRecordCollection();
 
     // Build update data - set flag to 1 when saving, only set fields that have values
     const updateData: Record<string, any> = {
@@ -1700,7 +1712,7 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
       return;
     }
 
-    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+    const RawDataRecordCollection = getRawDataRecordCollection();
 
     console.log('[v0] GET recommendations - Looking for recordId:', rawDataId, 'applicationId:', applicationId);
     console.log('[v0] MongoDB connection state:', mongoose.connection.readyState, '(1=connected, 0=disconnected)');
@@ -1719,14 +1731,14 @@ baReviewRouter.get('/recommendations/:applicationId/:rawDataId', async (req: Req
       const appRecords = await RawDataRecordCollection.find({ applicationId }).toArray();
       console.log('[v0] Records for applicationId:', applicationId, '- count:', appRecords.length);
       if (appRecords.length > 0) {
-        console.log('[v0] Record IDs for this app:', appRecords.slice(0, 5).map(r => ({ id: r._id.toString(), hasBarReview: !!r.baReview })));
+        console.log('[v0] Record IDs for this app:', appRecords.slice(0, 5).map((r: any) => ({ id: r._id.toString(), hasBarReview: !!r.baReview })));
       }
       
       // Try alternative query method as fallback
       const allRecords = await RawDataRecordCollection.find({ applicationId }).limit(5).toArray();
       console.log('[v0] Alternative query - Found records with same appId:', allRecords.length);
       if (allRecords.length > 0) {
-        console.log('[v0] Sample record IDs:', allRecords.map(r => r._id.toString()));
+        console.log('[v0] Sample record IDs:', allRecords.map((r: any) => r._id.toString()));
       }
       
       res.status(404).json({
