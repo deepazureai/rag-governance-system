@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle, Download } from 'lucide-react';
 import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 
@@ -423,11 +424,11 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
             </Button>
           ) : (
             <div className="space-y-2">
-              <textarea
+              <Textarea
                 placeholder="Enter chat topic or initial question..."
                 value={topicInput}
                 onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTopicInput(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="resize-none"
                 rows={4}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
