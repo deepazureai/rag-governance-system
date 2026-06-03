@@ -60,8 +60,23 @@ export const KnowledgeBaseConfigSchema = z.object({
   embeddingAwsAccessKeyId: z.string().optional(),
   embeddingAwsSecretAccessKey: z.string().optional(),
   embeddingBedrockModelId: z.string().optional(),
+  // KB LLM Provider - accepts both 'provider' (new) and 'kbLlmProvider' (legacy)
   kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
-  // Exact parameter names for KB LLM (Azure OpenAI)
+  provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
+  // New simplified field names (from KBLLMSettings component - camelCase)
+  azureEndpoint: z.string().optional(),
+  azureApiKey: z.string().optional(),
+  azureDeploymentName: z.string().optional(),
+  azureApiVersion: z.string().optional(),
+  openaiApiKey: z.string().optional(),
+  openaiModel: z.string().optional(),
+  claudeApiKey: z.string().optional(),
+  claudeModel: z.string().optional(),
+  awsRegion: z.string().optional(),
+  awsAccessKeyId: z.string().optional(),
+  awsSecretAccessKey: z.string().optional(),
+  bedrockModelId: z.string().optional(),
+  // Exact parameter names for KB LLM (Azure OpenAI - snake_case)
   kbllm_api_key: z.string().optional(),
   kbllm_azure_endpoint: z.string().optional(),
   kbllm_api_version: z.string().optional(),

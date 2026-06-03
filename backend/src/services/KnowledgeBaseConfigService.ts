@@ -21,8 +21,11 @@ export class KnowledgeBaseConfigService {
         throw new Error(`Validation failed: ${JSON.stringify(validation.error.errors)}`);
       }
 
+      // Normalize camelCase field names to standard format
+      const normalized = this.normalizeFieldNames(validation.data as any);
+
       // Encrypt sensitive fields
-      const config = this.encryptSensitiveFields(validation.data as any);
+      const config = this.encryptSensitiveFields(normalized);
 
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
@@ -41,6 +44,65 @@ export class KnowledgeBaseConfigService {
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);
     }
+  }
+
+  /**
+   * Normalize camelCase field names from KBLLMSettings component to standard format
+   */
+  private normalizeFieldNames(config: any): any {
+    const normalized = { ...config };
+
+    // Use provider if provided, else use kbLlmProvider
+    if (normalized.provider && !normalized.kbLlmProvider) {
+      normalized.kbLlmProvider = normalized.provider;
+    }
+    delete normalized.provider;
+
+    // Map new camelCase fields to standard snake_case format
+    if (normalized.azureEndpoint) {
+      normalized.kbllm_azure_endpoint = normalized.azureEndpoint;
+    }
+    if (normalized.azureApiKey) {
+      normalized.kbllm_api_key = normalized.azureApiKey;
+    }
+    if (normalized.azureDeploymentName) {
+      normalized.kbllm_deployment = normalized.azureDeploymentName;
+    }
+    if (normalized.azureApiVersion) {
+      normalized.kbllm_api_version = normalized.azureApiVersion;
+    }
+
+    // OpenAI fields
+    if (normalized.openaiApiKey) {
+      normalized.kbLlmOpenaiApiKey = normalized.openaiApiKey;
+    }
+    if (normalized.openaiModel) {
+      normalized.kbLlmOpenaiModel = normalized.openaiModel;
+    }
+
+    // Claude fields
+    if (normalized.claudeApiKey) {
+      normalized.kbLlmClaudeApiKey = normalized.claudeApiKey;
+    }
+    if (normalized.claudeModel) {
+      normalized.kbLlmClaudeModel = normalized.claudeModel;
+    }
+
+    // AWS Bedrock fields
+    if (normalized.awsRegion) {
+      normalized.kbLlmAwsRegion = normalized.awsRegion;
+    }
+    if (normalized.awsAccessKeyId) {
+      normalized.kbLlmAwsAccessKeyId = normalized.awsAccessKeyId;
+    }
+    if (normalized.awsSecretAccessKey) {
+      normalized.kbLlmAwsSecretAccessKey = normalized.awsSecretAccessKey;
+    }
+    if (normalized.bedrockModelId) {
+      normalized.kbLlmBedrockModelId = normalized.bedrockModelId;
+    }
+
+    return normalized;
   }
 
   /**

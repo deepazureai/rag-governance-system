@@ -79,11 +79,26 @@ export interface KnowledgeBaseConfig {
   
   // KB LLM Configuration - Exact parameter names for Azure OpenAI LLM
   kbLlmProvider: KBLLMProvider;
+  provider?: KBLLMProvider;  // NEW: Alternative field name for simplified UI
   kbllm_api_key?: string;              // Exact: for KB LLM client
   kbllm_azure_endpoint?: string;       // Exact: for KB LLM client
   kbllm_api_version?: string;          // NEW: Exact parameter
   kbllm_deployment?: string;           // NEW: Exact parameter (e.g., "gpt-4-deployment")
   kbllm_skipSslVerification?: boolean;  // NEW: Optional SSL bypass for KB LLM
+  
+  // New simplified field names (camelCase from KBLLMSettings component)
+  azureEndpoint?: string;
+  azureApiKey?: string;
+  azureDeploymentName?: string;
+  azureApiVersion?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
+  awsRegion?: string;
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  bedrockModelId?: string;
   
   // Legacy KB LLM fields for backward compatibility
   kbLlmAzureEndpoint?: string;
