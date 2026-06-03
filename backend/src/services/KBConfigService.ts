@@ -211,112 +211,146 @@ export class KBConfigService {
    * Encrypt sensitive credential fields
    */
   private encryptSensitiveFields(config: KnowledgeBaseConfigInput): KnowledgeBaseConfigInput {
+    console.log('[v0] encryptSensitiveFields - INPUT fields:', Object.keys(config as any));
+    console.log('[v0] encryptSensitiveFields - INPUT has azureApiKey:', !!(config as any).azureApiKey);
+    console.log('[v0] encryptSensitiveFields - INPUT has kbllm_api_key:', !!(config as any).kbllm_api_key);
+    
     const encrypted: KnowledgeBaseConfigInput = { ...config } as KnowledgeBaseConfigInput;
 
     // Encrypt KB Azure OpenAI credentials - BOTH field name variants
     if (encrypted.kbllm_api_key && typeof encrypted.kbllm_api_key === 'string') {
+      console.log('[v0] Encrypting kbllm_api_key');
       (encrypted as Record<string, unknown>).kbllm_api_key = cryptoUtil.encrypt(encrypted.kbllm_api_key);
     }
     if (encrypted.kbLlmAzureApiKey && typeof encrypted.kbLlmAzureApiKey === 'string') {
+      console.log('[v0] Encrypting kbLlmAzureApiKey');
       encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
     }
     // Also encrypt legacy camelCase field names from frontend
     if ((encrypted as any).azureApiKey && typeof (encrypted as any).azureApiKey === 'string') {
+      console.log('[v0] Encrypting azureApiKey');
       (encrypted as any).azureApiKey = cryptoUtil.encrypt((encrypted as any).azureApiKey);
     }
 
     // Encrypt Azure endpoint fields
     if ((encrypted as any).azureEndpoint && typeof (encrypted as any).azureEndpoint === 'string') {
+      console.log('[v0] Encrypting azureEndpoint');
       (encrypted as any).azureEndpoint = cryptoUtil.encrypt((encrypted as any).azureEndpoint);
     }
     if (encrypted.kbllm_azure_endpoint && typeof encrypted.kbllm_azure_endpoint === 'string') {
+      console.log('[v0] Encrypting kbllm_azure_endpoint');
       (encrypted as any).kbllm_azure_endpoint = cryptoUtil.encrypt(encrypted.kbllm_azure_endpoint);
     }
     if (encrypted.kbLlmAzureEndpoint && typeof encrypted.kbLlmAzureEndpoint === 'string') {
+      console.log('[v0] Encrypting kbLlmAzureEndpoint');
       encrypted.kbLlmAzureEndpoint = cryptoUtil.encrypt(encrypted.kbLlmAzureEndpoint);
     }
 
     // Encrypt Azure deployment fields
     if ((encrypted as any).azureDeploymentName && typeof (encrypted as any).azureDeploymentName === 'string') {
+      console.log('[v0] Encrypting azureDeploymentName');
       (encrypted as any).azureDeploymentName = cryptoUtil.encrypt((encrypted as any).azureDeploymentName);
     }
     if (encrypted.kbllm_deployment && typeof encrypted.kbllm_deployment === 'string') {
+      console.log('[v0] Encrypting kbllm_deployment');
       (encrypted as any).kbllm_deployment = cryptoUtil.encrypt(encrypted.kbllm_deployment);
     }
     if (encrypted.kbLlmAzureDeploymentName && typeof encrypted.kbLlmAzureDeploymentName === 'string') {
+      console.log('[v0] Encrypting kbLlmAzureDeploymentName');
       encrypted.kbLlmAzureDeploymentName = cryptoUtil.encrypt(encrypted.kbLlmAzureDeploymentName);
     }
 
     // Encrypt Azure API version fields
     if ((encrypted as any).azureApiVersion && typeof (encrypted as any).azureApiVersion === 'string') {
+      console.log('[v0] Encrypting azureApiVersion');
       (encrypted as any).azureApiVersion = cryptoUtil.encrypt((encrypted as any).azureApiVersion);
     }
     if (encrypted.kbllm_api_version && typeof encrypted.kbllm_api_version === 'string') {
+      console.log('[v0] Encrypting kbllm_api_version');
       (encrypted as any).kbllm_api_version = cryptoUtil.encrypt(encrypted.kbllm_api_version);
     }
     if ((encrypted as any).kbLlmAzureApiVersion && typeof (encrypted as any).kbLlmAzureApiVersion === 'string') {
+      console.log('[v0] Encrypting kbLlmAzureApiVersion');
       (encrypted as any).kbLlmAzureApiVersion = cryptoUtil.encrypt((encrypted as any).kbLlmAzureApiVersion);
     }
     
     // Encrypt KB Claude credentials - ALL variants
     if (encrypted.kbLlmClaudeApiKey && typeof encrypted.kbLlmClaudeApiKey === 'string') {
+      console.log('[v0] Encrypting kbLlmClaudeApiKey');
       encrypted.kbLlmClaudeApiKey = cryptoUtil.encrypt(encrypted.kbLlmClaudeApiKey);
     }
     if ((encrypted as any).claudeApiKey && typeof (encrypted as any).claudeApiKey === 'string') {
+      console.log('[v0] Encrypting claudeApiKey');
       (encrypted as any).claudeApiKey = cryptoUtil.encrypt((encrypted as any).claudeApiKey);
     }
     if (encrypted.kbLlmClaudeModel && typeof encrypted.kbLlmClaudeModel === 'string') {
+      console.log('[v0] Encrypting kbLlmClaudeModel');
       encrypted.kbLlmClaudeModel = cryptoUtil.encrypt(encrypted.kbLlmClaudeModel);
     }
     if ((encrypted as any).claudeModel && typeof (encrypted as any).claudeModel === 'string') {
+      console.log('[v0] Encrypting claudeModel');
       (encrypted as any).claudeModel = cryptoUtil.encrypt((encrypted as any).claudeModel);
     }
     
     // Encrypt KB AWS credentials - ALL variants
     if (encrypted.kbLlmAwsAccessKeyId && typeof encrypted.kbLlmAwsAccessKeyId === 'string') {
+      console.log('[v0] Encrypting kbLlmAwsAccessKeyId');
       encrypted.kbLlmAwsAccessKeyId = cryptoUtil.encrypt(encrypted.kbLlmAwsAccessKeyId);
     }
     if ((encrypted as any).awsAccessKeyId && typeof (encrypted as any).awsAccessKeyId === 'string') {
+      console.log('[v0] Encrypting awsAccessKeyId');
       (encrypted as any).awsAccessKeyId = cryptoUtil.encrypt((encrypted as any).awsAccessKeyId);
     }
     if (encrypted.kbLlmAwsSecretAccessKey && typeof encrypted.kbLlmAwsSecretAccessKey === 'string') {
+      console.log('[v0] Encrypting kbLlmAwsSecretAccessKey');
       encrypted.kbLlmAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.kbLlmAwsSecretAccessKey);
     }
     if ((encrypted as any).awsSecretAccessKey && typeof (encrypted as any).awsSecretAccessKey === 'string') {
+      console.log('[v0] Encrypting awsSecretAccessKey');
       (encrypted as any).awsSecretAccessKey = cryptoUtil.encrypt((encrypted as any).awsSecretAccessKey);
     }
     if (encrypted.kbLlmAwsRegion && typeof encrypted.kbLlmAwsRegion === 'string') {
+      console.log('[v0] Encrypting kbLlmAwsRegion');
       encrypted.kbLlmAwsRegion = cryptoUtil.encrypt(encrypted.kbLlmAwsRegion);
     }
     if ((encrypted as any).awsRegion && typeof (encrypted as any).awsRegion === 'string') {
+      console.log('[v0] Encrypting awsRegion');
       (encrypted as any).awsRegion = cryptoUtil.encrypt((encrypted as any).awsRegion);
     }
     if (encrypted.kbLlmBedrockModelId && typeof encrypted.kbLlmBedrockModelId === 'string') {
+      console.log('[v0] Encrypting kbLlmBedrockModelId');
       encrypted.kbLlmBedrockModelId = cryptoUtil.encrypt(encrypted.kbLlmBedrockModelId);
     }
     if ((encrypted as any).bedrockModelId && typeof (encrypted as any).bedrockModelId === 'string') {
+      console.log('[v0] Encrypting bedrockModelId');
       (encrypted as any).bedrockModelId = cryptoUtil.encrypt((encrypted as any).bedrockModelId);
     }
     
     // Encrypt KB OpenAI credentials - ALL variants
     if (encrypted.kbLlmOpenaiApiKey && typeof encrypted.kbLlmOpenaiApiKey === 'string') {
+      console.log('[v0] Encrypting kbLlmOpenaiApiKey');
       encrypted.kbLlmOpenaiApiKey = cryptoUtil.encrypt(encrypted.kbLlmOpenaiApiKey);
     }
     if ((encrypted as any).openaiApiKey && typeof (encrypted as any).openaiApiKey === 'string') {
+      console.log('[v0] Encrypting openaiApiKey');
       (encrypted as any).openaiApiKey = cryptoUtil.encrypt((encrypted as any).openaiApiKey);
     }
     if (encrypted.kbLlmOpenaiModel && typeof encrypted.kbLlmOpenaiModel === 'string') {
+      console.log('[v0] Encrypting kbLlmOpenaiModel');
       encrypted.kbLlmOpenaiModel = cryptoUtil.encrypt(encrypted.kbLlmOpenaiModel);
     }
     if ((encrypted as any).openaiModel && typeof (encrypted as any).openaiModel === 'string') {
+      console.log('[v0] Encrypting openaiModel');
       (encrypted as any).openaiModel = cryptoUtil.encrypt((encrypted as any).openaiModel);
     }
 
     // Encrypt embedding credentials - ALL variants
     if ((encrypted as Record<string, unknown>).embedding_api_key && typeof (encrypted as Record<string, unknown>).embedding_api_key === 'string') {
+      console.log('[v0] Encrypting embedding_api_key');
       (encrypted as Record<string, unknown>).embedding_api_key = cryptoUtil.encrypt((encrypted as Record<string, unknown>).embedding_api_key as string);
     }
     if (encrypted.embeddingAzureApiKey && typeof encrypted.embeddingAzureApiKey === 'string') {
+      console.log('[v0] Encrypting embeddingAzureApiKey');
       encrypted.embeddingAzureApiKey = cryptoUtil.encrypt(encrypted.embeddingAzureApiKey);
     }
 
@@ -324,6 +358,7 @@ export class KBConfigService {
     (encrypted as Record<string, unknown>).createdAt = (encrypted as Record<string, unknown>).createdAt || new Date();
     (encrypted as Record<string, unknown>).updatedAt = new Date();
 
+    console.log('[v0] encryptSensitiveFields - OUTPUT fields:', Object.keys(encrypted as any));
     return encrypted;
   }
 }
