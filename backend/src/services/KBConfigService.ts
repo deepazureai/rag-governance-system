@@ -1,5 +1,5 @@
 import mongoose, { Types } from 'mongoose';
-import { KnowledgeBaseConfig, KnowledgeBaseConfigInput } from '../types/models.js';
+import { KnowledgeBaseConfig, KnowledgeBaseConfigInput, ApiResponse } from '../types/models.js';
 import { KnowledgeBaseConfigSchema } from '../schemas/index.js';
 import { cryptoUtil } from '../utils/CryptoUtil.js';
 import { configManager } from '../utils/ConfigManager.js';
@@ -7,7 +7,7 @@ import { configManager } from '../utils/ConfigManager.js';
 /**
  * KB Config Service
  * Handles CRUD operations for Knowledge Base LLM provider configurations
- * Based on proven LLMConfigService pattern with KB-specific adaptations
+ * Based on proven LLMConfigService pattern
  */
 export class KBConfigService {
   private readonly collection = 'knowledgebaseconfigs';
@@ -27,7 +27,7 @@ export class KBConfigService {
         throw new Error(`Validation failed: ${errors}`);
       }
 
-      // Normalize and encrypt sensitive fields
+      // Encrypt sensitive fields
       const config = this.encryptSensitiveFields(validation.data as any);
       console.log('[v0] KB encrypted config keys:', Object.keys(config));
 
@@ -236,9 +236,9 @@ export class KBConfigService {
 
     switch (config.kbLlmProvider) {
       case 'azure-openai':
-        if (!config.kbllm_azure_endpoint && !config.kbLlmAzureEndpoint) errors.push('Azure Endpoint is required');
-        if (!config.kbllm_api_key && !config.kbLlmAzureApiKey) errors.push('Azure API Key is required');
-        if (!config.kbllm_deployment && !config.kbLlmAzureDeploymentName) errors.push('Azure Deployment Name is required');
+        if (!(config as any).kbllm_azure_endpoint) errors.push('Azure Endpoint is required');
+        if (!(config as any).kbllm_api_key) errors.push('Azure API Key is required');
+        if (!(config as any).kbllm_deployment) errors.push('Azure Deployment Name is required');
         break;
 
       case 'claude':
@@ -287,8 +287,8 @@ export class KBConfigService {
     const encrypted: KnowledgeBaseConfigInput = { ...normalized } as KnowledgeBaseConfigInput;
 
     // Encrypt new KB Azure OpenAI field names
-    if (encrypted.kbllm_api_key && typeof encrypted.kbllm_api_key === 'string') {
-      (encrypted as Record<string, unknown>).kbllm_api_key = cryptoUtil.encrypt(encrypted.kbllm_api_key);
+    if ((encrypted as any).kbllm_api_key && typeof (encrypted as any).kbllm_api_key === 'string') {
+      (encrypted as Record<string, unknown>).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
     }
     
     // Encrypt Claude credentials
@@ -327,28 +327,28 @@ export class KBConfigService {
   /**
    * Normalize legacy field names to exact format for LLMClientFactory
    * Frontend sends: azureApiKey, azureEndpoint, azureDeploymentName, azureApiVersion
-   * Backend stores: kbllm_api_key, kbllm_azure_endpoint, kbllm_deployment, kbllm_api_version
+   * Store as: kbllm_api_key, kbllm_azure_endpoint, kbllm_deployment, kbllm_api_version
    */
   private normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
     const normalized = { ...config };
 
     // Convert Azure OpenAI legacy names to exact format
-    if (config.azureApiKey && !config.kbllm_api_key) {
-      normalized.kbllm_api_key = config.azureApiKey;
+    if (config.azureApiKey && !(normalized as any).kbllm_api_key) {
+      (normalized as any).kbllm_api_key = config.azureApiKey;
     }
-    if (config.azureEndpoint && !config.kbllm_azure_endpoint) {
-      normalized.kbllm_azure_endpoint = config.azureEndpoint;
+    if (config.azureEndpoint && !(normalized as any).kbllm_azure_endpoint) {
+      (normalized as any).kbllm_azure_endpoint = config.azureEndpoint;
     }
-    if (config.azureDeploymentName && !config.kbllm_deployment) {
-      normalized.kbllm_deployment = config.azureDeploymentName;
+    if (config.azureDeploymentName && !(normalized as any).kbllm_deployment) {
+      (normalized as any).kbllm_deployment = config.azureDeploymentName;
     }
-    if (config.azureApiVersion && !config.kbllm_api_version) {
-      normalized.kbllm_api_version = config.azureApiVersion;
+    if (config.azureApiVersion && !(normalized as any).kbllm_api_version) {
+      (normalized as any).kbllm_api_version = config.azureApiVersion;
     }
 
     // Extract base endpoint if full URL is provided
-    if (normalized.kbllm_azure_endpoint && typeof normalized.kbllm_azure_endpoint === 'string') {
-      let endpoint = normalized.kbllm_azure_endpoint;
+    if ((normalized as any).kbllm_azure_endpoint && typeof (normalized as any).kbllm_azure_endpoint === 'string') {
+      let endpoint = (normalized as any).kbllm_azure_endpoint;
       
       // First, remove any query parameters from the URL
       if (endpoint.includes('?')) {
@@ -360,20 +360,20 @@ export class KBConfigService {
       if (endpoint.includes('/openai/deployments/')) {
         const parts = endpoint.split('/openai/deployments/');
         const baseUrl = parts[0] || endpoint;
-        normalized.kbllm_azure_endpoint = baseUrl;
+        (normalized as any).kbllm_azure_endpoint = baseUrl;
         console.log('[v0] KBConfigService: Extracted base endpoint from full URL:', {
-          original: normalized.kbllm_azure_endpoint,
+          original: endpoint,
           extracted: baseUrl,
         });
       }
     }
 
     console.log('[v0] KB normalized config:', {
-      provider: normalized.kbLlmProvider,
-      has_api_key: !!normalized.kbllm_api_key,
-      has_azure_endpoint: !!normalized.kbllm_azure_endpoint,
-      has_deployment: !!normalized.kbllm_deployment,
-      has_api_version: !!normalized.kbllm_api_version,
+      provider: (normalized as any).kbLlmProvider,
+      has_api_key: !!(normalized as any).kbllm_api_key,
+      has_azure_endpoint: !!(normalized as any).kbllm_azure_endpoint,
+      has_deployment: !!(normalized as any).kbllm_deployment,
+      has_api_version: !!(normalized as any).kbllm_api_version,
     });
 
     return normalized as KnowledgeBaseConfigInput;
