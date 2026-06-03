@@ -2,14 +2,10 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LLMProviderSettings } from '@/src/components/settings/LLMProviderSettings';
+import { LLMConfigTab } from '@/src/components/settings/llm-config-tab';
 import { KBLLMSettings } from '@/src/components/settings/KBLLMSettings';
 
-interface SettingsPageProps {
-  applicationId: string;
-}
-
-export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => {
+export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('llm-provider');
 
   return (
@@ -18,26 +14,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => 
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-gray-600">Configure your AI application providers and models</p>
+          <p className="text-gray-600">Manage your account and application preferences</p>
         </div>
 
         {/* Settings Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="llm-provider">LLM Provider</TabsTrigger>
-            <TabsTrigger value="kb-settings">Knowledge Base</TabsTrigger>
+            <TabsTrigger value="llm-provider">LLM</TabsTrigger>
+            <TabsTrigger value="kb-settings">KB</TabsTrigger>
           </TabsList>
 
           {/* LLM Provider Tab */}
           <TabsContent value="llm-provider" className="mt-6">
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <LLMProviderSettings applicationId={applicationId} />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <LLMConfigTab />
             </div>
           </TabsContent>
 
           {/* Knowledge Base Tab */}
           <TabsContent value="kb-settings" className="mt-6">
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <KBLLMSettings />
             </div>
           </TabsContent>

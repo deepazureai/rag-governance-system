@@ -321,7 +321,7 @@ export default function SettingsPage() {
 
           {/* Knowledge Base Configuration Tab */}
           <TabsContent value="knowledge-base" className="space-y-6 mt-6">
-            {selectedAppId && <KBLLMSettings applicationId={selectedAppId} />}
+            <KBLLMSettings />
           </TabsContent>
 
           {/* Security Tab */}
