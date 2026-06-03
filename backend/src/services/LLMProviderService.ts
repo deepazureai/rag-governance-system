@@ -53,6 +53,18 @@ export class LLMProviderService {
         throw new Error(`No Knowledge Base configuration found for application: ${applicationId}`);
       }
 
+      console.log('[v0] KB config retrieved:', {
+        applicationId,
+        provider: (kbConfig as any).kbLlmProvider,
+        has_kbllm_api_key: !!(kbConfig as any).kbllm_api_key,
+        has_kbLlmAzureApiKey: !!(kbConfig as any).kbLlmAzureApiKey,
+        has_kbllm_azure_endpoint: !!(kbConfig as any).kbllm_azure_endpoint,
+        has_kbLlmAzureEndpoint: !!(kbConfig as any).kbLlmAzureEndpoint,
+        has_kbllm_deployment: !!(kbConfig as any).kbllm_deployment,
+        has_kbLlmAzureDeploymentName: !!(kbConfig as any).kbLlmAzureDeploymentName,
+        all_keys: Object.keys(kbConfig as any),
+      });
+
       // Validate KB NLP LLM fields
       const validation = kbConfigService['validateConfig'](kbConfig);
       if (!validation.valid) {
@@ -63,31 +75,41 @@ export class LLMProviderService {
       // (normalization already done in route handler, so fields are in standard format)
       const llmConfig: LLMConfig = {
         applicationId,
-        provider: kbConfig.kbLlmProvider as 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai',
+        provider: (kbConfig as any).kbLlmProvider as 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai',
         // Standard field names (kbllm_* for exact params, legacy names for compatibility)
-        api_key: kbConfig.kbllm_api_key || kbConfig.kbLlmAzureApiKey || kbConfig.kbLlmOpenaiApiKey || kbConfig.kbLlmClaudeApiKey || kbConfig.kbLlmAwsAccessKeyId,
-        azure_endpoint: kbConfig.kbllm_azure_endpoint || kbConfig.kbLlmAzureEndpoint,
-        api_version: kbConfig.kbllm_api_version,
-        deployment: kbConfig.kbllm_deployment || kbConfig.kbLlmAzureDeploymentName,
-        skipSslVerification: kbConfig.kbllm_skipSslVerification,
+        api_key: (kbConfig as any).kbllm_api_key || (kbConfig as any).kbLlmAzureApiKey || (kbConfig as any).kbLlmOpenaiApiKey || (kbConfig as any).kbLlmClaudeApiKey || (kbConfig as any).kbLlmAwsAccessKeyId,
+        azure_endpoint: (kbConfig as any).kbllm_azure_endpoint || (kbConfig as any).kbLlmAzureEndpoint,
+        api_version: (kbConfig as any).kbllm_api_version,
+        deployment: (kbConfig as any).kbllm_deployment || (kbConfig as any).kbLlmAzureDeploymentName,
+        skipSslVerification: (kbConfig as any).kbllm_skipSslVerification,
         // Legacy fields for backward compatibility
-        azureEndpoint: kbConfig.kbllm_azure_endpoint || kbConfig.kbLlmAzureEndpoint,
-        azureApiKey: kbConfig.kbllm_api_key || kbConfig.kbLlmAzureApiKey,
-        azureDeploymentName: kbConfig.kbllm_deployment || kbConfig.kbLlmAzureDeploymentName,
-        azureApiVersion: kbConfig.kbllm_api_version,
-        claudeApiKey: kbConfig.kbLlmClaudeApiKey,
-        claudeModel: kbConfig.kbLlmClaudeModel,
-        awsRegion: kbConfig.kbLlmAwsRegion,
-        awsAccessKeyId: kbConfig.kbLlmAwsAccessKeyId,
-        awsSecretAccessKey: kbConfig.kbLlmAwsSecretAccessKey,
-        bedrockModelId: kbConfig.kbLlmBedrockModelId,
-        openaiApiKey: kbConfig.kbLlmOpenaiApiKey,
-        openaiModel: kbConfig.kbLlmOpenaiModel,
-        temperature: kbConfig.temperature,
-        maxTokens: kbConfig.maxTokens,
+        azureEndpoint: (kbConfig as any).kbllm_azure_endpoint || (kbConfig as any).kbLlmAzureEndpoint,
+        azureApiKey: (kbConfig as any).kbllm_api_key || (kbConfig as any).kbLlmAzureApiKey,
+        azureDeploymentName: (kbConfig as any).kbllm_deployment || (kbConfig as any).kbLlmAzureDeploymentName,
+        azureApiVersion: (kbConfig as any).kbllm_api_version,
+        claudeApiKey: (kbConfig as any).kbLlmClaudeApiKey,
+        claudeModel: (kbConfig as any).kbLlmClaudeModel,
+        awsRegion: (kbConfig as any).kbLlmAwsRegion,
+        awsAccessKeyId: (kbConfig as any).kbLlmAwsAccessKeyId,
+        awsSecretAccessKey: (kbConfig as any).kbLlmAwsSecretAccessKey,
+        bedrockModelId: (kbConfig as any).kbLlmBedrockModelId,
+        openaiApiKey: (kbConfig as any).kbLlmOpenaiApiKey,
+        openaiModel: (kbConfig as any).kbLlmOpenaiModel,
+        temperature: (kbConfig as any).temperature,
+        maxTokens: (kbConfig as any).maxTokens,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+
+      console.log('[v0] Created llmConfig from KB config:', {
+        provider: llmConfig.provider,
+        api_key_first_20: llmConfig.api_key ? llmConfig.api_key.substring(0, 20) + '...' : 'NOT SET',
+        azureApiKey_first_20: llmConfig.azureApiKey ? llmConfig.azureApiKey.substring(0, 20) + '...' : 'NOT SET',
+        azure_endpoint: llmConfig.azure_endpoint,
+        azureEndpoint: llmConfig.azureEndpoint,
+        deployment: llmConfig.deployment,
+        azureDeploymentName: llmConfig.azureDeploymentName,
+      });
 
       const provider = LLMClientFactory.create(llmConfig);
       return { provider, config: kbConfig };
