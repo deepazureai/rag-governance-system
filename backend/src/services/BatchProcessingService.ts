@@ -95,8 +95,11 @@ export class BatchProcessingService {
           recordData: sanitizedRecordData,
           lineNumber: record.lineNumber,
           fileName,
+          // Store query/response in multiple field names for compatibility
           query: sanitizedQuery,
           response: sanitizedResponse,
+          userPrompt: sanitizedQuery, // Also store as userPrompt for frontend compatibility
+          llmResponse: sanitizedResponse, // Also store as llmResponse for frontend compatibility
           context: sanitizedContext,
           promptTimestamp,
           contextRetrievalStartTime,
