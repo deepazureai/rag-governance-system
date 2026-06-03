@@ -11,13 +11,24 @@ const baReviewRouter: ExpressRouter = Router();
 // Module-level collection reference (initialized once, reused across all endpoints)
 // This ensures consistency and avoids connection/cache issues
 let RawDataRecordCollection: any = null;
+let lastConnectionState: number = -1;
 
 const getRawDataRecordCollection = () => {
-  if (!RawDataRecordCollection) {
-    RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
-    console.log('[v0] RawDataRecordCollection initialized at module load');
+  const currentState = mongoose.connection?.readyState || 0;
+  
+  // If connection state changed, reinitialize collection reference
+  if (lastConnectionState !== currentState) {
+    lastConnectionState = currentState;
+    if (currentState === 1) { // Connected
+      RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+      console.log('[v0] RawDataRecordCollection initialized/refreshed (connection ready)');
+    } else {
+      console.log('[v0] WARNING: MongoDB not ready, connection state:', currentState);
+      RawDataRecordCollection = null;
+    }
   }
-  return RawDataRecordCollection;
+  
+  return RawDataRecordCollection || mongoose.connection.collection('rawdatarecords');
 };
 
 /**
