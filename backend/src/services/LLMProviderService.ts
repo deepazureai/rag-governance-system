@@ -43,11 +43,17 @@ export class LLMProviderService {
    */
   async getKBNLPLLMProvider(applicationId: string): Promise<{ provider: ILLMProvider; config: KnowledgeBaseConfig }> {
     try {
+      console.log('[v0] getKBNLPLLMProvider called for app:', applicationId);
       if (!applicationId?.trim()) {
         throw new Error('Application ID is required');
       }
 
       const kbConfig = await kbConfigService.getConfig(applicationId);
+      console.log('[v0] KB config retrieved from service:', { 
+        found: !!kbConfig, 
+        provider: (kbConfig as any)?.kbLlmProvider,
+        has_endpoint: !!(kbConfig as any)?.kbllm_azure_endpoint
+      });
 
       if (!kbConfig) {
         throw new Error(`No Knowledge Base configuration found for application: ${applicationId}`);
@@ -114,6 +120,7 @@ export class LLMProviderService {
       const provider = LLMClientFactory.create(llmConfig);
       return { provider, config: kbConfig };
     } catch (error: unknown) {
+      console.error('[v0] getKBNLPLLMProvider error:', error instanceof Error ? error.message : String(error));
       throw this.handleError('getKBNLPLLMProvider', error);
     }
   }
@@ -136,10 +143,13 @@ export class LLMProviderService {
    */
   async validateKBLLMConnection(applicationId: string): Promise<{ valid: boolean; error?: string }> {
     try {
+      console.log('[v0] validateKBLLMConnection called for app:', applicationId);
       const { provider } = await this.getKBNLPLLMProvider(applicationId);
+      console.log('[v0] Got KB NLP LLM provider, validating...');
       return await provider.validate();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error('[v0] validateKBLLMConnection error:', message);
       return { valid: false, error: message };
     }
   }
