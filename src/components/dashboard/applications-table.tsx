@@ -24,21 +24,17 @@ export function ApplicationsTable({ applications, onRefresh, isRefreshing }: App
   const selectedAppIds = useAppSelector((state) => state.appSelection.selectedAppIds);
 
   const handleToggleApp = (appId: string) => {
-    const newSelection = selectedAppIds.includes(appId)
-      ? selectedAppIds.filter((id) => id !== appId)
-      : [...selectedAppIds, appId];
+    // Single-select: if clicking same app, deselect; otherwise select only this app
+    const newSelection = selectedAppIds.includes(appId) ? [] : [appId];
     dispatch(selectApps(newSelection));
   };
 
   const handleSelectAll = () => {
-    if (selectedAppIds.length === applications.length) {
-      dispatch(selectApps([]));
-    } else {
-      dispatch(selectApps(applications.map((app) => app.id)));
-    }
+    // Select all is disabled for single-select mode
+    // Do nothing
   };
 
-  const allSelected = selectedAppIds.length === applications.length && applications.length > 0;
+  const singleSelected = selectedAppIds.length === 1;
 
   return (
     <div className="border rounded-lg overflow-hidden bg-white">
@@ -47,7 +43,7 @@ export function ApplicationsTable({ applications, onRefresh, isRefreshing }: App
           <thead className="bg-gray-50 sticky top-0 border-b">
             <tr>
               <th className="px-4 py-3 text-left">
-                <Checkbox checked={allSelected} onCheckedChange={handleSelectAll} />
+                <div className="w-4 h-4" /> {/* Empty space where checkbox would be */}
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-900">Application</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-900">Description</th>

@@ -758,7 +758,7 @@ export function RawDataDetailModal({
                         className="w-4 h-4 cursor-pointer"
                       />
                       <label htmlFor="enrichWithKB" className="text-xs text-purple-300 cursor-pointer">
-                        Enrich with Knowledge Base context (coming soon)
+                        Enrich with Knowledge Base context
                       </label>
                     </div>
                     

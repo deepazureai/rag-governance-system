@@ -74,20 +74,24 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
           if (data.data) {
             setSavedConfig(data.data);
-            setProvider(data.data.provider || 'azure-openai');
-            setTemperature(data.data.temperature ?? 0.7);
-            setMaxTokens(data.data.maxTokens ?? 2048);
-            setChunkSize(data.data.chunkSize ?? 1024);
-            setOverlapSize(data.data.overlapSize ?? 100);
+            // Handle both old and new field names
+            const configData = data.data as any;
+            setProvider((configData.kbLlmProvider || configData.provider || 'azure-openai') as KBProvider);
+            setTemperature(configData.temperature ?? 0.7);
+            setMaxTokens(configData.maxTokens ?? 2048);
+            setChunkSize(configData.chunkSize ?? 1024);
+            setOverlapSize(configData.overlapSize ?? 100);
             
             // Populate form with existing values
             if (data.data) {
               const form: Record<string, string> = {};
-              const providerValue = (data.data.provider || 'azure-openai') as KBProvider;
+              const providerValue = ((configData.kbLlmProvider || configData.provider || 'azure-openai') as KBProvider);
               const providerFields = PROVIDER_FIELDS[providerValue];
               providerFields.forEach((field: ProviderField) => {
                 const fieldName = field.name;
-                const value = data.data[fieldName as keyof KnowledgeBaseConfig];
+                // Map new field names to old backend field names
+                const mappedFieldName = `kbLlm${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`;
+                const value = configData[mappedFieldName] || configData[fieldName];
                 if (value && typeof value === 'string') {
                   form[fieldName] = value;
                 }
@@ -227,7 +231,8 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             <div>
               <p className="text-sm font-medium text-green-900">Configuration Active</p>
               <p className="text-xs text-green-700 mt-1">
-                Provider: <Badge variant="outline">{savedConfig.provider}</Badge>
+                Embedding: <Badge variant="outline">{(savedConfig as any).embeddingProvider || 'Not set'}</Badge>
+                KB LLM: <Badge variant="outline">{(savedConfig as any).kbLlmProvider || 'Not set'}</Badge>
               </p>
             </div>
           </div>

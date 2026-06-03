@@ -23,26 +23,17 @@ export function AppSelector() {
   const isSelectingAll = selectedAppIds.length === 0;
 
   const handleSelectAll = () => {
-    if (isSelectingAll) {
-      dispatch(selectApps(apps.map((app: any) => app.id)));
-    } else {
-      dispatch(selectAllApps());
-    }
+    // Single-select mode: Select all functionality disabled
+    // Do nothing
   };
 
   const handleToggleApp = (appId: string) => {
-    const newSelection = isSelectingAll
-      ? apps.map((app: any) => app.id).filter((id: string) => id !== appId)
-      : selectedAppIds.includes(appId)
-      ? selectedAppIds.filter((id) => id !== appId)
-      : [...selectedAppIds, appId];
-
-    if (newSelection.length === 0) {
-      dispatch(selectAllApps());
-    } else {
-      dispatch(selectApps(newSelection));
-    }
+    // Single-select: if clicking same app, deselect; otherwise select only this app
+    const newSelection = selectedAppIds.includes(appId) ? [] : [appId];
+    dispatch(selectApps(newSelection));
   };
+
+  const singleSelected = selectedAppIds.length === 1;
 
   if (isLoading) {
     return (
@@ -57,23 +48,23 @@ export function AppSelector() {
   return (
     <Card className="p-4 bg-white mb-6">
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Checkbox
-            id="select-all"
-            checked={isSelectingAll}
-            onCheckedChange={handleSelectAll}
-          />
-          <label htmlFor="select-all" className="font-semibold text-gray-900 cursor-pointer">
-            All Applications ({apps.length})
-          </label>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900">
+            Select Application
+          </h3>
+          {singleSelected && (
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+              1 selected
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 border-t pt-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {apps.map((app: any) => (
             <div key={app.id} className="flex items-center gap-2">
               <Checkbox
                 id={`app-${app.id}`}
-                checked={isSelectingAll || selectedAppIds.includes(app.id)}
+                checked={selectedAppIds.includes(app.id)}
                 onCheckedChange={() => handleToggleApp(app.id)}
               />
               <label
@@ -86,9 +77,9 @@ export function AppSelector() {
           ))}
         </div>
 
-        {!isSelectingAll && (
-          <p className="text-sm text-gray-600 pt-2">
-            Showing data for {selectedAppIds.length} application(s)
+        {!singleSelected && (
+          <p className="text-xs text-gray-500 pt-2">
+            Select one application to work with
           </p>
         )}
       </div>
