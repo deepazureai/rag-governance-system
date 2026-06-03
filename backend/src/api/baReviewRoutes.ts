@@ -499,56 +499,66 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
       return;
     }
 
-    logger.info(`[baReviewRoutes] Fetching single recommendation: ${recommendationId} for app ${applicationId}`);
+    console.log('[v0] GET /recommendations - applicationId:', applicationId, 'recommendationId:', recommendationId);
+    logger.info(`[baReviewRoutes] Fetching recommendation: ${recommendationId} for app ${applicationId}`);
 
-    const BAImprovementCollection = mongoose.connection.collection('baimprovements');
-    
+    // Query the RawDataRecord collection (contains all recommendations + improvements)
+    const RawDataRecordCollection = mongoose.connection.collection('rawdatarecords');
+
     let query: Record<string, unknown> = {
       applicationId: applicationId,
-      status: { $in: ['approved', 'suggested'] }
     };
 
     // Try to match by MongoDB ObjectId if recommendationId looks like one
     if (recommendationId.match(/^[0-9a-f]{24}$/i)) {
       query._id = new mongoose.Types.ObjectId(recommendationId);
+      console.log('[v0] Query using ObjectId:', recommendationId);
     } else {
       // Fallback to string comparison
       query._id = recommendationId;
+      console.log('[v0] Query using string:', recommendationId);
     }
 
-    const improvement = await BAImprovementCollection.findOne(query);
+    const record = await RawDataRecordCollection.findOne(query);
+    console.log('[v0] Query result - record found:', !!record);
 
-    if (!improvement) {
+    if (!record) {
+      console.log('[v0] Record not found for recommendationId:', recommendationId);
       res.status(404).json({ success: false, error: 'Recommendation not found' });
       return;
     }
 
-    interface FormattedRecommendation {
-      _id: string;
-      userPrompt: string;
-      llmResponse: string;
-      suggestion: string;
-      priority: string;
-      priorityScore: number;
-    }
-
-    const recommendation: FormattedRecommendation = {
-      _id: improvement._id?.toString() || recommendationId,
-      userPrompt: improvement.originalPrompt || '',
-      llmResponse: improvement.improvedPrompt || '',
-      suggestion: improvement.reason || '',
-      priority: improvement.priority || 'medium',
-      priorityScore: improvement.estimatedScoreImpact || 0,
-    };
+    // Extract recommendation data from the record
+    const baReview = record.baReview || {};
+    const recommendations = baReview.recommendations || [];
+    const improvement = baReview.improvement || '';
+    const improvementReason = baReview.improvementReason || '';
+    const IsImprovementSaved = baReview.IsImprovementSaved || 0;
+    
+    console.log('[v0] Response data - improvement saved:', IsImprovementSaved);
 
     res.json({
       success: true,
-      data: recommendation,
+      data: {
+        userPrompt: record.userPrompt || '',
+        llmResponse: record.llmResponse || '',
+        recommendations,
+        improvement,
+        improvementReason,
+        IsImprovementSaved,
+        lastSavedAt: baReview.lastSavedAt,
+        hasRecommendations: recommendations.length > 0,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`[baReviewRoutes] Error fetching single recommendation: ${message}`);
+    logger.error(`[baReviewRoutes] Error fetching recommendation: ${message}`);
     res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
       success: false,
       error: message,
     });
