@@ -23,7 +23,7 @@ import { ScheduledJobsTab } from '@/src/components/settings/scheduled-jobs-tab';
 import { AlertThresholdsTab } from '@/src/components/settings/alert-thresholds-tab';
 import { NotificationsTab } from '@/src/components/settings/notifications-tab';
 import { LLMConfigTab } from '@/src/components/settings/llm-config-tab';
-import { KnowledgeBaseConfigTab } from '@/src/components/settings/knowledge-base-config-tab';
+import { KBLLMSettings } from '@/src/components/settings/KBLLMSettings';
 
 interface Application {
   id: string;
@@ -321,7 +321,7 @@ export default function SettingsPage() {
 
           {/* Knowledge Base Configuration Tab */}
           <TabsContent value="knowledge-base" className="space-y-6 mt-6">
-            <KnowledgeBaseConfigTab />
+            {selectedAppId && <KBLLMSettings applicationId={selectedAppId} />}
           </TabsContent>
 
           {/* Security Tab */}
