@@ -38,7 +38,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => 
           {/* Knowledge Base Tab */}
           <TabsContent value="kb-settings" className="mt-6">
             <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <KBLLMSettings applicationId={applicationId} />
+              <KBLLMSettings />
             </div>
           </TabsContent>
         </Tabs>
