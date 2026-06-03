@@ -559,11 +559,6 @@ baReviewRouter.get('/recommendations/:applicationId/:recommendationId', async (r
     });
   }
 });
-      success: false,
-      error: message,
-    });
-  }
-});
 
 /**
  * POST /api/ba-review/curate-recommendation
