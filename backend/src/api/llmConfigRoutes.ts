@@ -211,7 +211,7 @@ llmConfigRouter.get('/providers', (_req: Request, res: Response): void => {
  * GET /api/kb-config/app/:appId
  * Get Knowledge Base configuration
  */
-llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
@@ -248,7 +248,7 @@ llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response)
  * POST /api/kb-config/app/:appId
  * Save or update Knowledge Base configuration
  */
-llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
@@ -299,7 +299,7 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
  * POST /api/kb-config/validate/:appId
  * Test KB NLP LLM connection
  */
-llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {

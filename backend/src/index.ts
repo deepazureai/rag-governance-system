@@ -186,6 +186,7 @@ async function createServer(): Promise<Express> {
   app.use('/api/evaluation', hallucinationDetectionRouter);
   app.use('/api/knowledge-base', knowledgeBaseRouter);
   app.use('/api/llm-config', llmConfigRouter);
+  app.use('/api/kb-config', llmConfigRouter);  // KB Config routes are in this router too
   app.use('/api/rag-sessions', ragSessionRouter);
 
   // 404 handler
