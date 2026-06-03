@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide-react';
+import { AddRecommendationModal } from './add-recommendation-modal';
 
 interface Prompt {
   _id: string;
@@ -34,6 +35,8 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingRevision, setEditingRevision] = useState<string>('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
@@ -109,6 +112,31 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
     }
   };
 
+  const handleAddRecommendation = async (recommendation: {
+    suggestion: string;
+    priority: string;
+    notes: string;
+  }) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/ba-review/recommendations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId,
+          ...recommendation,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save recommendation');
+
+      setShowAddModal(false);
+      setSelectedRecommendation(null);
+      await fetchPrompts();
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to save recommendation');
+    }
+  };
+
   const getApprovalBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -144,6 +172,27 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
           Showing {prompts.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0} to{' '}
           {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} prompts
         </p>
+
+        <div className="flex items-center justify-between mb-4">
+          <div></div>
+          <Button
+            onClick={() => {
+              setSelectedRecommendation({
+                originalPrompt: '',
+                improvedPrompt: '',
+                reason: '',
+                priority: 'medium',
+                estimatedScoreImpact: 0,
+                metrics: {},
+              });
+              setShowAddModal(true);
+            }}
+            className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Plus className="w-4 h-4" />
+            Add Recommendation
+          </Button>
+        </div>
 
         {error && (
           <Card className="p-4 bg-red-50 border-red-200 mb-4">
@@ -308,6 +357,17 @@ export function BARecommendationsTab({ applicationId }: { applicationId: string 
           </div>
         )}
       </div>
+
+      <AddRecommendationModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setSelectedRecommendation(null);
+        }}
+        onSave={handleAddRecommendation}
+        recommendation={selectedRecommendation}
+        applicationId={applicationId}
+      />
     </div>
   );
 }
