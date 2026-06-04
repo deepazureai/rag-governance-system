@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, TrendingUp, Plus, Zap } from 'lucide-react';
 import { BAReviewQueueItem } from '@/types/index';
 import { BAReviewItemModal } from './ba-review-item-modal';
 import { TemplateBuilderWizard } from './template-builder-wizard';
 import { TemplateLibrary } from './template-library';
 import { BARecommendationsTab } from './ba-recommendations-tab';
+import { BulkProcessing } from './bulk-processing';
 import { useBAReviewStats } from '@/hooks/useBAReviewStats';
 
 interface BAReviewDashboardProps {
@@ -31,6 +32,7 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
   const [selectedItem, setSelectedItem] = useState<BAReviewQueueItem | null>(null);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [bulkProcessingOpen, setBulkProcessingOpen] = useState(false);
 
   // Use hook to fetch real stats from backend aggregation
   const { stats, isLoading: isLoadingStats } = useBAReviewStats(applicationId);
@@ -220,12 +222,23 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
             <TabsTrigger value="kb">KB Prompts</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
-          {activeTab === 'templates' && (
-            <Button onClick={() => setBuilderOpen(true)} className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Create Template
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setBulkProcessingOpen(true)}
+              variant="outline"
+              className="gap-2"
+              title="Process low-score prompts in bulk"
+            >
+              <Zap className="w-4 h-4" />
+              Bulk Process
             </Button>
-          )}
+            {activeTab === 'templates' && (
+              <Button onClick={() => setBuilderOpen(true)} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Create Template
+              </Button>
+            )}
+          </div>
         </div>
 
         <TabsContent value="all" className="space-y-6">
@@ -442,6 +455,17 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
             improvement: 'Improved version',
             score: item.averageScore || 0,
           }))}
+      />
+
+      {/* Bulk Processing Modal */}
+      <BulkProcessing
+        applicationId={applicationId}
+        isOpen={bulkProcessingOpen}
+        onClose={() => setBulkProcessingOpen(false)}
+        onProcessingComplete={() => {
+          fetchQueueItems();
+          setBulkProcessingOpen(false);
+        }}
       />
     </div>
   );
