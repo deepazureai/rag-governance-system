@@ -134,6 +134,54 @@ export class ConfigManager {
   }
 
   /**
+   * Get KB config with automatic fallback to LLM config
+   * This is a temporary solution to unblock KB functionality while fixing KB config validation
+   * @param applicationId - Application identifier
+   * @returns KB configuration (or LLM config converted to KB format if KB config unavailable)
+   */
+  async getApplicationKBConfigWithFallback(applicationId: string): Promise<IKnowledgeBaseConfig> {
+    try {
+      console.log(`[ConfigManager] Attempting to get KB config for app: ${applicationId}`);
+      
+      // Try to get KB config first
+      try {
+        const kbConfig = await this.getApplicationKBConfig(applicationId);
+        console.log(`[ConfigManager] Successfully retrieved KB config for app: ${applicationId}`);
+        return kbConfig;
+      } catch (kbError) {
+        console.warn(`[ConfigManager] KB config not available, falling back to LLM config:`, kbError instanceof Error ? kbError.message : String(kbError));
+      }
+
+      // Fallback to LLM config
+      console.log(`[ConfigManager] Falling back to LLM config for KB operations on app: ${applicationId}`);
+      const llmConfig = await this.getApplicationLLMConfig(applicationId);
+      
+      // Convert LLM config to KB config format
+      const kbConfig: IKnowledgeBaseConfig = {
+        applicationId,
+        kbLlmProvider: llmConfig.provider || 'azure-openai',
+        azureEndpoint: llmConfig.azureEndpoint,
+        azureApiKey: llmConfig.azureApiKey,
+        azureDeploymentName: llmConfig.azureDeploymentName,
+        azureApiVersion: llmConfig.azureApiVersion,
+        temperature: llmConfig.temperature ?? 0.7,
+        maxTokens: llmConfig.maxTokens ?? 2048,
+        chunkSize: 1024,
+        overlapSize: 100,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as IKnowledgeBaseConfig;
+
+      console.log(`[ConfigManager] Using LLM config as KB config for app: ${applicationId}`);
+      return kbConfig;
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[ConfigManager] Failed to get KB config with fallback for app ${applicationId}:`, errorMsg);
+      throw error;
+    }
+  }
+
+  /**
    * Validate LLM config credentials are correct
    * @param config - LLM configuration to validate
    * @returns Validation result with error details

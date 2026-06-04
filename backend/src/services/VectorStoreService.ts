@@ -4,8 +4,7 @@ import { Document } from '@langchain/core/documents';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
-import { kbConfigService } from './KnowledgeBaseConfigService.js';
-import { cryptoUtil } from '../utils/CryptoUtil.js';
+import { configManager } from '../utils/ConfigManager.js';
 
 interface ChromaConfig {
   collectionName: string;
@@ -48,18 +47,18 @@ export class VectorStoreService {
       let deploymentName = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-large';
       let embeddingProvider = 'azure-openai'; // Default to Azure
 
-      // Try to retrieve app-specific KB config from MongoDB (knowledgebaseconfigs collection)
+      // Try to retrieve app-specific KB config from MongoDB with fallback to LLM config
       if (this.applicationId) {
         try {
-          const kbConfig = await kbConfigService.getConfig(this.applicationId);
+          const kbConfig = await configManager.getApplicationKBConfigWithFallback(this.applicationId);
           if (kbConfig) {
             logger.info(`[VectorStoreService] Found KB config for app ${this.applicationId}`);
             
             // KB config stores embedding credentials separately
             if (kbConfig.embeddingProvider === 'azure-openai') {
-              // Use exact parameter names from config
+              // Use exact parameter names from config - TEMPORARY: Plain text (no decrypt)
               if (kbConfig.embedding_api_key) {
-                apiKey = cryptoUtil.decrypt(kbConfig.embedding_api_key);
+                apiKey = kbConfig.embedding_api_key;
                 logger.info(`[VectorStoreService] Using KB config embedding API key`);
               }
               if (kbConfig.embedding_azure_endpoint) {
@@ -76,9 +75,9 @@ export class VectorStoreService {
               
               logger.info(`[VectorStoreService] Using Azure KB embedding config for app ${this.applicationId}`);
             } else if (kbConfig.embeddingProvider === 'openai') {
-              // Standard OpenAI provider
+              // Standard OpenAI provider - TEMPORARY: Plain text (no decrypt)
               if (kbConfig.embeddingOpenaiApiKey) {
-                apiKey = cryptoUtil.decrypt(kbConfig.embeddingOpenaiApiKey);
+                apiKey = kbConfig.embeddingOpenaiApiKey;
               }
               embeddingProvider = 'openai';
               logger.info(`[VectorStoreService] Using OpenAI KB embedding config for app ${this.applicationId}`);

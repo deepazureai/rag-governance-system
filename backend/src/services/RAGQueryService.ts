@@ -1,7 +1,6 @@
 import { logger } from '../utils/logger.js';
-import { kbConfigService } from './KnowledgeBaseConfigService.js';
+import { configManager } from '../utils/ConfigManager.js';
 import { getVectorStore } from './VectorStoreService.js';
-import { cryptoUtil } from '../utils/CryptoUtil.js';
 
 // DocumentChunk interface for search results
 interface DocumentChunk {
@@ -48,15 +47,15 @@ class RAGQueryService {
     logger.info(`[RAGQueryService] Starting RAG query for app: ${applicationId}`);
 
     try {
-      // Step 1: Retrieve KB config with LLM settings
-      const kbConfig = await kbConfigService.getConfig(applicationId);
+      // Step 1: Retrieve KB config with fallback to LLM config
+      const kbConfig = await configManager.getApplicationKBConfigWithFallback(applicationId);
       if (!kbConfig) {
         throw new Error(
-          'KB configuration not found. Please configure Settings -> Knowledge Base before querying.'
+          'KB configuration not found. Please configure Settings -> LLM before querying.'
         );
       }
 
-      logger.info(`[RAGQueryService] KB config retrieved: provider=${kbConfig.kbLlmProvider}`);
+      logger.info(`[RAGQueryService] KB config retrieved (with fallback): provider=${kbConfig.kbLlmProvider}`);
 
       // Step 2: Retrieve relevant documents using semantic search
       const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
@@ -152,11 +151,11 @@ Please answer the question based on the provided context. If the context doesn't
     maxTokens: number
   ): Promise<string> {
     try {
-      // Decrypt credentials from KB config
-      const apiKey = cryptoUtil.decrypt(kbConfig.kbllm_api_key);
-      const endpoint = kbConfig.kbllm_azure_endpoint;
-      const apiVersion = kbConfig.kbllm_api_version || '2024-02-15-preview';
-      const deploymentName = kbConfig.kbllm_deployment || 'gpt-4';
+      // TEMPORARY: Plain text credentials for baseline testing (no decryption needed)
+      const apiKey = kbConfig.kbllm_api_key || kbConfig.azureApiKey;
+      const endpoint = kbConfig.kbllm_azure_endpoint || kbConfig.azureEndpoint;
+      const apiVersion = kbConfig.kbllm_api_version || kbConfig.azureApiVersion || '2024-02-15-preview';
+      const deploymentName = kbConfig.kbllm_deployment || kbConfig.azureDeploymentName || 'gpt-4';
 
       logger.info(
         `[RAGQueryService] Azure OpenAI config: endpoint=${endpoint}, deployment=${deploymentName}, apiVersion=${apiVersion}`
