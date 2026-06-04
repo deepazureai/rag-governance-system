@@ -87,19 +87,30 @@ export function CreateTemplateWizard({
   const handleSave = useCallback(async (): Promise<void> => {
     setIsSaving(true);
     try {
+      if (!synthesizedTemplate) {
+        alert('Template synthesis is required');
+        return;
+      }
+
       const templateData = {
-        applicationId,
         name: templateName,
         description: templateDescription,
+        templateText: synthesizedTemplate.crewaiTemplate,
+        crewAITemplate: synthesizedTemplate.crewaiTemplate,
         frameworks: selectedFrameworks,
-        synthesis: {
-          recommendationIds: selectedRecommendationIds,
-          kbPromptIds: selectedKBPromptIds,
-          crewaiTemplate: synthesizedTemplate?.crewaiTemplate,
-          metadata: synthesizedTemplate?.metadata,
-        },
-        distribution: distributeTo,
+        sourceRecommendationIds: selectedRecommendationIds,
+        sourceKBPromptIds: selectedKBPromptIds,
+        synthesisMetadata: synthesizedTemplate.metadata,
+        distributionTargets: distributeTo === 'private' ? [] : [{ type: 'role', roleId: distributeTo }],
+        status: 'draft',
       };
+
+      console.log('[v0] CreateTemplateWizard saving template:', {
+        applicationId,
+        name: templateName,
+        hasTemplate: !!synthesizedTemplate.crewaiTemplate,
+        templateLength: synthesizedTemplate.crewaiTemplate?.length || 0,
+      });
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/prompt-templates/app/${applicationId}`,
@@ -110,14 +121,21 @@ export function CreateTemplateWizard({
         }
       );
 
+      const responseText = await response.text();
+      console.log('[v0] CreateTemplateWizard response status:', response.status);
+      console.log('[v0] CreateTemplateWizard response body:', responseText);
+
       if (!response.ok) {
-        throw new Error(`Failed to save template: ${response.statusText}`);
+        const errorMessage = responseText || response.statusText;
+        throw new Error(`Failed to save template: ${errorMessage}`);
       }
 
-      const result = (await response.json()) as unknown;
+      const result = JSON.parse(responseText) as unknown;
       if (onTemplateCreated) {
         onTemplateCreated(result);
       }
+
+      alert('Template created successfully!');
 
       // Reset form
       setCurrentStep(0);

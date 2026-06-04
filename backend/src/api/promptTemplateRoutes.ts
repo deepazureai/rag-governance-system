@@ -95,16 +95,60 @@ promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Pr
 
     const templateData = (body && typeof body === 'object' ? (body as Record<string, unknown>) : {}) as Record<string, unknown>;
 
+    // Extract template text from either templateText or crewAITemplate fields
+    const templateText = (templateData.templateText as string) || 
+                        (templateData.crewAITemplate as string) || 
+                        '';
+    
+    if (!templateText?.trim()) {
+      console.error('[v0] Template save failed - missing template text. Body:', {
+        hasTemplateText: !!templateData.templateText,
+        hasCrewAITemplate: !!templateData.crewAITemplate,
+        fields: Object.keys(templateData),
+      });
+      res.status(400).json({ 
+        success: false, 
+        message: 'Template text (templateText or crewAITemplate) is required',
+        receivedFields: Object.keys(templateData)
+      });
+      return;
+    }
+
+    // Create crewAITemplate object if it's just a string
+    let crewAITemplateValue: any = templateData.crewAITemplate || templateText;
+    if (typeof crewAITemplateValue === 'string') {
+      crewAITemplateValue = {
+        actor: 'Assistant',
+        objective: (templateData.description as string) || 'Execute task',
+        task: templateText.substring(0, 500),
+        context: 'System-generated template',
+        expectedOutput: 'Structured output',
+      };
+    }
+
+    console.log('[v0] Creating template for app:', {
+      appId,
+      name: templateData.name,
+      templateLength: templateText.length,
+      hasMetadata: !!templateData.synthesisMetadata,
+    });
+
     const newTemplate = new PromptTemplate({
       applicationId: appId.toString(),
       name: (templateData.name as string) || 'Untitled Template',
       description: (templateData.description as string) || '',
-      templateText: (templateData.templateText as string) || '',
+      templateText: templateText,
       category: (templateData.category as string) || '',
       tags: Array.isArray(templateData.tags) ? templateData.tags : [],
-      sourceRecommendationIds: Array.isArray(templateData.sourceRecommendationIds) ? (templateData.sourceRecommendationIds as Types.ObjectId[]) : [],
-      sourceKBPromptIds: Array.isArray(templateData.sourceKBPromptIds) ? (templateData.sourceKBPromptIds as Types.ObjectId[]) : [],
+      crewAITemplate: crewAITemplateValue,
+      sourceRecommendationIds: Array.isArray(templateData.sourceRecommendationIds) 
+        ? (templateData.sourceRecommendationIds as string[]).map((id: string) => new Types.ObjectId(id))
+        : [],
+      sourceKBPromptIds: Array.isArray(templateData.sourceKBPromptIds) 
+        ? (templateData.sourceKBPromptIds as string[]).map((id: string) => new Types.ObjectId(id))
+        : [],
       sources: [],
+      synthesisMetadata: templateData.synthesisMetadata as Record<string, unknown> || undefined,
       status: 'draft',
       version: 1,
       isPublic: false,
@@ -113,6 +157,12 @@ promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Pr
     });
 
     await newTemplate.save();
+    console.log('[v0] Template saved successfully:', {
+      templateId: newTemplate._id,
+      appId,
+      name: newTemplate.name,
+    });
+
     logger.info(`[promptTemplateRoutes] Template created: ${newTemplate._id}`);
 
     res.status(201).json({
@@ -122,8 +172,13 @@ promptTemplateRouter.post('/app/:appId', async (req: Request, res: Response): Pr
     } as ApiResponse<IPromptTemplate>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] Template creation error:', {
+      message,
+      body: req.body,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     logger.error(`[promptTemplateRoutes] Error creating template: ${message}`);
-    res.status(500).json({ success: false, message });
+    res.status(500).json({ success: false, message, details: message });
   }
 });
 
