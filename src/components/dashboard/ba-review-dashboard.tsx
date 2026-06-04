@@ -19,11 +19,13 @@ interface BAReviewDashboardProps {
 }
 
 export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'queue' | 'kb' | 'templates'>('queue');
+  const [activeTab, setActiveTab] = useState<'all' | 'queue' | 'kb' | 'templates'>('all');
   const [queueItems, setQueueItems] = useState<BAReviewQueueItem[]>([]);
   const [kbPrompts, setKBPrompts] = useState<any[]>([]);
+  const [unifiedItems, setUnifiedItems] = useState<any[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
   const [isLoadingKB, setIsLoadingKB] = useState(false);
+  const [isLoadingUnified, setIsLoadingUnified] = useState(false);
   const [approvingKBId, setApprovingKBId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<BAReviewQueueItem | null>(null);
@@ -70,7 +72,38 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
   React.useEffect(() => {
     fetchQueueItems();
     fetchKBPrompts();
+    fetchUnifiedItems();
   }, [applicationId]);
+
+  const fetchUnifiedItems = async (): Promise<void> => {
+    try {
+      setIsLoadingUnified(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/ba-review/approved-prompts/${applicationId}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('[v0] Unified approved prompts endpoint not yet implemented');
+          setUnifiedItems([]);
+          return;
+        }
+        throw new Error('Failed to fetch unified items');
+      }
+
+      const data = await response.json();
+      const items = Array.isArray(data.data) ? data.data : [];
+
+      if (data.success) {
+        setUnifiedItems(items);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load unified items';
+      console.error('[v0] Error fetching unified items:', message);
+      setUnifiedItems([]);
+    } finally {
+      setIsLoadingUnified(false);
+    }
+  };
 
   const fetchKBPrompts = async (): Promise<void> => {
     try {
@@ -179,9 +212,10 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as 'queue' | 'kb' | 'templates')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as 'all' | 'queue' | 'kb' | 'templates')} className="w-full">
         <div className="flex items-center justify-between mb-4">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-lg grid-cols-4">
+            <TabsTrigger value="all">All Items</TabsTrigger>
             <TabsTrigger value="queue">Recommendations</TabsTrigger>
             <TabsTrigger value="kb">KB Prompts</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -193,6 +227,86 @@ export function BAReviewDashboard({ applicationId }: BAReviewDashboardProps) {
             </Button>
           )}
         </div>
+
+        <TabsContent value="all" className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">All Review Items</h2>
+            <p className="text-sm text-gray-600 mb-4">Unified view of approved recommendations and KB prompts for template building</p>
+
+            {isLoadingUnified ? (
+              <Card className="p-8 text-center bg-gray-50 border-gray-200">
+                <Spinner className="w-6 h-6 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">Loading items...</p>
+              </Card>
+            ) : unifiedItems.length === 0 ? (
+              <Card className="p-8 text-center bg-gray-50 border-gray-200">
+                <CheckCircle className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">No items yet</p>
+                <p className="text-gray-500 text-sm mt-1">Create recommendations or badge KB prompts to see them here</p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {unifiedItems.map((item) => (
+                  <Card
+                    key={item._id}
+                    className="p-4 border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        {/* Source Badge */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={
+                            item.source === 'kb_prompt'
+                              ? 'bg-blue-100 text-blue-800 border-blue-300'
+                              : 'bg-purple-100 text-purple-800 border-purple-300'
+                          }>
+                            {item.source === 'kb_prompt' ? 'KB Prompt' : 'Recommendation'}
+                          </Badge>
+                          {item.priority && (
+                            <Badge className={getPriorityColor(item.priority)}>
+                              {item.priority}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Prompt Preview */}
+                        <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
+                          {item.prompt || item.userPrompt}
+                        </p>
+
+                        {/* Context/Suggestion Preview */}
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                          {item.source === 'recommendation'
+                            ? `Suggestion: ${item.suggestion}`
+                            : `Context: ${item.context?.substring(0, 100) || 'N/A'}...`
+                          }
+                        </p>
+
+                        {/* Additional Info */}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          {item.source === 'recommendation' && item.reason && (
+                            <span className="flex items-center gap-1">
+                              {getReasonIcon(item.reason)}
+                              {item.reason}
+                            </span>
+                          )}
+                          {item.source === 'kb_prompt' && item.relevanceScore && (
+                            <span>Relevance: {(item.relevanceScore * 100).toFixed(0)}%</span>
+                          )}
+                          {item.createdAt && (
+                            <span>
+                              Created: {new Date(item.createdAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="queue" className="space-y-6">
           <BARecommendationsTab applicationId={applicationId} />
