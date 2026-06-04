@@ -60,32 +60,27 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   const [savedConfig, setSavedConfig] = useState<KnowledgeBaseConfig | null>(null);
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
-  const [chunkSize, setChunkSize] = useState(1024);
-  const [overlapSize, setOverlapSize] = useState(100);
 
   // Load existing config on mount
   useEffect(() => {
     const loadConfig = async (): Promise<void> => {
       try {
-        setIsLoading(true);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         const response = await fetch(`${apiUrl}/api/kb-config/app/${applicationId}`);
-
+        
         if (response.ok) {
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
           if (data.data) {
             setSavedConfig(data.data);
-            const configData = data.data as any;
-            setProvider((configData.kbLlmProvider || 'azure-openai') as KBProvider);
-            setTemperature(configData.temperature ?? 0.7);
-            setMaxTokens(configData.maxTokens ?? 2048);
-            setChunkSize(configData.chunkSize ?? 1024);
-            setOverlapSize(configData.overlapSize ?? 100);
-
+            setProvider((data.data.kbLlmProvider || 'azure-openai') as KBProvider);
+            setTemperature(data.data.temperature ?? 0.7);
+            setMaxTokens(data.data.maxTokens ?? 2048);
+            
             // Populate form with existing values
             if (data.data) {
               const form: Record<string, string> = {};
-              const providerValue = ((configData.kbLlmProvider || 'azure-openai') as KBProvider);
+              const configData = data.data;
+              const providerValue = (configData.kbLlmProvider || 'azure-openai') as KBProvider;
               const providerFields = PROVIDER_FIELDS[providerValue];
               providerFields.forEach((field: ProviderField) => {
                 const fieldName = field.name;
@@ -99,9 +94,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
           }
         }
       } catch (error: unknown) {
-        console.error('[v0] Error loading KB LLM config:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('[v0] Error loading KB config:', error);
       }
     };
 
@@ -118,13 +111,13 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
   const validateForm = (): boolean => {
     const fields = PROVIDER_FIELDS[provider];
-
+    
     for (const field of fields) {
       if (field.required && !formData[field.name]?.trim()) {
         return false;
       }
     }
-
+    
     // Validate Azure API version format
     if (provider === 'azure-openai') {
       const apiVersion = formData.azureApiVersion?.trim() || '';
@@ -134,7 +127,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         return false;
       }
     }
-
+    
     return true;
   };
 
@@ -153,8 +146,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         ...formData,
         temperature,
         maxTokens,
-        chunkSize,
-        overlapSize,
+        isDefault: true,
       };
 
       const response = await fetch(`${apiUrl}/api/kb-config/app/${applicationId}`, {
@@ -192,7 +184,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          kbLlmProvider: provider,
+          provider,
           ...formData,
         }),
       });
@@ -218,11 +210,11 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   const currentFields = PROVIDER_FIELDS[provider];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">KB LLM Provider Configuration</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Configure which LLM provider to use for knowledge base operations (embeddings and response generation). This setting applies per application and is used for knowledge base queries and context retrieval.
+          Configure which LLM provider to use for knowledge base operations. This setting applies to the KB embedding and response generation.
         </p>
       </div>
 
@@ -232,34 +224,19 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             <div>
               <p className="text-sm font-medium text-green-900">Configuration Active</p>
               <p className="text-xs text-green-700 mt-1">
-                KB LLM: <Badge variant="outline">{provider}</Badge>
+                Provider: <Badge variant="outline">{savedConfig.kbLlmProvider}</Badge>
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      {message && (
-        <div
-          className={`p-3 rounded-md text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
       <div>
         <label className="block text-sm font-medium mb-2">KB LLM Provider</label>
-        <Select
-          value={provider}
-          onValueChange={(value: string) => {
-            setProvider(value as KBProvider);
-            setFormData({});
-          }}
-        >
+        <Select value={provider} onValueChange={(value: string) => {
+          setProvider(value as KBProvider);
+          setFormData({});
+        }}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -270,7 +247,6 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             <SelectItem value="aws-bedrock">AWS Bedrock</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-gray-500 mt-1">Choose which LLM provider to use for KB operations</p>
       </div>
 
       {/* Provider-specific fields */}
@@ -285,11 +261,8 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
               type={field.type}
               placeholder={field.placeholder}
               value={formData[field.name] ?? ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleInputChange(field.name, e.target.value)
-              }
-              className="w-full overflow-hidden overflow-ellipsis"
-              style={{ minWidth: 0 }}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange(field.name, e.target.value)}
+              className="w-full"
             />
           </div>
         ))}
@@ -305,14 +278,10 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             max="2"
             step="0.1"
             value={temperature}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setTemperature(parseFloat(e.target.value))
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTemperature(parseFloat(e.target.value))}
             className="w-full"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Higher = more creative, Lower = more focused
-          </p>
+          <p className="text-xs text-gray-500 mt-1">Higher = more creative, Lower = more focused</p>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Max Tokens</label>
@@ -321,45 +290,24 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             min="100"
             max="4000"
             value={maxTokens}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setMaxTokens(parseInt(e.target.value, 10))
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxTokens(parseInt(e.target.value, 10))}
             className="w-full"
           />
         </div>
       </div>
 
-      {/* KB-specific settings */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Chunk Size</label>
-          <Input
-            type="number"
-            min="256"
-            max="4096"
-            value={chunkSize}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setChunkSize(parseInt(e.target.value, 10))
-            }
-            className="w-full"
-          />
-          <p className="text-xs text-gray-500 mt-1">Document chunk size for embeddings</p>
+      {/* Messages */}
+      {message && (
+        <div
+          className={`p-3 rounded-md text-sm ${
+            message.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {message.text}
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Overlap Size</label>
-          <Input
-            type="number"
-            min="0"
-            max="512"
-            value={overlapSize}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setOverlapSize(parseInt(e.target.value, 10))
-            }
-            className="w-full"
-          />
-          <p className="text-xs text-gray-500 mt-1">Chunk overlap for context continuity</p>
-        </div>
-      </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 pt-4">
