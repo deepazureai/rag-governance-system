@@ -72,12 +72,14 @@ export function CreateTemplateModal({
     const templateData = {
       name: templateName,
       description: templateDesc,
-      promptText,
+      templateText: promptText,
+      crewAITemplate: promptText,
       tags,
       category,
       applicationId,
-      metrics: {
+      synthesisMetadata: {
         averageScore: Object.values(metrics).reduce((a, b) => a + b, 0) / Object.keys(metrics).length,
+        metrics: metrics,
       },
       analysis: {
         rootCauses: analysis.rootCauses,

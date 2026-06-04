@@ -65,15 +65,24 @@ router.post('/', validateRequest(CreateTemplateRequestSchema), async (req: Reque
   try {
     const userId = req.user?.id || 'system';
 
+    console.log('[v0] Creating template with body:', {
+      applicationId: req.body.applicationId,
+      name: req.body.name,
+      hasTemplateText: !!req.body.templateText,
+      hasCrewAITemplate: !!req.body.crewAITemplate,
+      hasSynthesisMetadata: !!req.body.synthesisMetadata,
+    });
+
     const template = new PromptTemplate({
       applicationId: req.body.applicationId,
       name: req.body.name,
       description: req.body.description,
-      templateText: req.body.templateText,
-      crewAITemplate: req.body.crewAITemplate,
-      sourceKBPromptIds: req.body.sourceKBThreadIds?.map((id: string) => new Types.ObjectId(id)) || [],
+      templateText: req.body.templateText || req.body.crewAITemplate,
+      crewAITemplate: req.body.crewAITemplate || req.body.templateText,
+      sourceKBPromptIds: req.body.sourceKBPromptIds?.map((id: string) => new Types.ObjectId(id)) || 
+                         req.body.sourceKBThreadIds?.map((id: string) => new Types.ObjectId(id)) || [],
       sourceRecommendationIds: req.body.sourceRecommendationIds?.map((id: string) => new Types.ObjectId(id)) || [],
-      synthesisMetadata: req.body.synthesisMetadata,
+      synthesisMetadata: req.body.synthesisMetadata || req.body.metrics,
       distributionTargets: req.body.distributionTargets || [],
       llmConfigUsedForRefinement: new Types.ObjectId(process.env.DEFAULT_LLM_CONFIG_ID || '000000000000000000000001'),
       status: 'draft',
@@ -82,10 +91,20 @@ router.post('/', validateRequest(CreateTemplateRequestSchema), async (req: Reque
 
     await template.save();
 
+    console.log('[v0] Template saved successfully:', {
+      templateId: template._id,
+      applicationId: template.applicationId,
+      name: template.name,
+    });
+
     logger.info(`[TemplatesAPI] Template created: ${template._id}`);
     res.status(201).json(template);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[v0] Template creation error:', {
+      error: errorMessage,
+      body: req.body,
+    });
     logger.error(`[TemplatesAPI] Create failed: ${errorMessage}`);
     res.status(500).json({ error: errorMessage });
   }
