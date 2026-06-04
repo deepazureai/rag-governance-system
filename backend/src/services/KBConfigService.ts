@@ -1,20 +1,20 @@
 import mongoose, { Types } from 'mongoose';
 import { KnowledgeBaseConfig, KnowledgeBaseConfigInput, ApiResponse } from '../types/models.js';
 import { KnowledgeBaseConfigSchema } from '../schemas/index.js';
-import { cryptoUtil } from '../utils/CryptoUtil.js';
 import { configManager } from '../utils/ConfigManager.js';
 
 /**
- * KB Config Service
+ * KB Config Service - SIMPLIFIED (NO ENCRYPTION FOR BASELINE TESTING)
  * Handles CRUD operations for Knowledge Base LLM provider configurations
- * Based on proven LLMConfigService pattern
+ * Stores credentials as plain text for initial testing to validate Azure connection
+ * Encryption will be added incrementally after confirming basic functionality
  */
 export class KBConfigService {
   private readonly collection = 'knowledgebaseconfigs';
 
   /**
    * Create or update KB configuration for an application
-   * Encrypts sensitive credentials before storing
+   * TEMPORARY: Stores plain text credentials for baseline testing
    */
   async upsertConfig(input: KnowledgeBaseConfigInput): Promise<KnowledgeBaseConfig> {
     try {
@@ -27,9 +27,9 @@ export class KBConfigService {
         throw new Error(`Validation failed: ${errors}`);
       }
 
-      // Encrypt sensitive fields
-      const config = this.encryptSensitiveFields(validation.data as any);
-      console.log('[v0] KB encrypted config keys:', Object.keys(config));
+      // Normalize legacy field names but do NOT encrypt
+      const config = this.normalizeLegacyFieldNames(validation.data as any);
+      console.log('[v0] KB normalized config keys:', Object.keys(config), 'PLAIN TEXT (no encryption)');
 
       const db = mongoose.connection;
       if (!db || !db.collection) {
@@ -45,6 +45,10 @@ export class KBConfigService {
 
       const applicationId = (config as Record<string, unknown>).applicationId as string;
       console.log('[v0] KB upserting config for applicationId:', applicationId);
+      
+      // Add timestamps
+      (config as Record<string, unknown>).createdAt = (config as Record<string, unknown>).createdAt || new Date();
+      (config as Record<string, unknown>).updatedAt = new Date();
       
       // Use updateOne with upsert to upsert
       try {
@@ -82,7 +86,7 @@ export class KBConfigService {
 
       console.log('[v0] KB successfully upserted and retrieved config for applicationId:', applicationId);
       
-      // CRITICAL: Invalidate the config cache so next request fetches fresh config from DB
+      // Invalidate the config cache so next request fetches fresh config from DB
       configManager.invalidateKBCache(applicationId);
       console.log('[v0] KB invalidated KB config cache for app:', applicationId);
       
@@ -95,7 +99,7 @@ export class KBConfigService {
 
   /**
    * Get KB configuration for an application
-   * Decrypts sensitive fields before returning
+   * Returns plain text credentials (no decryption needed for baseline)
    */
   async getConfig(applicationId: string): Promise<KnowledgeBaseConfig | null> {
     try {
@@ -108,9 +112,8 @@ export class KBConfigService {
 
       const config = await collection.findOne({ applicationId }) as KnowledgeBaseConfig | null;
       
-      // Decrypt sensitive fields before returning
       if (config) {
-        return this.decryptSensitiveFields(config);
+        console.log('[v0] KB getConfig returning plain text config for app:', applicationId);
       }
       
       return config;
@@ -283,120 +286,33 @@ export class KBConfigService {
   }
 
   /**
-   * Encrypt sensitive credential fields
-   * Handles both new field names (kbllm_api_key, kbllm_azure_endpoint) and legacy names (azureApiKey, azureEndpoint)
-   * @param config - Configuration object to encrypt
-   * @returns Configuration with encrypted sensitive fields
-   */
-  private encryptSensitiveFields(config: KnowledgeBaseConfigInput): KnowledgeBaseConfigInput {
-    // First normalize legacy field names to exact format
-    const normalized = this.normalizeLegacyFieldNames(config as unknown as Record<string, unknown>);
-    const encrypted: KnowledgeBaseConfigInput = { ...normalized } as KnowledgeBaseConfigInput;
-
-    // Encrypt KB Azure OpenAI credentials - ALL variants
-    if ((encrypted as any).kbllm_api_key && typeof (encrypted as any).kbllm_api_key === 'string') {
-      (encrypted as Record<string, unknown>).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
-    }
-    if (encrypted.kbLlmAzureApiKey && typeof encrypted.kbLlmAzureApiKey === 'string') {
-      encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
-    }
-
-    // Encrypt Azure endpoint fields - ALL variants
-    if ((encrypted as any).kbllm_azure_endpoint && typeof (encrypted as any).kbllm_azure_endpoint === 'string') {
-      (encrypted as Record<string, unknown>).kbllm_azure_endpoint = cryptoUtil.encrypt((encrypted as any).kbllm_azure_endpoint);
-    }
-    if (encrypted.kbLlmAzureEndpoint && typeof encrypted.kbLlmAzureEndpoint === 'string') {
-      encrypted.kbLlmAzureEndpoint = cryptoUtil.encrypt(encrypted.kbLlmAzureEndpoint);
-    }
-
-    // Encrypt Azure deployment fields - ALL variants
-    if ((encrypted as any).kbllm_deployment && typeof (encrypted as any).kbllm_deployment === 'string') {
-      (encrypted as Record<string, unknown>).kbllm_deployment = cryptoUtil.encrypt((encrypted as any).kbllm_deployment);
-    }
-    if (encrypted.kbLlmAzureDeploymentName && typeof encrypted.kbLlmAzureDeploymentName === 'string') {
-      encrypted.kbLlmAzureDeploymentName = cryptoUtil.encrypt(encrypted.kbLlmAzureDeploymentName);
-    }
-
-    // Encrypt Azure API version fields - ALL variants
-    if ((encrypted as any).kbllm_api_version && typeof (encrypted as any).kbllm_api_version === 'string') {
-      (encrypted as Record<string, unknown>).kbllm_api_version = cryptoUtil.encrypt((encrypted as any).kbllm_api_version);
-    }
-    if ((encrypted as any).kbLlmAzureApiVersion && typeof (encrypted as any).kbLlmAzureApiVersion === 'string') {
-      (encrypted as any).kbLlmAzureApiVersion = cryptoUtil.encrypt((encrypted as any).kbLlmAzureApiVersion);
-    }
-    
-    // Encrypt Claude credentials - ALL variants
-    if (encrypted.kbLlmClaudeApiKey && typeof encrypted.kbLlmClaudeApiKey === 'string') {
-      encrypted.kbLlmClaudeApiKey = cryptoUtil.encrypt(encrypted.kbLlmClaudeApiKey);
-    }
-    if (encrypted.kbLlmClaudeModel && typeof encrypted.kbLlmClaudeModel === 'string') {
-      encrypted.kbLlmClaudeModel = cryptoUtil.encrypt(encrypted.kbLlmClaudeModel);
-    }
-    
-    // Encrypt AWS credentials - ALL variants
-    if (encrypted.kbLlmAwsAccessKeyId && typeof encrypted.kbLlmAwsAccessKeyId === 'string') {
-      encrypted.kbLlmAwsAccessKeyId = cryptoUtil.encrypt(encrypted.kbLlmAwsAccessKeyId);
-    }
-    if (encrypted.kbLlmAwsSecretAccessKey && typeof encrypted.kbLlmAwsSecretAccessKey === 'string') {
-      encrypted.kbLlmAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.kbLlmAwsSecretAccessKey);
-    }
-    if (encrypted.kbLlmAwsRegion && typeof encrypted.kbLlmAwsRegion === 'string') {
-      encrypted.kbLlmAwsRegion = cryptoUtil.encrypt(encrypted.kbLlmAwsRegion);
-    }
-    if (encrypted.kbLlmBedrockModelId && typeof encrypted.kbLlmBedrockModelId === 'string') {
-      encrypted.kbLlmBedrockModelId = cryptoUtil.encrypt(encrypted.kbLlmBedrockModelId);
-    }
-    
-    // Encrypt OpenAI credentials - ALL variants
-    if (encrypted.kbLlmOpenaiApiKey && typeof encrypted.kbLlmOpenaiApiKey === 'string') {
-      encrypted.kbLlmOpenaiApiKey = cryptoUtil.encrypt(encrypted.kbLlmOpenaiApiKey);
-    }
-    if (encrypted.kbLlmOpenaiModel && typeof encrypted.kbLlmOpenaiModel === 'string') {
-      encrypted.kbLlmOpenaiModel = cryptoUtil.encrypt(encrypted.kbLlmOpenaiModel);
-    }
-
-    // Encrypt embedding credentials - ALL variants
-    if ((encrypted as Record<string, unknown>).embedding_api_key && typeof (encrypted as Record<string, unknown>).embedding_api_key === 'string') {
-      (encrypted as Record<string, unknown>).embedding_api_key = cryptoUtil.encrypt((encrypted as Record<string, unknown>).embedding_api_key as string);
-    }
-    if (encrypted.embeddingAzureApiKey && typeof encrypted.embeddingAzureApiKey === 'string') {
-      encrypted.embeddingAzureApiKey = cryptoUtil.encrypt(encrypted.embeddingAzureApiKey);
-    }
-
-    // Add timestamps
-    (encrypted as Record<string, unknown>).createdAt = (encrypted as Record<string, unknown>).createdAt || new Date();
-    (encrypted as Record<string, unknown>).updatedAt = new Date();
-
-    return encrypted;
-  }
-
-  /**
    * Normalize legacy field names to exact format for LLMClientFactory
    * Frontend sends: azureApiKey, azureEndpoint, azureDeploymentName, azureApiVersion
    * Store as: kbllm_api_key, kbllm_azure_endpoint, kbllm_deployment, kbllm_api_version
+   * PLAIN TEXT - no encryption needed for baseline testing
    */
-  private normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
+  private normalizeLegacyFieldNames(config: any): Record<string, unknown> {
     const normalized = { ...config };
 
     // Convert Azure OpenAI legacy names to exact format
-    if (config.azureApiKey && !(normalized as any).kbllm_api_key) {
-      (normalized as any).kbllm_api_key = config.azureApiKey;
+    if (config.azureApiKey && !normalized.kbllm_api_key) {
+      normalized.kbllm_api_key = config.azureApiKey;
     }
-    if (config.azureEndpoint && !(normalized as any).kbllm_azure_endpoint) {
-      (normalized as any).kbllm_azure_endpoint = config.azureEndpoint;
+    if (config.azureEndpoint && !normalized.kbllm_azure_endpoint) {
+      normalized.kbllm_azure_endpoint = config.azureEndpoint;
     }
-    if (config.azureDeploymentName && !(normalized as any).kbllm_deployment) {
-      (normalized as any).kbllm_deployment = config.azureDeploymentName;
+    if (config.azureDeploymentName && !normalized.kbllm_deployment) {
+      normalized.kbllm_deployment = config.azureDeploymentName;
     }
-    if (config.azureApiVersion && !(normalized as any).kbllm_api_version) {
-      (normalized as any).kbllm_api_version = config.azureApiVersion;
+    if (config.azureApiVersion && !normalized.kbllm_api_version) {
+      normalized.kbllm_api_version = config.azureApiVersion;
     }
 
     // Extract base endpoint if full URL is provided
-    if ((normalized as any).kbllm_azure_endpoint && typeof (normalized as any).kbllm_azure_endpoint === 'string') {
-      let endpoint = (normalized as any).kbllm_azure_endpoint;
+    if (normalized.kbllm_azure_endpoint && typeof normalized.kbllm_azure_endpoint === 'string') {
+      let endpoint = normalized.kbllm_azure_endpoint;
       
-      // First, remove any query parameters from the URL
+      // Remove query parameters
       if (endpoint.includes('?')) {
         const parts = endpoint.split('?');
         endpoint = parts[0] || endpoint;
@@ -406,110 +322,24 @@ export class KBConfigService {
       if (endpoint.includes('/openai/deployments/')) {
         const parts = endpoint.split('/openai/deployments/');
         const baseUrl = parts[0] || endpoint;
-        (normalized as any).kbllm_azure_endpoint = baseUrl;
-        console.log('[v0] KBConfigService: Extracted base endpoint from full URL:', {
+        normalized.kbllm_azure_endpoint = baseUrl;
+        console.log('[v0] KB: Extracted base endpoint from full URL:', {
           original: endpoint,
           extracted: baseUrl,
         });
       }
     }
 
-    console.log('[v0] KB normalized config:', {
-      provider: (normalized as any).kbLlmProvider,
-      has_api_key: !!(normalized as any).kbllm_api_key,
-      has_azure_endpoint: !!(normalized as any).kbllm_azure_endpoint,
-      has_deployment: !!(normalized as any).kbllm_deployment,
-      has_api_version: !!(normalized as any).kbllm_api_version,
+    console.log('[v0] KB normalized config (plain text):', {
+      provider: normalized.kbLlmProvider,
+      has_api_key: !!normalized.kbllm_api_key,
+      api_key_length: normalized.kbllm_api_key ? String(normalized.kbllm_api_key).length : 0,
+      has_azure_endpoint: !!normalized.kbllm_azure_endpoint,
+      has_deployment: !!normalized.kbllm_deployment,
+      has_api_version: !!normalized.kbllm_api_version,
     });
 
-    return normalized as KnowledgeBaseConfigInput;
-  }
-
-  /**
-   * Decrypt sensitive credential fields for display
-   * @param config - Configuration object with encrypted fields
-   * @returns Configuration with decrypted sensitive fields
-   */
-  private decryptSensitiveFields(config: KnowledgeBaseConfig): KnowledgeBaseConfig {
-    const decrypted: any = { ...config };
-
-    try {
-      // Decrypt KB Azure OpenAI credentials - ALL variants
-      if (decrypted.kbllm_api_key && typeof decrypted.kbllm_api_key === 'string') {
-        decrypted.kbllm_api_key = cryptoUtil.decrypt(decrypted.kbllm_api_key);
-      }
-      if (decrypted.kbLlmAzureApiKey && typeof decrypted.kbLlmAzureApiKey === 'string') {
-        decrypted.kbLlmAzureApiKey = cryptoUtil.decrypt(decrypted.kbLlmAzureApiKey);
-      }
-
-      // Decrypt Azure endpoint fields - ALL variants
-      if (decrypted.kbllm_azure_endpoint && typeof decrypted.kbllm_azure_endpoint === 'string') {
-        decrypted.kbllm_azure_endpoint = cryptoUtil.decrypt(decrypted.kbllm_azure_endpoint);
-      }
-      if (decrypted.kbLlmAzureEndpoint && typeof decrypted.kbLlmAzureEndpoint === 'string') {
-        decrypted.kbLlmAzureEndpoint = cryptoUtil.decrypt(decrypted.kbLlmAzureEndpoint);
-      }
-
-      // Decrypt Azure deployment fields - ALL variants
-      if (decrypted.kbllm_deployment && typeof decrypted.kbllm_deployment === 'string') {
-        decrypted.kbllm_deployment = cryptoUtil.decrypt(decrypted.kbllm_deployment);
-      }
-      if (decrypted.kbLlmAzureDeploymentName && typeof decrypted.kbLlmAzureDeploymentName === 'string') {
-        decrypted.kbLlmAzureDeploymentName = cryptoUtil.decrypt(decrypted.kbLlmAzureDeploymentName);
-      }
-
-      // Decrypt Azure API version fields - ALL variants
-      if (decrypted.kbllm_api_version && typeof decrypted.kbllm_api_version === 'string') {
-        decrypted.kbllm_api_version = cryptoUtil.decrypt(decrypted.kbllm_api_version);
-      }
-      if (decrypted.kbLlmAzureApiVersion && typeof decrypted.kbLlmAzureApiVersion === 'string') {
-        decrypted.kbLlmAzureApiVersion = cryptoUtil.decrypt(decrypted.kbLlmAzureApiVersion);
-      }
-      
-      // Decrypt Claude credentials - ALL variants
-      if (decrypted.kbLlmClaudeApiKey && typeof decrypted.kbLlmClaudeApiKey === 'string') {
-        decrypted.kbLlmClaudeApiKey = cryptoUtil.decrypt(decrypted.kbLlmClaudeApiKey);
-      }
-      if (decrypted.kbLlmClaudeModel && typeof decrypted.kbLlmClaudeModel === 'string') {
-        decrypted.kbLlmClaudeModel = cryptoUtil.decrypt(decrypted.kbLlmClaudeModel);
-      }
-      
-      // Decrypt AWS credentials - ALL variants
-      if (decrypted.kbLlmAwsAccessKeyId && typeof decrypted.kbLlmAwsAccessKeyId === 'string') {
-        decrypted.kbLlmAwsAccessKeyId = cryptoUtil.decrypt(decrypted.kbLlmAwsAccessKeyId);
-      }
-      if (decrypted.kbLlmAwsSecretAccessKey && typeof decrypted.kbLlmAwsSecretAccessKey === 'string') {
-        decrypted.kbLlmAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.kbLlmAwsSecretAccessKey);
-      }
-      if (decrypted.kbLlmAwsRegion && typeof decrypted.kbLlmAwsRegion === 'string') {
-        decrypted.kbLlmAwsRegion = cryptoUtil.decrypt(decrypted.kbLlmAwsRegion);
-      }
-      if (decrypted.kbLlmBedrockModelId && typeof decrypted.kbLlmBedrockModelId === 'string') {
-        decrypted.kbLlmBedrockModelId = cryptoUtil.decrypt(decrypted.kbLlmBedrockModelId);
-      }
-      
-      // Decrypt OpenAI credentials - ALL variants
-      if (decrypted.kbLlmOpenaiApiKey && typeof decrypted.kbLlmOpenaiApiKey === 'string') {
-        decrypted.kbLlmOpenaiApiKey = cryptoUtil.decrypt(decrypted.kbLlmOpenaiApiKey);
-      }
-      if (decrypted.kbLlmOpenaiModel && typeof decrypted.kbLlmOpenaiModel === 'string') {
-        decrypted.kbLlmOpenaiModel = cryptoUtil.decrypt(decrypted.kbLlmOpenaiModel);
-      }
-
-      // Decrypt embedding credentials - ALL variants
-      if (decrypted.embedding_api_key && typeof decrypted.embedding_api_key === 'string') {
-        decrypted.embedding_api_key = cryptoUtil.decrypt(decrypted.embedding_api_key);
-      }
-      if (decrypted.embeddingAzureApiKey && typeof decrypted.embeddingAzureApiKey === 'string') {
-        decrypted.embeddingAzureApiKey = cryptoUtil.decrypt(decrypted.embeddingAzureApiKey);
-      }
-    } catch (error) {
-      console.error('[v0] Error decrypting KB config fields:', error instanceof Error ? error.message : String(error));
-      // Return as-is if decryption fails
-      return config;
-    }
-
-    return decrypted;
+    return normalized;
   }
 }
 
