@@ -40,6 +40,7 @@ export function TemplateLibrary({ applicationId: initialAppId, allowApplicationS
   const [viewDetailOpen, setViewDetailOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationInfo[]>([]);
+  const [appNameMap, setAppNameMap] = useState<Map<string, string>>(new Map()); // Map of app IDs to names
   const [appsLoading, setAppsLoading] = useState(false);
 
   useEffect(() => {
@@ -48,8 +49,6 @@ export function TemplateLibrary({ applicationId: initialAppId, allowApplicationS
   }, [selectedAppId, statusFilter]);
 
   const fetchApplications = async () => {
-    if (!allowApplicationSwitch) return;
-    
     setAppsLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -62,12 +61,23 @@ export function TemplateLibrary({ applicationId: initialAppId, allowApplicationS
           name: app.name,
         }));
         setApplications(apps);
+        
+        // Build a map of app IDs to names for quick lookup
+        const nameMap = new Map<string, string>();
+        apps.forEach((app: ApplicationInfo) => {
+          nameMap.set(app.id, app.name);
+        });
+        setAppNameMap(nameMap);
       }
     } catch (err: any) {
       console.error('[v0] Error fetching applications:', err);
     } finally {
       setAppsLoading(false);
     }
+  };
+
+  const getAppName = (appId: string): string => {
+    return appNameMap.get(appId) || appId.substring(0, 20);
   };
 
   const fetchTemplates = async () => {
@@ -240,12 +250,10 @@ export function TemplateLibrary({ applicationId: initialAppId, allowApplicationS
         )}
 
         {/* Current Application Badge */}
-        {!allowApplicationSwitch && applications.length === 0 && (
+        {!allowApplicationSwitch && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Current Application:</span>
-            <Badge variant="outline">
-              {selectedAppId.substring(0, 20)}...
-            </Badge>
+            <Badge variant="outline">{getAppName(selectedAppId)}</Badge>
           </div>
         )}
         <div className="flex items-center gap-3 flex-wrap">
@@ -299,9 +307,9 @@ export function TemplateLibrary({ applicationId: initialAppId, allowApplicationS
                       {template.category && <Badge variant="secondary">{template.category}</Badge>}
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">{template.description || 'No description provided'}</p>
-                    {allowApplicationSwitch && template.applicationId && (
+                    {template.applicationId && (
                       <p className="text-xs text-gray-500 mt-1">
-                        App: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{template.applicationId.substring(0, 16)}...</span>
+                        App: <span className="font-medium text-gray-700">{getAppName(template.applicationId)}</span>
                       </p>
                     )}
                   </div>
