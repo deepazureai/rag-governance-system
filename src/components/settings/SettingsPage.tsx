@@ -5,7 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LLMConfigTab } from '@/src/components/settings/llm-config-tab';
 import { KBLLMSettings } from '@/src/components/settings/KBLLMSettings';
 
-export const SettingsPage: React.FC = () => {
+interface SettingsPageProps {
+  applicationId?: string;
+}
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => {
   const [activeTab, setActiveTab] = useState('llm-provider');
 
   return (
@@ -34,7 +38,7 @@ export const SettingsPage: React.FC = () => {
           {/* Knowledge Base Tab */}
           <TabsContent value="kb-settings" className="mt-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <KBLLMSettings />
+              {applicationId && <KBLLMSettings applicationId={applicationId} />}
             </div>
           </TabsContent>
         </Tabs>
