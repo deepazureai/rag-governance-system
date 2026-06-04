@@ -218,7 +218,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   const currentFields = PROVIDER_FIELDS[provider];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">KB LLM Provider Configuration</h3>
         <p className="text-sm text-gray-600 mb-6">
@@ -288,7 +288,8 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 handleInputChange(field.name, e.target.value)
               }
-              className="w-full"
+              className="w-full overflow-hidden overflow-ellipsis"
+              style={{ minWidth: 0 }}
             />
           </div>
         ))}
