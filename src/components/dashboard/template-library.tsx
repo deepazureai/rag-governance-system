@@ -34,12 +34,15 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const { templates } = await promptTemplateClient.getTemplates(applicationId, {
+      console.log('[v0] Fetching templates with status:', statusFilter);
+      const response = await promptTemplateClient.getTemplates(applicationId, {
         status: statusFilter === 'all' ? undefined : (statusFilter as any),
       });
-      setTemplates(templates);
+      console.log('[v0] Got response:', { hasTemplates: response.templates?.length, response });
+      setTemplates(response.templates || []);
     } catch (err: any) {
-      setError(err.message);
+      console.error('[v0] Error fetching templates:', err);
+      setError(err.message || 'Failed to fetch templates');
     } finally {
       setIsLoading(false);
     }
@@ -92,17 +95,13 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
     try {
       setDownloadingId(template._id);
       
-      // Create template JSON payload
+      // Create template JSON payload - map backend field names to expected format
       const templateData = {
-        name: template.templateName,
+        name: template.name || template.templateName,
         description: template.description,
-        promptTemplate: template.promptTemplate,
-        qualityGuidelines: template.qualityGuidelines,
+        promptTemplate: template.templateText || template.promptTemplate,
         category: template.category,
         tags: template.tags,
-        expectedQualityScore: template.expectedQualityScore,
-        expectedUserSatisfaction: template.expectedUserSatisfaction,
-        version: template.currentVersion,
         status: template.status,
         exportedAt: new Date().toISOString(),
         applicationId: applicationId,
@@ -113,13 +112,13 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `template-${template.templateName.replace(/\s+/g, '-')}-${new Date().getTime()}.json`;
+      link.download = `template-${(template.name || template.templateName || 'template').replace(/\s+/g, '-')}-${new Date().getTime()}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      console.log('[v0] Template downloaded:', template.templateName);
+      console.log('[v0] Template downloaded:', template.name || template.templateName);
     } catch (err: any) {
       setError(err.message || 'Failed to download template');
     } finally {
@@ -133,8 +132,8 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
   };
 
   const filteredTemplates = templates.filter((t) =>
-    t.templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    (t.name || t.templateName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -220,7 +219,7 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-gray-900">{template.templateName}</h3>
+                      <h3 className="font-semibold text-gray-900">{template.name || template.templateName}</h3>
                       <Badge className={getStatusColor(template.status)}>{template.status}</Badge>
                       {template.category && <Badge variant="secondary">{template.category}</Badge>}
                     </div>
@@ -241,12 +240,12 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Version</p>
-                    <p className="font-semibold text-gray-900">v{template.currentVersion || 1}</p>
+                    <p className="font-semibold text-gray-900">v{template.version || 1}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Created</p>
                     <p className="font-semibold text-gray-900 text-xs">
-                      {new Date(template.createdAt).toLocaleDateString()}
+                      {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -360,11 +359,11 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Version</p>
-                  <p className="font-medium text-gray-900">v{selectedTemplate.currentVersion || 1}</p>
+                  <p className="font-medium text-gray-900">v{selectedTemplate.version || selectedTemplate.currentVersion || 1}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Created Date</p>
-                  <p className="font-medium text-gray-900">{new Date(selectedTemplate.createdAt).toLocaleDateString()}</p>
+                  <p className="font-medium text-gray-900">{selectedTemplate.createdAt ? new Date(selectedTemplate.createdAt).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </div>
 
@@ -383,21 +382,21 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
               )}
 
               {/* Quality Guidelines */}
-              {selectedTemplate.qualityGuidelines && (
+              {(selectedTemplate.qualityGuidelines || selectedTemplate.description) && (
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 mb-2">Quality Guidelines</p>
+                  <p className="text-sm font-semibold text-gray-900 mb-2">Description</p>
                   <Card className="p-4 bg-blue-50 border-blue-200">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTemplate.qualityGuidelines}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTemplate.qualityGuidelines || selectedTemplate.description}</p>
                   </Card>
                 </div>
               )}
 
               {/* Prompt Template */}
               <div>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Prompt Template</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">Template Content</p>
                 <Card className="p-4 bg-gray-50 border-gray-200">
                   <pre className="text-xs text-gray-700 overflow-x-auto whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-                    {selectedTemplate.promptTemplate}
+                    {selectedTemplate.templateText || selectedTemplate.promptTemplate}
                   </pre>
                 </Card>
               </div>

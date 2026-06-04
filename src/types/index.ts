@@ -275,30 +275,34 @@ export interface PromptTemplateVersion {
 export interface PromptTemplate {
   _id: string;
   applicationId: string;
-  templateName: string;
+  name?: string;  // New backend field
+  templateName?: string;  // Legacy field for compatibility
   description: string;
   
-  promptTemplate: string;
-  qualityGuidelines: string;
+  templateText?: string;  // New backend field
+  promptTemplate?: string;  // Legacy field for compatibility
+  crewAITemplate?: any;  // CrewAI format
+  qualityGuidelines?: string;
   
   category?: string;
   tags?: string[];
   
   matchingPatterns?: string[];
-  autoApply: boolean;
+  autoApply?: boolean;
   autoApplyThreshold?: number;
   
   expectedQualityScore?: number;
   expectedUserSatisfaction?: number;
   
-  versions: PromptTemplateVersion[];
-  currentVersion: number;
+  versions?: PromptTemplateVersion[];
+  currentVersion?: number;
+  version?: number;  // New backend field
   
   status: 'draft' | 'published' | 'archived';
   publishedAt?: string;
   publishedBy?: string;
   
-  usageMetrics: {
+  usageMetrics?: {
     totalUsageCount: number;
     lastUsedAt?: string;
     averageQualityScore?: number;
@@ -306,9 +310,13 @@ export interface PromptTemplate {
     successRate?: number;
   };
   
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  synthesisMetadata?: any;  // New backend field for synthesis tracking
+  sourceRecommendationIds?: string[];  // New backend field
+  sourceKBPromptIds?: string[];  // New backend field
+  
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BAReviewQueueItem {
