@@ -10,12 +10,26 @@ import { promptTemplateClient } from '@/src/api/prompt-template-client';
 import { Spinner } from '@/components/ui/spinner';
 import { PromptTemplate } from '@/src/types/index';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface TemplateLibraryProps {
   applicationId: string;
+  allowApplicationSwitch?: boolean;
 }
 
-export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
+interface ApplicationInfo {
+  id: string;
+  name: string;
+}
+
+export function TemplateLibrary({ applicationId: initialAppId, allowApplicationSwitch = false }: TemplateLibraryProps) {
+  const [selectedAppId, setSelectedAppId] = useState(initialAppId);
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,17 +39,43 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
   const [viewDetailOpen, setViewDetailOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [applications, setApplications] = useState<ApplicationInfo[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
 
   useEffect(() => {
+    fetchApplications();
     fetchTemplates();
-  }, [applicationId, statusFilter]);
+  }, [selectedAppId, statusFilter]);
+
+  const fetchApplications = async () => {
+    if (!allowApplicationSwitch) return;
+    
+    setAppsLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${apiUrl}/api/applications`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const apps = (data.data || []).map((app: any) => ({
+          id: app.id,
+          name: app.name,
+        }));
+        setApplications(apps);
+      }
+    } catch (err: any) {
+      console.error('[v0] Error fetching applications:', err);
+    } finally {
+      setAppsLoading(false);
+    }
+  };
 
   const fetchTemplates = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('[v0] Fetching templates with status:', statusFilter);
-      const response = await promptTemplateClient.getTemplates(applicationId, {
+      console.log('[v0] Fetching templates with status:', statusFilter, 'for app:', selectedAppId);
+      const response = await promptTemplateClient.getTemplates(selectedAppId, {
         status: statusFilter === 'all' ? undefined : (statusFilter as any),
       });
       console.log('[v0] Got response:', { hasTemplates: response.templates?.length, response });
@@ -80,7 +120,7 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
     setIsExporting(true);
     try {
       await promptTemplateClient.downloadTemplates(
-        applicationId,
+        selectedAppId,
         format,
         statusFilter === 'all' ? undefined : (statusFilter as any)
       );
@@ -104,7 +144,7 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
         tags: template.tags,
         status: template.status,
         exportedAt: new Date().toISOString(),
-        applicationId: applicationId,
+        applicationId: selectedAppId,
       };
 
       const jsonString = JSON.stringify(templateData, null, 2);
@@ -172,7 +212,42 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Application Selector */}
+        {allowApplicationSwitch && applications.length > 0 && (
+          <Card className="p-4 bg-blue-50 border border-blue-200">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900 block mb-2">Select Application</label>
+                <Select value={selectedAppId} onValueChange={setSelectedAppId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose an application..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {applications.map((app) => (
+                      <SelectItem key={app.id} value={app.id}>
+                        {app.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-sm text-blue-700 pt-6">
+                <p className="font-medium">Templates for:</p>
+                <p>{applications.find((a) => a.id === selectedAppId)?.name || 'Unknown'}</p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Current Application Badge */}
+        {!allowApplicationSwitch && applications.length === 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Current Application:</span>
+            <Badge variant="outline">
+              {selectedAppId.substring(0, 20)}...
+            </Badge>
+          </div>
+        )}
         <div className="flex items-center gap-3 flex-wrap">
           <Input
             placeholder="Search templates..."
@@ -224,6 +299,11 @@ export function TemplateLibrary({ applicationId }: TemplateLibraryProps) {
                       {template.category && <Badge variant="secondary">{template.category}</Badge>}
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">{template.description || 'No description provided'}</p>
+                    {allowApplicationSwitch && template.applicationId && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        App: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{template.applicationId.substring(0, 16)}...</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
