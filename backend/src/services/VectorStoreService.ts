@@ -175,6 +175,43 @@ export class VectorStoreService {
   }
 
   /**
+   * Validate Azure OpenAI connection before starting embeddings
+   */
+  private async validateAzureOpenAIConnection(): Promise<void> {
+    if (!this.embeddings) {
+      throw new Error('Embeddings not initialized');
+    }
+
+    try {
+      logger.info(`[VectorStoreService] Validating Azure OpenAI connection...`);
+      const startTime = Date.now();
+      
+      // Test the connection by embedding a small test string
+      const testString = 'test';
+      const testEmbedding = await this.embeddings.embedQuery(testString);
+      
+      const elapsed = Date.now() - startTime;
+      
+      if (!testEmbedding || testEmbedding.length === 0) {
+        throw new Error('Received empty embedding from Azure OpenAI');
+      }
+      
+      logger.info(
+        `[VectorStoreService] Azure OpenAI connection validated successfully. ` +
+        `Embedding dimension: ${testEmbedding.length}, Response time: ${elapsed}ms`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`[VectorStoreService] Azure OpenAI connection validation failed: ${message}`);
+      throw new Error(
+        `Failed to connect to Azure OpenAI for embeddings: ${message}. ` +
+        `Please verify LLM Configuration in Settings → LLM Configuration. ` +
+        `Check API key, endpoint, and deployment name.`
+      );
+    }
+  }
+
+  /**
    * Extract Azure instance name from endpoint URL
    * Example: https://my-resource.openai.azure.com -> my-resource
    */
@@ -208,6 +245,9 @@ export class VectorStoreService {
     }
 
     try {
+      // Validate Azure OpenAI connection before starting embeddings
+      await this.validateAzureOpenAIConnection();
+      
       logger.info(`[VectorStoreService] Preparing to add ${documents.length} documents to vector store...`);
       
       const langchainDocs = documents.map(
