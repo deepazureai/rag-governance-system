@@ -83,24 +83,28 @@ export class LLMProviderService {
         applicationId,
         provider: (kbConfig as any).kbLlmProvider as 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai',
         // Standard field names (kbllm_* for exact params, legacy names for compatibility)
-        api_key: (kbConfig as any).kbllm_api_key || (kbConfig as any).kbLlmAzureApiKey || (kbConfig as any).kbLlmOpenaiApiKey || (kbConfig as any).kbLlmClaudeApiKey || (kbConfig as any).kbLlmAwsAccessKeyId,
+        // AZURE OPENAI - try snake_case first, then legacy camelCase
+        api_key: (kbConfig as any).kbllm_api_key || (kbConfig as any).kbLlmAzureApiKey || (kbConfig as any).kbLlmOpenaiApiKey || (kbConfig as any).kbLlmClaudeApiKey || (kbConfig as any).kbllm_aws_access_key_id || (kbConfig as any).kbLlmAwsAccessKeyId,
         azure_endpoint: (kbConfig as any).kbllm_azure_endpoint || (kbConfig as any).kbLlmAzureEndpoint,
-        api_version: (kbConfig as any).kbllm_api_version,
+        api_version: (kbConfig as any).kbllm_api_version || (kbConfig as any).kbLlmAzureApiVersion,
         deployment: (kbConfig as any).kbllm_deployment || (kbConfig as any).kbLlmAzureDeploymentName,
         skipSslVerification: (kbConfig as any).kbllm_skipSslVerification,
-        // Legacy fields for backward compatibility
+        // CLAUDE
+        claudeApiKey: (kbConfig as any).kbllm_claude_api_key || (kbConfig as any).kbLlmClaudeApiKey,
+        claudeModel: (kbConfig as any).kbllm_claude_model || (kbConfig as any).kbLlmClaudeModel,
+        // AWS BEDROCK
+        awsRegion: (kbConfig as any).kbllm_aws_region || (kbConfig as any).kbLlmAwsRegion,
+        awsAccessKeyId: (kbConfig as any).kbllm_aws_access_key_id || (kbConfig as any).kbLlmAwsAccessKeyId,
+        awsSecretAccessKey: (kbConfig as any).kbllm_aws_secret_access_key || (kbConfig as any).kbLlmAwsSecretAccessKey,
+        bedrockModelId: (kbConfig as any).kbllm_bedrock_model_id || (kbConfig as any).kbLlmBedrockModelId,
+        // OPENAI
+        openaiApiKey: (kbConfig as any).kbllm_openai_api_key || (kbConfig as any).kbLlmOpenaiApiKey,
+        openaiModel: (kbConfig as any).kbllm_openai_model || (kbConfig as any).kbLlmOpenaiModel,
+        // Legacy fields for backward compatibility (Azure)
         azureEndpoint: (kbConfig as any).kbllm_azure_endpoint || (kbConfig as any).kbLlmAzureEndpoint,
         azureApiKey: (kbConfig as any).kbllm_api_key || (kbConfig as any).kbLlmAzureApiKey,
         azureDeploymentName: (kbConfig as any).kbllm_deployment || (kbConfig as any).kbLlmAzureDeploymentName,
-        azureApiVersion: (kbConfig as any).kbllm_api_version,
-        claudeApiKey: (kbConfig as any).kbLlmClaudeApiKey,
-        claudeModel: (kbConfig as any).kbLlmClaudeModel,
-        awsRegion: (kbConfig as any).kbLlmAwsRegion,
-        awsAccessKeyId: (kbConfig as any).kbLlmAwsAccessKeyId,
-        awsSecretAccessKey: (kbConfig as any).kbLlmAwsSecretAccessKey,
-        bedrockModelId: (kbConfig as any).kbLlmBedrockModelId,
-        openaiApiKey: (kbConfig as any).kbLlmOpenaiApiKey,
-        openaiModel: (kbConfig as any).kbLlmOpenaiModel,
+        azureApiVersion: (kbConfig as any).kbllm_api_version || (kbConfig as any).kbLlmAzureApiVersion,
         temperature: (kbConfig as any).temperature,
         maxTokens: (kbConfig as any).maxTokens,
         createdAt: new Date(),
