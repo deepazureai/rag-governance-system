@@ -77,7 +77,7 @@ const upload = multer({
       cb(new Error('File metadata missing'));
       return;
     }
-    const allowedTypes = ['.pdf', '.txt', '.json', '.csv'];
+    const allowedTypes = ['.pdf', '.txt', '.json', '.csv', '.md', '.docx'];
     const fileExt = path.extname((file.originalname as string) ?? '').toLowerCase();
     if (allowedTypes.includes(fileExt)) {
       cb(null, true);
@@ -87,15 +87,45 @@ const upload = multer({
   },
 }) as any;
 
+// Custom middleware to handle both single file and multiple files
+const handleFileUpload = (req: any, res: Response, next: any) => {
+  // Try to handle as multiple files first
+  upload.array('files', 10)(req, res, (err1: any) => {
+    if (err1 && err1.code === 'LIMIT_UNEXPECTED_FILE') {
+      // If 'files' fails, try single file
+      upload.single('file')(req, res, (err2: any) => {
+        if (err2) {
+          return next(err2);
+        }
+        // Convert single file to array format for consistency
+        if (req.file) {
+          req.files = [req.file];
+        }
+        next();
+      });
+    } else if (err1) {
+      next(err1);
+    } else {
+      next();
+    }
+  });
+};
+
 /**
  * Upload and vectorize documents
  * POST /api/knowledge-base/upload
  */
-knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, res: Response): Promise<void> => {
+knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Response): Promise<void> => {
   try {
     const files = (req.files ?? []) as Express.Multer.File[];
     const body = req.body as UploadBody;
     const { applicationId, namespace } = body;
+
+    console.log('[v0] Upload request received:', { 
+      filesCount: files.length, 
+      applicationId,
+      namespace 
+    });
 
     if (files.length === 0) {
       res.status(400).json({ error: 'No files provided' });
@@ -119,7 +149,7 @@ knowledgeBaseRouter.post('/upload', upload.array('files', 10), async (req: any, 
       res.status(503).json({
         error: 'Knowledge Base service unavailable',
         details: message,
-        message: 'Please ensure Azure OpenAI credentials are configured in Settings → Knowledge Base Configuration. Check your API key, endpoint, and deployment name.',
+        message: 'Please ensure Azure OpenAI credentials are configured in Settings → LLM Configuration. Check your API key, endpoint, and deployment name.',
       });
       return;
     }
