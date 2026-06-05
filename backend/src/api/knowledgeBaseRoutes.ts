@@ -203,10 +203,14 @@ knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Resp
         try {
           logger.info(`[KnowledgeBase] Adding ${documentChunks.length} chunks to vector store for ${file.originalname}...`);
           
-          // Add timeout to prevent hanging
+          // Add timeout to prevent hanging (increased to 300s for embedding generation)
+          const startTime = Date.now();
           const addDocsPromise = vectorStore.addDocuments(documentChunks, namespace);
           const timeoutPromise = new Promise<string[]>((_, reject) =>
-            setTimeout(() => reject(new Error('Vector store operation timed out after 60s')), 60000)
+            setTimeout(() => {
+              const elapsed = Date.now() - startTime;
+              reject(new Error(`Vector store operation timed out after ${elapsed}ms. Chroma may be unreachable or overloaded. Check that Chroma container is running.`));
+            }, 300000)
           );
           
           ids = await Promise.race([addDocsPromise, timeoutPromise]);

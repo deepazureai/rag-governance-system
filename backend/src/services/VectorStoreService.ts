@@ -223,6 +223,44 @@ export class VectorStoreService {
       );
 
       logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
+      const startTime = Date.now();
+      
+      // Add timeout to prevent hanging if Chroma is unreachable
+      // Increased to 300s (5 minutes) since embedding generation can be slow
+      const addDocsPromise = this.vectorStore!.addDocuments(langchainDocs);
+      const timeoutPromise = new Promise<string[]>((_, reject) =>
+        setTimeout(() => {
+          const elapsed = Date.now() - startTime;
+          reject(new Error(`Vector store operation timed out after ${elapsed}ms. Chroma may be unreachable or overloaded.`));
+        }, 300000)
+      );
+      
+      const ids: string[] = await Promise.race([addDocsPromise, timeoutPromise]);
+      const elapsed = Date.now() - startTime;
+      logger.info(`[VectorStoreService] Successfully added ${ids.length} documents to collection in ${elapsed}ms`);
+      return ids;
+    } catch (error) {
+      logger.error('[VectorStoreService] Failed to add documents:', error);
+      throw error;
+    }
+  }
+
+    try {
+      logger.info(`[VectorStoreService] Preparing to add ${documents.length} documents to vector store...`);
+      
+      const langchainDocs = documents.map(
+        (doc): Document =>
+          new Document({
+            pageContent: doc.content,
+            metadata: {
+              ...doc.metadata,
+              namespace: namespace ?? 'default',
+              addedAt: new Date().toISOString(),
+            },
+          })
+      );
+
+      logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
       
       // Add timeout to prevent hanging if Chroma is unreachable
       const addDocsPromise = this.vectorStore!.addDocuments(langchainDocs);
