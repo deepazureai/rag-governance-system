@@ -208,6 +208,8 @@ export class VectorStoreService {
     }
 
     try {
+      logger.info(`[VectorStoreService] Preparing to add ${documents.length} documents to vector store...`);
+      
       const langchainDocs = documents.map(
         (doc): Document =>
           new Document({
@@ -220,8 +222,16 @@ export class VectorStoreService {
           })
       );
 
-      const ids: string[] = await this.vectorStore!.addDocuments(langchainDocs);
-      logger.info(`[VectorStoreService] Added ${ids.length} documents to collection`);
+      logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
+      
+      // Add timeout to prevent hanging if Chroma is unreachable
+      const addDocsPromise = this.vectorStore!.addDocuments(langchainDocs);
+      const timeoutPromise = new Promise<string[]>((_, reject) =>
+        setTimeout(() => reject(new Error('Vector store add documents timed out after 120s')), 120000)
+      );
+      
+      const ids: string[] = await Promise.race([addDocsPromise, timeoutPromise]);
+      logger.info(`[VectorStoreService] Successfully added ${ids.length} documents to collection`);
       return ids;
     } catch (error) {
       logger.error('[VectorStoreService] Failed to add documents:', error);

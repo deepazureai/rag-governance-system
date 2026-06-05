@@ -201,7 +201,15 @@ knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Resp
         // Add to vector store
         let ids: string[] = [];
         try {
-          ids = await vectorStore.addDocuments(documentChunks, namespace);
+          logger.info(`[KnowledgeBase] Adding ${documentChunks.length} chunks to vector store for ${file.originalname}...`);
+          
+          // Add timeout to prevent hanging
+          const addDocsPromise = vectorStore.addDocuments(documentChunks, namespace);
+          const timeoutPromise = new Promise<string[]>((_, reject) =>
+            setTimeout(() => reject(new Error('Vector store operation timed out after 60s')), 60000)
+          );
+          
+          ids = await Promise.race([addDocsPromise, timeoutPromise]);
           logger.info(`[KnowledgeBase] Successfully vectorized ${file.originalname} (${ids.length} chunks)`);
         } catch (vectorError) {
           const message = vectorError instanceof Error ? vectorError.message : 'Vectorization failed';
