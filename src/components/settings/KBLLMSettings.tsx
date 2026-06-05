@@ -12,9 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { KnowledgeBaseConfig, ApiResponse } from '@/src/types/models';
 
 type KBProvider = 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai';
+type EmbeddingProvider = 'azure-openai' | 'openai';
 
 interface ProviderField {
   name: string;
@@ -24,27 +26,46 @@ interface ProviderField {
   placeholder?: string;
 }
 
-const PROVIDER_FIELDS: Record<KBProvider, ProviderField[]> = {
+// KB LLM Chat Configuration Fields
+const KB_PROVIDER_FIELDS: Record<KBProvider, ProviderField[]> = {
   'azure-openai': [
-    { name: 'azureEndpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com (just the base URL)' },
-    { name: 'azureApiKey', label: 'API Key', type: 'password', required: true },
-    { name: 'azureDeploymentName', label: 'Deployment Name', type: 'text', required: true, placeholder: 'e.g., gpt-4-turbo' },
-    { name: 'azureApiVersion', label: 'API Version', type: 'text', required: true, placeholder: '2025-01-01-preview' },
+    { name: 'kbllm_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
+    { name: 'kbllm_api_key', label: 'API Key', type: 'password', required: true },
+    { name: 'kbllm_deployment', label: 'Deployment Name', type: 'text', required: true, placeholder: 'e.g., gpt-4-turbo' },
+    { name: 'kbllm_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2025-01-01-preview' },
   ],
   'openai': [
-    { name: 'openaiApiKey', label: 'API Key', type: 'password', required: true },
-    { name: 'openaiModel', label: 'Model', type: 'text', required: true, placeholder: 'gpt-4-turbo' },
+    { name: 'kbllm_openai_api_key', label: 'API Key', type: 'password', required: true },
+    { name: 'kbllm_openai_model', label: 'Model', type: 'text', required: true, placeholder: 'gpt-4-turbo' },
   ],
   'claude': [
-    { name: 'claudeApiKey', label: 'API Key', type: 'password', required: true },
-    { name: 'claudeModel', label: 'Model', type: 'text', required: true, placeholder: 'claude-3-opus-20240229' },
+    { name: 'kbllm_claude_api_key', label: 'API Key', type: 'password', required: true },
+    { name: 'kbllm_claude_model', label: 'Model', type: 'text', required: true, placeholder: 'claude-3-opus-20240229' },
   ],
   'aws-bedrock': [
-    { name: 'awsRegion', label: 'AWS Region', type: 'text', required: true, placeholder: 'us-east-1' },
-    { name: 'awsAccessKeyId', label: 'AWS Access Key ID', type: 'password', required: true },
-    { name: 'awsSecretAccessKey', label: 'AWS Secret Access Key', type: 'password', required: true },
-    { name: 'bedrockModelId', label: 'Bedrock Model ID', type: 'text', required: true },
+    { name: 'kbllm_aws_region', label: 'AWS Region', type: 'text', required: true, placeholder: 'us-east-1' },
+    { name: 'kbllm_aws_access_key_id', label: 'AWS Access Key ID', type: 'password', required: true },
+    { name: 'kbllm_aws_secret_access_key', label: 'AWS Secret Access Key', type: 'password', required: true },
+    { name: 'kbllm_bedrock_model_id', label: 'Bedrock Model ID', type: 'text', required: true },
   ],
+};
+
+// Embedding Configuration Fields
+const EMBEDDING_PROVIDER_FIELDS: Record<EmbeddingProvider, ProviderField[]> = {
+  'azure-openai': [
+    { name: 'embedding_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
+    { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
+    { name: 'embedding_deployment', label: 'Embedding Deployment Name', type: 'text', required: true, placeholder: 'e.g., text-embedding-3-large' },
+    { name: 'embedding_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2024-02-15-preview' },
+  ],
+  'openai': [
+    { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
+  ],
+};
+
+const EMBEDDING_MODELS: Record<EmbeddingProvider, string[]> = {
+  'azure-openai': ['text-embedding-3-large', 'text-embedding-3-small', 'text-embedding-ada-002'],
+  'openai': ['text-embedding-3-large', 'text-embedding-3-small', 'text-embedding-ada-002'],
 };
 
 interface KBLLMSettingsProps {
@@ -52,8 +73,18 @@ interface KBLLMSettingsProps {
 }
 
 export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) => {
-  const [provider, setProvider] = useState<KBProvider>('azure-openai');
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  // KB LLM Chat State
+  const [kbProvider, setKbProvider] = useState<KBProvider>('azure-openai');
+  const [kbFormData, setKbFormData] = useState<Record<string, string>>({});
+  const [kbSkipSslVerification, setKbSkipSslVerification] = useState(false);
+
+  // Embedding State
+  const [embeddingProvider, setEmbeddingProvider] = useState<EmbeddingProvider>('azure-openai');
+  const [embeddingModel, setEmbeddingModel] = useState<string>('text-embedding-3-large');
+  const [embeddingFormData, setEmbeddingFormData] = useState<Record<string, string>>({});
+  const [embeddingSkipSslVerification, setEmbeddingSkipSslVerification] = useState(false);
+
+  // Common State
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -72,24 +103,42 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
           if (data.data) {
             setSavedConfig(data.data);
-            setProvider((data.data.kbLlmProvider || 'azure-openai') as KBProvider);
+            
+            // Load KB LLM settings
+            setKbProvider((data.data.kbLlmProvider || 'azure-openai') as KBProvider);
+            setKbSkipSslVerification(data.data.kbllm_skipSslVerification ?? false);
             setTemperature(data.data.temperature ?? 0.7);
             setMaxTokens(data.data.maxTokens ?? 2048);
             
-            // Populate form with existing values
+            // Load Embedding settings
+            setEmbeddingProvider((data.data.embeddingProvider || 'azure-openai') as EmbeddingProvider);
+            setEmbeddingModel(data.data.embeddingModel || 'text-embedding-3-large');
+            setEmbeddingSkipSslVerification(data.data.embedding_skipSslVerification ?? false);
+            
+            // Populate KB LLM form
             if (data.data) {
-              const form: Record<string, string> = {};
-              const configData = data.data;
-              const providerValue = (configData.kbLlmProvider || 'azure-openai') as KBProvider;
-              const providerFields = PROVIDER_FIELDS[providerValue];
-              providerFields.forEach((field: ProviderField) => {
-                const fieldName = field.name;
-                const value = configData[fieldName as keyof KnowledgeBaseConfig];
+              const kbForm: Record<string, string> = {};
+              const embeddingForm: Record<string, string> = {};
+              
+              const kbProviderValue = (data.data.kbLlmProvider || 'azure-openai') as KBProvider;
+              const kbFields = KB_PROVIDER_FIELDS[kbProviderValue];
+              kbFields.forEach((field: ProviderField) => {
+                const value = data.data?.[field.name as keyof KnowledgeBaseConfig];
                 if (value && typeof value === 'string') {
-                  form[fieldName] = value;
+                  kbForm[field.name] = value;
                 }
               });
-              setFormData(form);
+              setKbFormData(kbForm);
+              
+              const embeddingProviderValue = (data.data.embeddingProvider || 'azure-openai') as EmbeddingProvider;
+              const embeddingFields = EMBEDDING_PROVIDER_FIELDS[embeddingProviderValue];
+              embeddingFields.forEach((field: ProviderField) => {
+                const value = data.data?.[field.name as keyof KnowledgeBaseConfig];
+                if (value && typeof value === 'string') {
+                  embeddingForm[field.name] = value;
+                }
+              });
+              setEmbeddingFormData(embeddingForm);
             }
           }
         }
@@ -101,27 +150,33 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     loadConfig();
   }, [applicationId]);
 
-  const handleInputChange = (fieldName: string, value: string): void => {
-    setFormData(prev => ({
+  const handleKbInputChange = (fieldName: string, value: string): void => {
+    setKbFormData(prev => ({
       ...prev,
       [fieldName]: value,
     }));
     setMessage(null);
   };
 
-  const validateForm = (): boolean => {
-    const fields = PROVIDER_FIELDS[provider];
+  const handleEmbeddingInputChange = (fieldName: string, value: string): void => {
+    setEmbeddingFormData(prev => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+    setMessage(null);
+  };
+
+  const validateKbForm = (): boolean => {
+    const fields = KB_PROVIDER_FIELDS[kbProvider];
     
     for (const field of fields) {
-      if (field.required && !formData[field.name]?.trim()) {
+      if (field.required && !kbFormData[field.name]?.trim()) {
         return false;
       }
     }
     
-    // Validate Azure API version format
-    if (provider === 'azure-openai') {
-      const apiVersion = formData.azureApiVersion?.trim() || '';
-      // Azure API versions should be in format: YYYY-MM-DD-preview or similar
+    if (kbProvider === 'azure-openai') {
+      const apiVersion = kbFormData.kbllm_api_version?.trim() || '';
       if (!apiVersion.match(/^\d{4}-\d{2}-\d{2}/)) {
         setMessage({ type: 'error', text: 'Azure API Version must be in format like 2025-01-01-preview' });
         return false;
@@ -131,8 +186,33 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     return true;
   };
 
+  const validateEmbeddingForm = (): boolean => {
+    const fields = EMBEDDING_PROVIDER_FIELDS[embeddingProvider];
+    
+    for (const field of fields) {
+      if (field.required && !embeddingFormData[field.name]?.trim()) {
+        return false;
+      }
+    }
+    
+    if (embeddingProvider === 'azure-openai') {
+      const apiVersion = embeddingFormData.embedding_api_version?.trim() || '';
+      if (!apiVersion.match(/^\d{4}-\d{2}-\d{2}/)) {
+        setMessage({ type: 'error', text: 'Azure API Version must be in format like 2024-02-15-preview' });
+        return false;
+      }
+    }
+    
+    if (!embeddingModel?.trim()) {
+      setMessage({ type: 'error', text: 'Embedding model is required' });
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSave = async (): Promise<void> => {
-    if (!validateForm()) {
+    if (!validateKbForm() || !validateEmbeddingForm()) {
       setMessage({ type: 'error', text: 'Please fill in all required fields' });
       return;
     }
@@ -142,8 +222,13 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const payload = {
         applicationId,
-        kbLlmProvider: provider,
-        ...formData,
+        kbLlmProvider: kbProvider,
+        kbllm_skipSslVerification: kbSkipSslVerification,
+        ...kbFormData,
+        embeddingProvider,
+        embeddingModel,
+        embedding_skipSslVerification: embeddingSkipSslVerification,
+        ...embeddingFormData,
         temperature,
         maxTokens,
         isDefault: true,
@@ -158,7 +243,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
       if (response.ok) {
         const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
         setSavedConfig(data.data ?? null);
-        setMessage({ type: 'success', text: 'KB LLM configuration saved successfully!' });
+        setMessage({ type: 'success', text: 'KB configuration (embeddings + chat) saved successfully!' });
       } else {
         const error = await response.text();
         setMessage({ type: 'error', text: `Failed to save: ${error}` });
@@ -172,7 +257,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   };
 
   const handleTestConnection = async (): Promise<void> => {
-    if (!validateForm()) {
+    if (!validateKbForm() || !validateEmbeddingForm()) {
       setMessage({ type: 'error', text: 'Please fill in all required fields' });
       return;
     }
@@ -184,8 +269,10 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider,
-          ...formData,
+          kbProvider,
+          ...kbFormData,
+          embeddingProvider,
+          ...embeddingFormData,
         }),
       });
 
@@ -207,92 +294,173 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     }
   };
 
-  const currentFields = PROVIDER_FIELDS[provider];
+  const kbCurrentFields = KB_PROVIDER_FIELDS[kbProvider];
+  const embeddingCurrentFields = EMBEDDING_PROVIDER_FIELDS[embeddingProvider];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">KB LLM Provider Configuration</h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Configure which LLM provider to use for knowledge base operations. This setting applies to the KB embedding and response generation.
-        </p>
-      </div>
-
+    <div className="space-y-8">
+      {/* Status Card */}
       {savedConfig && (
         <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-900">Configuration Active</p>
               <p className="text-xs text-green-700 mt-1">
-                Provider: <Badge variant="outline">{savedConfig.kbLlmProvider}</Badge>
+                KB LLM: <Badge variant="outline" className="ml-1">{savedConfig.kbLlmProvider}</Badge>
+                {' '} | Embeddings: <Badge variant="outline" className="ml-1">{savedConfig.embeddingProvider}</Badge>
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-2">KB LLM Provider</label>
-        <Select value={provider} onValueChange={(value: string) => {
-          setProvider(value as KBProvider);
-          setFormData({});
-        }}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="azure-openai">Azure OpenAI</SelectItem>
-            <SelectItem value="openai">OpenAI</SelectItem>
-            <SelectItem value="claude">Claude (Anthropic)</SelectItem>
-            <SelectItem value="aws-bedrock">AWS Bedrock</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Embedding Configuration Section */}
+      <div className="border-b pb-8">
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">Embedding Configuration</h3>
+          <p className="text-sm text-gray-600">Configure the embedding model for document vectorization</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Embedding Provider</label>
+          <Select value={embeddingProvider} onValueChange={(value: string) => {
+            setEmbeddingProvider(value as EmbeddingProvider);
+            setEmbeddingFormData({});
+          }}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="azure-openai">Azure OpenAI</SelectItem>
+              <SelectItem value="openai">OpenAI</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium mb-2">Embedding Model</label>
+          <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {EMBEDDING_MODELS[embeddingProvider].map(model => (
+                <SelectItem key={model} value={model}>{model}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-4 mt-6">
+          {embeddingCurrentFields.map((field: ProviderField) => (
+            <div key={field.name}>
+              <label className="block text-sm font-medium mb-1">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <Input
+                type={field.type}
+                placeholder={field.placeholder}
+                value={embeddingFormData[field.name] ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleEmbeddingInputChange(field.name, e.target.value)}
+                className="w-full"
+              />
+            </div>
+          ))}
+        </div>
+
+        {embeddingProvider === 'azure-openai' && (
+          <div className="mt-4 flex items-center gap-2">
+            <Checkbox
+              id="embedding-skip-ssl"
+              checked={embeddingSkipSslVerification}
+              onCheckedChange={(checked: boolean) => setEmbeddingSkipSslVerification(checked)}
+            />
+            <label htmlFor="embedding-skip-ssl" className="text-sm cursor-pointer">Skip SSL verification (for corporate proxies)</label>
+          </div>
+        )}
       </div>
 
-      {/* Provider-specific fields */}
-      <div className="space-y-4">
-        {currentFields.map((field: ProviderField) => (
-          <div key={field.name}>
-            <label className="block text-sm font-medium mb-1">
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
+      {/* KB LLM Configuration Section */}
+      <div className="pb-8">
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">KB Chat LLM Configuration</h3>
+          <p className="text-sm text-gray-600">Configure which LLM provider to use for KB responses</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">KB LLM Provider</label>
+          <Select value={kbProvider} onValueChange={(value: string) => {
+            setKbProvider(value as KBProvider);
+            setKbFormData({});
+          }}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="azure-openai">Azure OpenAI</SelectItem>
+              <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="claude">Claude (Anthropic)</SelectItem>
+              <SelectItem value="aws-bedrock">AWS Bedrock</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-4 mt-6">
+          {kbCurrentFields.map((field: ProviderField) => (
+            <div key={field.name}>
+              <label className="block text-sm font-medium mb-1">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <Input
+                type={field.type}
+                placeholder={field.placeholder}
+                value={kbFormData[field.name] ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleKbInputChange(field.name, e.target.value)}
+                className="w-full"
+              />
+            </div>
+          ))}
+        </div>
+
+        {kbProvider === 'azure-openai' && (
+          <div className="mt-4 flex items-center gap-2">
+            <Checkbox
+              id="kb-skip-ssl"
+              checked={kbSkipSslVerification}
+              onCheckedChange={(checked: boolean) => setKbSkipSslVerification(checked)}
+            />
+            <label htmlFor="kb-skip-ssl" className="text-sm cursor-pointer">Skip SSL verification (for corporate proxies)</label>
+          </div>
+        )}
+
+        {/* Common settings */}
+        <div className="grid grid-cols-2 gap-4 mt-6">
+          <div>
+            <label className="block text-sm font-medium mb-1">Temperature (0-2)</label>
             <Input
-              type={field.type}
-              placeholder={field.placeholder}
-              value={formData[field.name] ?? ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange(field.name, e.target.value)}
+              type="number"
+              min="0"
+              max="2"
+              step="0.1"
+              value={temperature}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTemperature(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">Higher = more creative, Lower = more focused</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Max Tokens</label>
+            <Input
+              type="number"
+              min="100"
+              max="4000"
+              value={maxTokens}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxTokens(parseInt(e.target.value, 10))}
               className="w-full"
             />
           </div>
-        ))}
-      </div>
-
-      {/* Common settings */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Temperature (0-2)</label>
-          <Input
-            type="number"
-            min="0"
-            max="2"
-            step="0.1"
-            value={temperature}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTemperature(parseFloat(e.target.value))}
-            className="w-full"
-          />
-          <p className="text-xs text-gray-500 mt-1">Higher = more creative, Lower = more focused</p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Max Tokens</label>
-          <Input
-            type="number"
-            min="100"
-            max="4000"
-            value={maxTokens}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxTokens(parseInt(e.target.value, 10))}
-            className="w-full"
-          />
         </div>
       </div>
 
@@ -328,3 +496,4 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     </div>
   );
 };
+

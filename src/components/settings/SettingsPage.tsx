@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LLMConfigTab } from '@/src/components/settings/llm-config-tab';
 import { KBLLMSettings } from '@/src/components/settings/KBLLMSettings';
-import { KBEmbeddingSettings } from '@/src/components/settings/KBEmbeddingSettings';
 
 interface SettingsPageProps {
   applicationId?: string;
@@ -24,10 +23,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => 
 
         {/* Settings Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="llm-provider">LLM</TabsTrigger>
-            <TabsTrigger value="kb-embedding">KB Embedding</TabsTrigger>
-            <TabsTrigger value="kb-llm">KB Chat</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="llm-provider">LLM Configuration</TabsTrigger>
+            <TabsTrigger value="kb-settings">Knowledge Base</TabsTrigger>
           </TabsList>
 
           {/* LLM Provider Tab */}
@@ -37,15 +35,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ applicationId }) => 
             </div>
           </TabsContent>
 
-          {/* Knowledge Base Embedding Tab */}
-          <TabsContent value="kb-embedding" className="mt-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              {applicationId && <KBEmbeddingSettings applicationId={applicationId} />}
-            </div>
-          </TabsContent>
-
-          {/* Knowledge Base LLM Tab */}
-          <TabsContent value="kb-llm" className="mt-6">
+          {/* Knowledge Base Configuration Tab */}
+          <TabsContent value="kb-settings" className="mt-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               {applicationId && <KBLLMSettings applicationId={applicationId} />}
             </div>
