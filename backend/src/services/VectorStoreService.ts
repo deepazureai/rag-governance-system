@@ -47,47 +47,40 @@ export class VectorStoreService {
       let deploymentName = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-large';
       let embeddingProvider = 'azure-openai'; // Default to Azure
 
-      // Try to retrieve app-specific KB config from MongoDB with fallback to LLM config
+      // Try to retrieve application LLM config from MongoDB (same as recommendations use)
+      // This ensures embeddings use the same validated Azure credentials as LLM operations
       if (this.applicationId) {
         try {
-          const kbConfig = await configManager.getApplicationKBConfigWithFallback(this.applicationId);
-          if (kbConfig) {
-            logger.info(`[VectorStoreService] Found KB config for app ${this.applicationId}`);
+          const llmConfig = await configManager.getApplicationLLMConfig(this.applicationId);
+          if (llmConfig && llmConfig.provider === 'azure-openai') {
+            logger.info(`[VectorStoreService] Using LLM config for app ${this.applicationId}`);
             
-            // KB config stores embedding credentials separately
-            if (kbConfig.embeddingProvider === 'azure-openai') {
-              // Use exact parameter names from config - TEMPORARY: Plain text (no decrypt)
-              if (kbConfig.embedding_api_key) {
-                apiKey = kbConfig.embedding_api_key;
-                logger.info(`[VectorStoreService] Using KB config embedding API key`);
-              }
-              if (kbConfig.embedding_azure_endpoint) {
-                endpoint = kbConfig.embedding_azure_endpoint;
-                logger.info(`[VectorStoreService] Using KB config endpoint`);
-              }
-              if (kbConfig.embedding_api_version) {
-                apiVersion = kbConfig.embedding_api_version;
-              }
-              if (kbConfig.embedding_deployment) {
-                deploymentName = kbConfig.embedding_deployment;
-              }
-              embeddingProvider = 'azure-openai';
-              
-              logger.info(`[VectorStoreService] Using Azure KB embedding config for app ${this.applicationId}`);
-            } else if (kbConfig.embeddingProvider === 'openai') {
-              // Standard OpenAI provider - TEMPORARY: Plain text (no decrypt)
-              if (kbConfig.embeddingOpenaiApiKey) {
-                apiKey = kbConfig.embeddingOpenaiApiKey;
-              }
-              embeddingProvider = 'openai';
-              logger.info(`[VectorStoreService] Using OpenAI KB embedding config for app ${this.applicationId}`);
+            // Use LLM config credentials for embeddings (same as recommendations)
+            if (llmConfig.api_key) {
+              apiKey = llmConfig.api_key;
+              logger.info(`[VectorStoreService] Using LLM config API key for embeddings`);
             }
+            if (llmConfig.azure_endpoint) {
+              endpoint = llmConfig.azure_endpoint;
+              logger.info(`[VectorStoreService] Using LLM config endpoint: ${endpoint}`);
+            }
+            if (llmConfig.api_version) {
+              apiVersion = llmConfig.api_version;
+              logger.info(`[VectorStoreService] Using LLM config API version: ${apiVersion}`);
+            }
+            // For embeddings, use the same deployment as chat (or fall back to standard embedding deployment)
+            if (llmConfig.deployment) {
+              deploymentName = llmConfig.deployment;
+              logger.info(`[VectorStoreService] Using LLM config deployment: ${deploymentName}`);
+            }
+            
+            embeddingProvider = 'azure-openai';
           }
         } catch (error: unknown) {
           if (error instanceof Error) {
-            logger.warn(`[VectorStoreService] No saved KB config found for app, using env variables: ${error.message}`);
+            logger.warn(`[VectorStoreService] Could not retrieve LLM config for app, using env variables: ${error.message}`);
           } else {
-            logger.warn(`[VectorStoreService] No saved KB config found for app, using env variables`);
+            logger.warn(`[VectorStoreService] Could not retrieve LLM config for app, using env variables`);
           }
         }
       }
