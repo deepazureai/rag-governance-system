@@ -1,20 +1,7 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/src/components/providers'
 import './globals.css'
-
-const _geist = Geist({ 
-  subsets: ["latin"],
-  display: 'swap', // Use system fonts while Google Font loads
-  fallback: ['system-ui', 'arial'],
-});
-
-const _geistMono = Geist_Mono({ 
-  subsets: ["latin"],
-  display: 'swap', // Use system fonts while Google Font loads
-  fallback: ['menlo', 'monospace'],
-});
 
 export const metadata: Metadata = {
   title: 'RAG Evaluation Platform',
@@ -45,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${_geist.className} bg-background`}>
+    <html lang="en" className="bg-background">
       <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
           {children}
