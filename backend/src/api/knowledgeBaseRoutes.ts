@@ -89,25 +89,31 @@ const upload = multer({
 
 // Custom middleware to handle both single file and multiple files
 const handleFileUpload = (req: any, res: Response, next: any) => {
-  // Try to handle as multiple files first
-  upload.array('files', 10)(req, res, (err1: any) => {
-    if (err1 && err1.code === 'LIMIT_UNEXPECTED_FILE') {
-      // If 'files' fails, try single file
-      upload.single('file')(req, res, (err2: any) => {
-        if (err2) {
-          return next(err2);
-        }
-        // Convert single file to array format for consistency
-        if (req.file) {
-          req.files = [req.file];
-        }
-        next();
-      });
-    } else if (err1) {
-      next(err1);
-    } else {
-      next();
+  // Create a combined middleware that accepts both 'file' and 'files' field names
+  const uploadSingle = upload.single('file');
+  const uploadMultiple = upload.array('files', 10);
+  
+  uploadSingle(req, res, (singleErr: any) => {
+    if (req.file) {
+      // Single file was successfully uploaded, convert to array format
+      req.files = [req.file];
+      return next();
     }
+    
+    // Single file didn't work, try multiple files
+    uploadMultiple(req, res, (multiErr: any) => {
+      if (multiErr) {
+        console.error('[v0] File upload middleware error:', multiErr);
+        return next(multiErr);
+      }
+      
+      // If no files were uploaded at all, ensure req.files is an array
+      if (!req.files) {
+        req.files = [];
+      }
+      
+      next();
+    });
   });
 };
 
@@ -889,14 +895,29 @@ knowledgeBaseRouter.post('/prompts/badge', async (req: Request, res: Response): 
     logger.info(`[KnowledgeBase] Creating and badging KB prompt for app: ${applicationId}`);
 
     const db = mongoose.connection;
-    const kbConfigCollection = db.collection('knowledgebaseconfigs');
     
-    // Get the KB config for this app
-    const kbConfig = await kbConfigCollection.findOne({ applicationId });
+    // Try to get KB config first, but fall back to LLM config if not available
+    let kbLlmConfigUsed: any = null;
     
-    if (!kbConfig) {
-      res.status(400).json({ error: 'No KB configuration found for this application' });
-      return;
+    try {
+      const kbConfigCollection = db.collection('knowledgebaseconfigs');
+      const kbConfig = await kbConfigCollection.findOne({ applicationId });
+      
+      if (kbConfig) {
+        kbLlmConfigUsed = kbConfig._id;
+      } else {
+        // Fall back to LLM config
+        const llmConfigCollection = db.collection('llmconfigs');
+        const llmConfig = await llmConfigCollection.findOne({ applicationId });
+        if (llmConfig) {
+          kbLlmConfigUsed = llmConfig._id;
+          logger.info(`[KnowledgeBase] Using LLM config as fallback for KB operations`);
+        } else {
+          logger.warn(`[KnowledgeBase] No KB or LLM config found for app ${applicationId}. Proceeding without specific config ID.`);
+        }
+      }
+    } catch (configError) {
+      logger.error('[KnowledgeBase] Error fetching KB/LLM config:', configError);
     }
 
     // Create the KB prompt with all fields
@@ -911,7 +932,7 @@ knowledgeBaseRouter.post('/prompts/badge', async (req: Request, res: Response): 
         relevanceScore: ctx.relevanceScore || 0,
       })),
       embeddingModelUsed: embeddingModelUsed || 'text-embedding-3-large',
-      kbLlmConfigUsed: kbConfig._id,
+      kbLlmConfigUsed: kbLlmConfigUsed || null, // Can be KB config, LLM config, or null
       isActive: true,
       badgeStatus: 'approved',
       badgedAt: new Date(),

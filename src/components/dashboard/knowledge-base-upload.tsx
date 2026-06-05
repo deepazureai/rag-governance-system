@@ -124,11 +124,11 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
 
       if (!response.ok) {
         if (response.status === 400) {
-          throw new Error('KB Config not configured. Please set up Azure credentials in Settings first.');
+          throw new Error('Upload validation failed. Please check your file and try again. If issues persist, verify LLM Configuration in Settings.');
         } else if (response.status === 413) {
           throw new Error('File too large for server. Please reduce file size.');
         } else if (response.status === 500) {
-          throw new Error('Server error during upload. Azure service may be unavailable.');
+          throw new Error('Server error during upload. Please verify LLM Configuration in Settings.');
         }
         throw new Error(`Upload failed (${response.status}). Please try again.`);
       }
