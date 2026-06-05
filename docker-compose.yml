@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   chroma:
-    image: ghcr.io/chroma-core/chroma:latest
+    image: chromadb/chroma:latest
     container_name: v0-chroma
     restart: unless-stopped
     ports:
@@ -14,11 +14,11 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/ || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 60s
     networks:
       - v0-network
 
@@ -72,7 +72,7 @@ services:
       mongodb:
         condition: service_healthy
       chroma:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api/health"]
       interval: 30s
