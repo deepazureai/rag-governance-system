@@ -135,14 +135,24 @@ export class VectorStoreService {
           logger.info(`[VectorStoreService] Created vectorstore directory: ${this.persistDir}`);
         } catch (mkdirError) {
           logger.warn(`[VectorStoreService] Could not create directory ${this.persistDir}, will use memory-only mode`);
-          // Continue with memory-only mode (Chroma supports in-memory storage)
+          // Continue with memory-only mode
         }
       }
 
-      this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
-        collectionName: this.collectionName,
-        url: `file://${this.persistDir}`,
-      });
+      try {
+        // Try to connect to Chroma server via HTTP
+        this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
+          collectionName: this.collectionName,
+          url: 'http://localhost:8000', // Try Chroma server
+        });
+        logger.info(`[VectorStoreService] Connected to Chroma server at http://localhost:8000`);
+      } catch (chromaServerError) {
+        logger.warn(`[VectorStoreService] Could not connect to Chroma server, using in-memory fallback...`);
+        
+        // Fall back to in-memory mode using simple mock
+        this.vectorStore = this.createFallbackVectorStore() as any;
+        logger.info(`[VectorStoreService] Using in-memory vector store for app ${this.applicationId}`);
+      }
 
       this.isInitialized = true;
       logger.info(
@@ -360,6 +370,42 @@ export class VectorStoreService {
       logger.error('[VectorStoreService] Failed to get embedding:', error);
       throw error;
     }
+  }
+
+  /**
+   * Create a fallback in-memory vector store when Chroma is not available
+   */
+  private createFallbackVectorStore(): any {
+    const documents: any[] = [];
+    
+    return {
+      addDocuments: async (docs: Document[]) => {
+        documents.push(...docs.map((doc: Document) => ({
+          pageContent: doc.pageContent,
+          metadata: doc.metadata,
+          id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        })));
+        return documents.slice(-docs.length).map((d: any) => d.id);
+      },
+      similaritySearch: async (query: string, k: number = 5) => {
+        // Simple fallback: return first k documents (no actual similarity)
+        logger.warn(`[VectorStoreService] Using fallback search (no embeddings). Returning first ${k} documents.`);
+        return documents
+          .slice(0, k)
+          .map((doc: any) => new Document({
+            pageContent: doc.pageContent,
+            metadata: doc.metadata,
+          }));
+      },
+      delete: async (ids: { ids: string[] }) => {
+        // Simple fallback delete
+        const idSet = new Set(ids.ids);
+        const removed = documents.filter((d: any) => idSet.has(d.id));
+        documents.length = 0;
+        documents.push(...documents.filter((d: any) => !idSet.has(d.id)));
+        logger.info(`[VectorStoreService] Fallback delete removed ${removed.length} documents`);
+      },
+    };
   }
 }
 
