@@ -43,7 +43,7 @@ export class VectorStoreService {
     try {
       let apiKey = process.env.AZURE_OPENAI_API_KEY;
       let endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-      let apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
+      let apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-10-21';
       let deploymentName = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-large';
       let embeddingProvider = 'azure-openai';
       let skipSslVerification = false;
@@ -69,9 +69,10 @@ export class VectorStoreService {
               apiVersion = kbConfig.embedding_api_version;
               logger.info(`[VectorStoreService] Using KB config embedding API version: ${apiVersion}`);
             }
-            if (kbConfig.embedding_deployment) {
-              deploymentName = kbConfig.embedding_deployment;
-              logger.info(`[VectorStoreService] Using KB config embedding deployment: ${deploymentName}`);
+            // Use embeddingModel as the deployment name for Azure (must match Azure deployment name)
+            if (kbConfig.embeddingModel) {
+              deploymentName = kbConfig.embeddingModel;
+              logger.info(`[VectorStoreService] Using KB config embedding model (deployment): ${deploymentName}`);
             }
             if (kbConfig.embedding_skipSslVerification) {
               skipSslVerification = kbConfig.embedding_skipSslVerification;
@@ -83,6 +84,11 @@ export class VectorStoreService {
             logger.info(`[VectorStoreService] Using OpenAI embedding config for app ${this.applicationId}`);
             if (kbConfig.embedding_api_key) {
               apiKey = kbConfig.embedding_api_key;
+            }
+            // Use embeddingModel as the model name for standard OpenAI
+            if (kbConfig.embeddingModel) {
+              deploymentName = kbConfig.embeddingModel;
+              logger.info(`[VectorStoreService] Using OpenAI embedding model: ${deploymentName}`);
             }
             embeddingProvider = 'openai';
           }

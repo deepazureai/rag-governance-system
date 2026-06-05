@@ -47,11 +47,10 @@ export interface KnowledgeBaseConfig {
   
   // Embedding Configuration
   embeddingProvider: EmbeddingProvider;
-  embeddingModel?: string;                 // Embedding model name
+  embeddingModel?: string;                 // Embedding model/deployment name
   embedding_api_key?: string;              // Exact: for embedding client
   embedding_azure_endpoint?: string;       // Exact: for embedding client
   embedding_api_version?: string;          // Exact parameter
-  embedding_deployment?: string;           // Exact parameter
   embedding_skipSslVerification?: boolean;  // Optional SSL bypass
   embeddingAzureEndpoint?: string;
   embeddingAzureApiKey?: string;

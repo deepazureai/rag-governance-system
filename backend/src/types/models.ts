@@ -61,12 +61,11 @@ export interface KnowledgeBaseConfig {
   
   // Embedding Configuration - Exact parameter names for Azure OpenAI embeddings
   embeddingProvider: EmbeddingProvider;
-  embeddingModel?: string;                 // NEW: Embedding model name (e.g., "text-embedding-3-large")
+  embeddingModel?: string;                 // Embedding model/deployment name (e.g., "text-embedding-3-large")
   embedding_api_key?: string;              // Exact: for embedding client
   embedding_azure_endpoint?: string;       // Exact: for embedding client
-  embedding_api_version?: string;          // NEW: Exact parameter
-  embedding_deployment?: string;           // NEW: Exact parameter (e.g., "text-embedding-ada-002-deployment")
-  embedding_skipSslVerification?: boolean;  // NEW: Optional SSL bypass for embeddings
+  embedding_api_version?: string;          // Exact parameter (e.g., "2024-10-21")
+  embedding_skipSslVerification?: boolean;  // Optional SSL bypass for embeddings
   
   // Legacy embedding fields for backward compatibility
   embeddingAzureEndpoint?: string;

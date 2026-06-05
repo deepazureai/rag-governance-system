@@ -195,11 +195,11 @@ export class KnowledgeBaseConfigService {
           // Accept exact param names (new) or legacy names
           const hasEndpoint = config.embedding_azure_endpoint || config.embeddingAzureEndpoint;
           const hasApiKey = config.embedding_api_key || config.embeddingAzureApiKey;
-          const hasDeployment = config.embedding_deployment || config.embeddingAzureDeploymentName;
+          const hasModel = config.embeddingModel || config.embeddingAzureDeploymentName;
           
           if (!hasEndpoint) errors.push('Embedding Azure Endpoint is required');
           if (!hasApiKey) errors.push('Embedding Azure API Key is required');
-          if (!hasDeployment) errors.push('Embedding Azure Deployment is required');
+          if (!hasModel) errors.push('Embedding Model/Deployment is required');
           break;
         }
 

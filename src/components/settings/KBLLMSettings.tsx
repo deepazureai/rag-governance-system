@@ -51,21 +51,16 @@ const KB_PROVIDER_FIELDS: Record<KBProvider, ProviderField[]> = {
 };
 
 // Embedding Configuration Fields
+// Note: Parameter names match Azure OpenAI SDK requirements
 const EMBEDDING_PROVIDER_FIELDS: Record<EmbeddingProvider, ProviderField[]> = {
   'azure-openai': [
     { name: 'embedding_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
     { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
-    { name: 'embedding_deployment', label: 'Embedding Deployment Name', type: 'text', required: true, placeholder: 'e.g., text-embedding-3-large' },
-    { name: 'embedding_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2024-02-15-preview' },
+    { name: 'embedding_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2024-10-21' },
   ],
   'openai': [
     { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
   ],
-};
-
-const EMBEDDING_MODELS: Record<EmbeddingProvider, string[]> = {
-  'azure-openai': ['text-embedding-3-large', 'text-embedding-3-small', 'text-embedding-ada-002'],
-  'openai': ['text-embedding-3-large', 'text-embedding-3-small', 'text-embedding-ada-002'],
 };
 
 interface KBLLMSettingsProps {
@@ -339,16 +334,17 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
         <div className="mt-4">
           <label className="block text-sm font-medium mb-2">Embedding Model</label>
-          <Select value={embeddingModel} onValueChange={setEmbeddingModel}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EMBEDDING_MODELS[embeddingProvider].map(model => (
-                <SelectItem key={model} value={model}>{model}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            type="text"
+            placeholder="e.g., text-embedding-3-large (must match your Azure deployment name)"
+            value={embeddingModel}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setEmbeddingModel(e.target.value);
+              setMessage(null);
+            }}
+            className="w-full"
+          />
+          <p className="text-xs text-gray-500 mt-1">Model name must match your Azure deployment name or OpenAI model ID</p>
         </div>
 
         <div className="space-y-4 mt-6">
