@@ -61,6 +61,7 @@ export interface KnowledgeBaseConfig {
   
   // Embedding Configuration - Exact parameter names for Azure OpenAI embeddings
   embeddingProvider: EmbeddingProvider;
+  embeddingModel?: string;                 // NEW: Embedding model name (e.g., "text-embedding-3-large")
   embedding_api_key?: string;              // Exact: for embedding client
   embedding_azure_endpoint?: string;       // Exact: for embedding client
   embedding_api_version?: string;          // NEW: Exact parameter

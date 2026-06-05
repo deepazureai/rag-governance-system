@@ -44,7 +44,15 @@ export type VectorStoreType = 'chroma' | 'pinecone' | 'weaviate';
 export interface KnowledgeBaseConfig {
   _id?: Types.ObjectId;
   applicationId: string;
+  
+  // Embedding Configuration
   embeddingProvider: EmbeddingProvider;
+  embeddingModel?: string;                 // Embedding model name
+  embedding_api_key?: string;              // Exact: for embedding client
+  embedding_azure_endpoint?: string;       // Exact: for embedding client
+  embedding_api_version?: string;          // Exact parameter
+  embedding_deployment?: string;           // Exact parameter
+  embedding_skipSslVerification?: boolean;  // Optional SSL bypass
   embeddingAzureEndpoint?: string;
   embeddingAzureApiKey?: string;
   embeddingAzureDeploymentName?: string;
@@ -53,7 +61,28 @@ export interface KnowledgeBaseConfig {
   embeddingAwsAccessKeyId?: string;
   embeddingAwsSecretAccessKey?: string;
   embeddingBedrockModelId?: string;
+  
+  // KB LLM Configuration
   kbLlmProvider: KBLLMProvider;
+  provider?: KBLLMProvider;
+  kbllm_api_key?: string;                  // Exact: for KB LLM client
+  kbllm_azure_endpoint?: string;           // Exact: for KB LLM client
+  kbllm_api_version?: string;              // Exact parameter
+  kbllm_deployment?: string;               // Exact parameter
+  kbllm_skipSslVerification?: boolean;      // Optional SSL bypass
+  azureEndpoint?: string;
+  azureApiKey?: string;
+  azureDeploymentName?: string;
+  azureApiVersion?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
+  awsRegion?: string;
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  bedrockModelId?: string;
+  
   kbLlmAzureEndpoint?: string;
   kbLlmAzureApiKey?: string;
   kbLlmAzureDeploymentName?: string;
@@ -65,6 +94,7 @@ export interface KnowledgeBaseConfig {
   kbLlmBedrockModelId?: string;
   kbLlmOpenaiApiKey?: string;
   kbLlmOpenaiModel?: string;
+  
   vectorStoreType: VectorStoreType;
   vectorStoreUrl?: string;
   vectorStoreApiKey?: string;
