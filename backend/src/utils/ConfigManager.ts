@@ -244,19 +244,27 @@ export class ConfigManager {
     }
 
     // Validate embedding provider credentials
+    // Support both new exact param names and legacy field names
     switch (config.embeddingProvider) {
       case 'openai':
-        if (!config.embeddingOpenaiApiKey) errors.push('OpenAI API Key is required for embeddings');
+        const hasOpenAIKey = config.embedding_api_key || config.embeddingOpenaiApiKey;
+        if (!hasOpenAIKey) errors.push('OpenAI API Key is required for embeddings');
         break;
 
       case 'azure-openai':
-        if (!config.embeddingAzureApiKey) errors.push('Azure API Key is required for embeddings');
-        if (!config.embeddingAzureEndpoint) errors.push('Azure Endpoint is required for embeddings');
+        const hasAzureKey = config.embedding_api_key || config.embeddingAzureApiKey;
+        const hasAzureEndpoint = config.embedding_azure_endpoint || config.embeddingAzureEndpoint;
+        const hasEmbeddingModel = config.embeddingModel || config.embeddingAzureDeploymentName;
+        if (!hasAzureKey) errors.push('Azure API Key is required for embeddings');
+        if (!hasAzureEndpoint) errors.push('Azure Endpoint is required for embeddings');
+        if (!hasEmbeddingModel) errors.push('Embedding Model (deployment name) is required for embeddings');
         break;
 
       case 'aws-bedrock':
-        if (!config.embeddingAwsAccessKeyId) errors.push('AWS Access Key ID is required for embeddings');
-        if (!config.embeddingAwsSecretAccessKey) errors.push('AWS Secret Access Key is required for embeddings');
+        const hasAwsAccessKey = config.embeddingAwsAccessKeyId;
+        const hasAwsSecretKey = config.embeddingAwsSecretAccessKey;
+        if (!hasAwsAccessKey) errors.push('AWS Access Key ID is required for embeddings');
+        if (!hasAwsSecretKey) errors.push('AWS Secret Access Key is required for embeddings');
         break;
 
       default:
@@ -267,22 +275,33 @@ export class ConfigManager {
     if (config.kbLlmProvider) {
       switch (config.kbLlmProvider) {
         case 'azure-openai':
-          if (!config.kbLlmAzureApiKey) errors.push('Azure API Key is required for KB LLM');
-          if (!config.kbLlmAzureEndpoint) errors.push('Azure Endpoint is required for KB LLM');
+          const kbHasAzureKey = config.kbllm_api_key || config.kbLlmAzureApiKey;
+          const kbHasAzureEndpoint = config.kbllm_azure_endpoint || config.kbLlmAzureEndpoint;
+          const kbHasDeployment = config.kbllm_deployment || config.kbLlmAzureDeploymentName;
+          if (!kbHasAzureKey) errors.push('Azure API Key is required for KB LLM');
+          if (!kbHasAzureEndpoint) errors.push('Azure Endpoint is required for KB LLM');
+          if (!kbHasDeployment) errors.push('Deployment Name is required for KB LLM');
           break;
 
         case 'claude':
-          if (!config.kbLlmClaudeApiKey) errors.push('Claude API Key is required for KB LLM');
+          const claudeKey = config.kbllm_claude_api_key || config.kbLlmClaudeApiKey;
+          if (!claudeKey) errors.push('Claude API Key is required for KB LLM');
           break;
 
         case 'aws-bedrock':
-          if (!config.kbLlmAwsAccessKeyId) errors.push('AWS Access Key ID is required for KB LLM');
-          if (!config.kbLlmAwsSecretAccessKey) errors.push('AWS Secret Access Key is required for KB LLM');
+          const kbAwsAccessKey = config.kbllm_aws_access_key_id || config.kbLlmAwsAccessKeyId;
+          const kbAwsSecretKey = config.kbllm_aws_secret_access_key || config.kbLlmAwsSecretAccessKey;
+          if (!kbAwsAccessKey) errors.push('AWS Access Key ID is required for KB LLM');
+          if (!kbAwsSecretKey) errors.push('AWS Secret Access Key is required for KB LLM');
           break;
 
         case 'openai':
-          if (!config.kbLlmOpenaiApiKey) errors.push('OpenAI API Key is required for KB LLM');
+          const openaiKey = config.kbllm_openai_api_key || config.kbLlmOpenaiApiKey;
+          if (!openaiKey) errors.push('OpenAI API Key is required for KB LLM');
           break;
+
+        default:
+          errors.push(`Unknown KB LLM provider: ${config.kbLlmProvider}`);
       }
     }
 
