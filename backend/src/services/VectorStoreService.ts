@@ -140,18 +140,28 @@ export class VectorStoreService {
       }
 
       try {
-        // Try to connect to Chroma server via HTTP
+        // Connect to Chroma server running in Docker
         this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
           collectionName: this.collectionName,
-          url: 'http://localhost:8000', // Try Chroma server
+          url: 'http://chroma:8000', // Docker service name (internal network)
         });
-        logger.info(`[VectorStoreService] Connected to Chroma server at http://localhost:8000`);
+        logger.info(`[VectorStoreService] Connected to Chroma server at http://chroma:8000 (Docker)`);
       } catch (chromaServerError) {
-        logger.warn(`[VectorStoreService] Could not connect to Chroma server, using in-memory fallback...`);
-        
-        // Fall back to in-memory mode using simple mock
-        this.vectorStore = this.createFallbackVectorStore() as any;
-        logger.info(`[VectorStoreService] Using in-memory vector store for app ${this.applicationId}`);
+        // Try localhost fallback for local development
+        try {
+          this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
+            collectionName: this.collectionName,
+            url: 'http://localhost:8888', // Local Chroma development (port 8888 maps to 8000)
+          });
+          logger.info(`[VectorStoreService] Connected to Chroma server at http://localhost:8888 (local development)`);
+        } catch (chromaLocalError) {
+          logger.error(
+            `[VectorStoreService] Could not connect to Chroma. Ensure Chroma is running at http://chroma:8000 (Docker) or http://localhost:8888 (local). Error: ${chromaLocalError}`
+          );
+          throw new Error(
+            'Vector store (Chroma) is not available. Please ensure Chroma Docker service is running. Start with: docker-compose up -d chroma'
+          );
+        }
       }
 
       this.isInitialized = true;
@@ -370,42 +380,6 @@ export class VectorStoreService {
       logger.error('[VectorStoreService] Failed to get embedding:', error);
       throw error;
     }
-  }
-
-  /**
-   * Create a fallback in-memory vector store when Chroma is not available
-   */
-  private createFallbackVectorStore(): any {
-    const documents: any[] = [];
-    
-    return {
-      addDocuments: async (docs: Document[]) => {
-        documents.push(...docs.map((doc: Document) => ({
-          pageContent: doc.pageContent,
-          metadata: doc.metadata,
-          id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        })));
-        return documents.slice(-docs.length).map((d: any) => d.id);
-      },
-      similaritySearch: async (query: string, k: number = 5) => {
-        // Simple fallback: return first k documents (no actual similarity)
-        logger.warn(`[VectorStoreService] Using fallback search (no embeddings). Returning first ${k} documents.`);
-        return documents
-          .slice(0, k)
-          .map((doc: any) => new Document({
-            pageContent: doc.pageContent,
-            metadata: doc.metadata,
-          }));
-      },
-      delete: async (ids: { ids: string[] }) => {
-        // Simple fallback delete
-        const idSet = new Set(ids.ids);
-        const removed = documents.filter((d: any) => idSet.has(d.id));
-        documents.length = 0;
-        documents.push(...documents.filter((d: any) => !idSet.has(d.id)));
-        logger.info(`[VectorStoreService] Fallback delete removed ${removed.length} documents`);
-      },
-    };
   }
 }
 

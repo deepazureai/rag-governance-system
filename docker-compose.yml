@@ -1,4 +1,24 @@
-services:
+  chroma:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: v0-chroma
+    restart: unless-stopped
+    ports:
+      - "8888:8000"
+    environment:
+      IS_PERSISTENT: "true"
+      CHROMA_DB_IMPL: "duckdb+parquet"
+      ANONYMIZED_TELEMETRY: "false"
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - v0-network
+
   mongodb:
     image: mongo:latest
     container_name: v0-mongodb
@@ -47,6 +67,8 @@ services:
       HALLUCINATION_DETECTION_ENABLED: true
     depends_on:
       mongodb:
+        condition: service_healthy
+      chroma:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api/health"]
@@ -186,6 +208,7 @@ services:
 
 volumes:
   mongo_data:
+  chroma_data:
 
 networks:
   v0-network:
