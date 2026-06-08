@@ -45,22 +45,22 @@ export type LLMConfigInput = z.infer<typeof LLMConfigSchema>;
 export const KnowledgeBaseConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
   
-  // LLM Provider (mandatory)
-  provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
+  // LLM Provider - kbLlmProvider from frontend (azure-openai, claude, aws-bedrock, openai)
+  kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
   
-  // LLM Credentials (mandatory)
-  api_key: z.string().min(1, 'API key is required'),
-  endpoint: z.string().min(1, 'Endpoint is required'),
-  api_version: z.string().optional(),
-  deployment: z.string().optional(),
-  skipSslVerification: z.boolean().optional().default(false),
+  // LLM Credentials (from frontend as kbllm_* fields)
+  kbllm_api_key: z.string().min(1, 'API key is required'),
+  kbllm_azure_endpoint: z.string().min(1, 'Azure endpoint is required'),
+  kbllm_api_version: z.string().min(1, 'API version is required'),
+  kbllm_deployment: z.string().min(1, 'Deployment is required'),
+  kbllm_skipSslVerification: z.boolean().optional().default(false),
   
   // Embedding Provider (optional)
   embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']).optional(),
   
-  // Embedding Credentials (optional but all required together)
+  // Embedding Credentials (optional)
   embedding_api_key: z.string().optional(),
-  embedding_endpoint: z.string().optional(),
+  embedding_azure_endpoint: z.string().optional(),
   embedding_api_version: z.string().optional(),
   embedding_deployment: z.string().optional(),
   embedding_skipSslVerification: z.boolean().optional(),
@@ -68,6 +68,8 @@ export const KnowledgeBaseConfigSchema = z.object({
   // Additional optional fields
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
+  embeddingModel: z.string().optional(),
+  isDefault: z.boolean().optional(),
 });
 
 export type KnowledgeBaseConfigInput = z.infer<typeof KnowledgeBaseConfigSchema>;

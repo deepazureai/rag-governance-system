@@ -17,12 +17,12 @@ export class KnowledgeBaseConfigService {
   async upsertConfig(input: KnowledgeBaseConfigInput): Promise<KnowledgeBaseConfig> {
     try {
       console.log('[v0-upsertConfig] 1. Input received for appId:', input.applicationId);
-      console.log('[v0-upsertConfig] 2. Provider:', input.provider, '| Api key length:', input.api_key?.length);
+      console.log('[v0-upsertConfig] 2. Provider:', (input as any).kbLlmProvider, '| Api key length:', (input as any).kbllm_api_key?.length);
 
       // Encrypt sensitive fields
       console.log('[v0-upsertConfig] 3. Encrypting sensitive fields...');
       const encrypted = this.encryptSensitiveFields(input);
-      console.log('[v0-upsertConfig] 4. Encrypted api_key format:', encrypted.api_key?.substring(0, 30) + '...');
+      console.log('[v0-upsertConfig] 4. Encrypted kbllm_api_key format:', (encrypted as any).kbllm_api_key?.substring(0, 30) + '...');
 
       // Save to MongoDB
       console.log('[v0-upsertConfig] 5. Saving to MongoDB...');
@@ -66,29 +66,29 @@ export class KnowledgeBaseConfigService {
         return null;
       }
 
-      // Decrypt sensitive fields
+      // Decrypt sensitive fields (kbllm_* fields from stored data)
       console.log('[v0-getConfig] 3. Decrypting sensitive fields...');
       const decrypted = { ...config };
       
-      if ((decrypted as any).api_key && typeof (decrypted as any).api_key === 'string') {
-        (decrypted as any).api_key = cryptoUtil.decrypt((decrypted as any).api_key);
+      if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
+        (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
       }
-      if ((decrypted as any).endpoint && typeof (decrypted as any).endpoint === 'string') {
-        (decrypted as any).endpoint = cryptoUtil.decrypt((decrypted as any).endpoint);
+      if ((decrypted as any).kbllm_azure_endpoint && typeof (decrypted as any).kbllm_azure_endpoint === 'string') {
+        (decrypted as any).kbllm_azure_endpoint = cryptoUtil.decrypt((decrypted as any).kbllm_azure_endpoint);
       }
-      if ((decrypted as any).api_version && typeof (decrypted as any).api_version === 'string') {
-        (decrypted as any).api_version = cryptoUtil.decrypt((decrypted as any).api_version);
+      if ((decrypted as any).kbllm_api_version && typeof (decrypted as any).kbllm_api_version === 'string') {
+        (decrypted as any).kbllm_api_version = cryptoUtil.decrypt((decrypted as any).kbllm_api_version);
       }
-      if ((decrypted as any).deployment && typeof (decrypted as any).deployment === 'string') {
-        (decrypted as any).deployment = cryptoUtil.decrypt((decrypted as any).deployment);
+      if ((decrypted as any).kbllm_deployment && typeof (decrypted as any).kbllm_deployment === 'string') {
+        (decrypted as any).kbllm_deployment = cryptoUtil.decrypt((decrypted as any).kbllm_deployment);
       }
       
       // Decrypt embedding fields if present
       if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
         (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
       }
-      if ((decrypted as any).embedding_endpoint && typeof (decrypted as any).embedding_endpoint === 'string') {
-        (decrypted as any).embedding_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_endpoint);
+      if ((decrypted as any).embedding_azure_endpoint && typeof (decrypted as any).embedding_azure_endpoint === 'string') {
+        (decrypted as any).embedding_azure_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_azure_endpoint);
       }
       if ((decrypted as any).embedding_api_version && typeof (decrypted as any).embedding_api_version === 'string') {
         (decrypted as any).embedding_api_version = cryptoUtil.decrypt((decrypted as any).embedding_api_version);
@@ -258,22 +258,22 @@ export class KnowledgeBaseConfigService {
     console.log('[v0-encrypt] 1. Starting encryption of sensitive fields');
     const encrypted: KnowledgeBaseConfigInput = { ...config };
 
-    // Encrypt LLM mandatory fields
-    if ((encrypted as any).api_key) {
-      console.log('[v0-encrypt] 2a. Encrypting api_key');
-      (encrypted as any).api_key = cryptoUtil.encrypt((encrypted as any).api_key);
+    // Encrypt LLM mandatory fields (kbllm_* fields from frontend)
+    if ((encrypted as any).kbllm_api_key) {
+      console.log('[v0-encrypt] 2a. Encrypting kbllm_api_key');
+      (encrypted as any).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
     }
-    if ((encrypted as any).endpoint) {
-      console.log('[v0-encrypt] 2b. Encrypting endpoint');
-      (encrypted as any).endpoint = cryptoUtil.encrypt((encrypted as any).endpoint);
+    if ((encrypted as any).kbllm_azure_endpoint) {
+      console.log('[v0-encrypt] 2b. Encrypting kbllm_azure_endpoint');
+      (encrypted as any).kbllm_azure_endpoint = cryptoUtil.encrypt((encrypted as any).kbllm_azure_endpoint);
     }
-    if ((encrypted as any).api_version) {
-      console.log('[v0-encrypt] 2c. Encrypting api_version');
-      (encrypted as any).api_version = cryptoUtil.encrypt((encrypted as any).api_version);
+    if ((encrypted as any).kbllm_api_version) {
+      console.log('[v0-encrypt] 2c. Encrypting kbllm_api_version');
+      (encrypted as any).kbllm_api_version = cryptoUtil.encrypt((encrypted as any).kbllm_api_version);
     }
-    if ((encrypted as any).deployment) {
-      console.log('[v0-encrypt] 2d. Encrypting deployment');
-      (encrypted as any).deployment = cryptoUtil.encrypt((encrypted as any).deployment);
+    if ((encrypted as any).kbllm_deployment) {
+      console.log('[v0-encrypt] 2d. Encrypting kbllm_deployment');
+      (encrypted as any).kbllm_deployment = cryptoUtil.encrypt((encrypted as any).kbllm_deployment);
     }
 
     // Encrypt embedding optional fields
@@ -281,9 +281,9 @@ export class KnowledgeBaseConfigService {
       console.log('[v0-encrypt] 3a. Encrypting embedding_api_key');
       (encrypted as any).embedding_api_key = cryptoUtil.encrypt((encrypted as any).embedding_api_key);
     }
-    if ((encrypted as any).embedding_endpoint) {
-      console.log('[v0-encrypt] 3b. Encrypting embedding_endpoint');
-      (encrypted as any).embedding_endpoint = cryptoUtil.encrypt((encrypted as any).embedding_endpoint);
+    if ((encrypted as any).embedding_azure_endpoint) {
+      console.log('[v0-encrypt] 3b. Encrypting embedding_azure_endpoint');
+      (encrypted as any).embedding_azure_endpoint = cryptoUtil.encrypt((encrypted as any).embedding_azure_endpoint);
     }
     if ((encrypted as any).embedding_api_version) {
       console.log('[v0-encrypt] 3c. Encrypting embedding_api_version');
@@ -295,107 +295,6 @@ export class KnowledgeBaseConfigService {
     }
 
     console.log('[v0-encrypt] 4. Encryption complete');
-    return encrypted;
-  }
-    if ((encrypted as any).embedding_azure_endpoint) {
-      (encrypted as any).embedding_azure_endpoint = cryptoUtil.encrypt((encrypted as any).embedding_azure_endpoint);
-    }
-    if ((encrypted as any).embedding_api_version) {
-      (encrypted as any).embedding_api_version = cryptoUtil.encrypt((encrypted as any).embedding_api_version);
-    }
-    
-    // Encrypt legacy embedding credentials (backward compatibility)
-    if (encrypted.embeddingOpenaiApiKey) {
-      encrypted.embeddingOpenaiApiKey = cryptoUtil.encrypt(encrypted.embeddingOpenaiApiKey);
-    }
-    if (encrypted.embeddingAzureApiKey) {
-      encrypted.embeddingAzureApiKey = cryptoUtil.encrypt(encrypted.embeddingAzureApiKey);
-    }
-    if (encrypted.embeddingAzureEndpoint) {
-      encrypted.embeddingAzureEndpoint = cryptoUtil.encrypt(encrypted.embeddingAzureEndpoint);
-    }
-    if (encrypted.embeddingAwsAccessKeyId) {
-      encrypted.embeddingAwsAccessKeyId = cryptoUtil.encrypt(encrypted.embeddingAwsAccessKeyId);
-    }
-    if (encrypted.embeddingAwsSecretAccessKey) {
-      encrypted.embeddingAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.embeddingAwsSecretAccessKey);
-    }
-
-    // Encrypt KB LLM credentials based on provider (exact param names - snake_case)
-    if (encrypted.kbLlmProvider) {
-      switch (encrypted.kbLlmProvider) {
-        case 'azure-openai':
-          // Encrypt exact param names (snake_case)
-          if ((encrypted as any).kbllm_api_key) {
-            (encrypted as any).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
-          }
-          if ((encrypted as any).kbllm_azure_endpoint) {
-            (encrypted as any).kbllm_azure_endpoint = cryptoUtil.encrypt((encrypted as any).kbllm_azure_endpoint);
-          }
-          if ((encrypted as any).kbllm_api_version) {
-            (encrypted as any).kbllm_api_version = cryptoUtil.encrypt((encrypted as any).kbllm_api_version);
-          }
-          if ((encrypted as any).kbllm_deployment) {
-            (encrypted as any).kbllm_deployment = cryptoUtil.encrypt((encrypted as any).kbllm_deployment);
-          }
-          // Encrypt legacy fields (camelCase)
-          if (encrypted.kbLlmAzureApiKey) {
-            encrypted.kbLlmAzureApiKey = cryptoUtil.encrypt(encrypted.kbLlmAzureApiKey);
-          }
-          if (encrypted.kbLlmAzureEndpoint) {
-            encrypted.kbLlmAzureEndpoint = cryptoUtil.encrypt(encrypted.kbLlmAzureEndpoint);
-          }
-          if (encrypted.kbLlmAzureDeploymentName) {
-            encrypted.kbLlmAzureDeploymentName = cryptoUtil.encrypt(encrypted.kbLlmAzureDeploymentName);
-          }
-          break;
-
-        case 'claude':
-          // Encrypt snake_case
-          if ((encrypted as any).kbllm_claude_api_key) {
-            (encrypted as any).kbllm_claude_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_claude_api_key);
-          }
-          // Encrypt legacy camelCase
-          if (encrypted.kbLlmClaudeApiKey) {
-            encrypted.kbLlmClaudeApiKey = cryptoUtil.encrypt(encrypted.kbLlmClaudeApiKey);
-          }
-          break;
-
-        case 'aws-bedrock':
-          // Encrypt snake_case
-          if ((encrypted as any).kbllm_aws_access_key_id) {
-            (encrypted as any).kbllm_aws_access_key_id = cryptoUtil.encrypt((encrypted as any).kbllm_aws_access_key_id);
-          }
-          if ((encrypted as any).kbllm_aws_secret_access_key) {
-            (encrypted as any).kbllm_aws_secret_access_key = cryptoUtil.encrypt((encrypted as any).kbllm_aws_secret_access_key);
-          }
-          // Encrypt legacy camelCase
-          if (encrypted.kbLlmAwsAccessKeyId) {
-            encrypted.kbLlmAwsAccessKeyId = cryptoUtil.encrypt(encrypted.kbLlmAwsAccessKeyId);
-          }
-          if (encrypted.kbLlmAwsSecretAccessKey) {
-            encrypted.kbLlmAwsSecretAccessKey = cryptoUtil.encrypt(encrypted.kbLlmAwsSecretAccessKey);
-          }
-          break;
-
-        case 'openai':
-          // Encrypt snake_case
-          if ((encrypted as any).kbllm_openai_api_key) {
-            (encrypted as any).kbllm_openai_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_openai_api_key);
-          }
-          // Encrypt legacy camelCase
-          if (encrypted.kbLlmOpenaiApiKey) {
-            encrypted.kbLlmOpenaiApiKey = cryptoUtil.encrypt(encrypted.kbLlmOpenaiApiKey);
-          }
-          break;
-      }
-    }
-
-    // Encrypt vector store API key if present
-    if (encrypted.vectorStoreApiKey) {
-      encrypted.vectorStoreApiKey = cryptoUtil.encrypt(encrypted.vectorStoreApiKey);
-    }
-
     return encrypted;
   }
 }
