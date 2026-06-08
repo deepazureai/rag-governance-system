@@ -45,6 +45,7 @@ export type LLMConfigInput = z.infer<typeof LLMConfigSchema>;
 export const KnowledgeBaseConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
   embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']),
+  embeddingModel: z.string().optional(),
   // Exact parameter names for embedding (Azure OpenAI)
   embedding_api_key: z.string().optional(),
   embedding_azure_endpoint: z.string().optional(),
@@ -60,7 +61,7 @@ export const KnowledgeBaseConfigSchema = z.object({
   embeddingAwsAccessKeyId: z.string().optional(),
   embeddingAwsSecretAccessKey: z.string().optional(),
   embeddingBedrockModelId: z.string().optional(),
-  // KB LLM Provider - accepts both 'provider' (new) and 'kbLlmProvider' (legacy)
+  // KB LLM Provider - only kbLlmProvider is required
   kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
   provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
   // New simplified field names (from KBLLMSettings component - camelCase)
@@ -82,10 +83,19 @@ export const KnowledgeBaseConfigSchema = z.object({
   kbllm_api_version: z.string().optional(),
   kbllm_deployment: z.string().optional(),
   kbllm_skipSslVerification: z.boolean().optional(),
+  kbllm_claude_api_key: z.string().optional(),
+  kbllm_claude_model: z.string().optional(),
+  kbllm_aws_region: z.string().optional(),
+  kbllm_aws_access_key_id: z.string().optional(),
+  kbllm_aws_secret_access_key: z.string().optional(),
+  kbllm_bedrock_model_id: z.string().optional(),
+  kbllm_openai_api_key: z.string().optional(),
+  kbllm_openai_model: z.string().optional(),
   // Legacy KB LLM fields
   kbLlmAzureEndpoint: z.string().optional(),
   kbLlmAzureApiKey: z.string().optional(),
   kbLlmAzureDeploymentName: z.string().optional(),
+  kbLlmAzureApiVersion: z.string().optional(),
   kbLlmClaudeApiKey: z.string().optional(),
   kbLlmClaudeModel: z.string().optional(),
   kbLlmAwsRegion: z.string().optional(),
@@ -94,13 +104,15 @@ export const KnowledgeBaseConfigSchema = z.object({
   kbLlmBedrockModelId: z.string().optional(),
   kbLlmOpenaiApiKey: z.string().optional(),
   kbLlmOpenaiModel: z.string().optional(),
-  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate', 'azure-search']),
+  // Vector store and other optional settings
+  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate', 'azure-search']).optional(),
   vectorStoreUrl: z.string().optional(),
   vectorStoreApiKey: z.string().optional(),
-  chunkSize: z.number().positive('Chunk size must be positive'),
-  overlapSize: z.number().min(0, 'Overlap size cannot be negative'),
+  chunkSize: z.number().positive('Chunk size must be positive').optional(),
+  overlapSize: z.number().min(0, 'Overlap size cannot be negative').optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
+  isDefault: z.boolean().optional(),
 });
 
 export type KnowledgeBaseConfigInput = z.infer<typeof KnowledgeBaseConfigSchema>;
