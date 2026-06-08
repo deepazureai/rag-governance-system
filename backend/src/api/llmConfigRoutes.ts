@@ -321,6 +321,16 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     console.log('[v0] KB Config Request Body:', JSON.stringify(body, null, 2));
     console.log('[v0] KB Config After Normalization:', JSON.stringify(normalized, null, 2));
 
+    // Ensure we have a provider
+    if (!normalized.kbLlmProvider && !normalized.provider) {
+      console.error('[v0] No KB LLM provider specified');
+      res.status(400).json({
+        success: false,
+        error: 'KB LLM provider is required (kbLlmProvider or provider)',
+      } as ApiResponse<IKnowledgeBaseConfig>);
+      return;
+    }
+
     // Validate request body
     const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
@@ -337,7 +347,8 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     console.log('[v0] KB Config After Schema Validation:', JSON.stringify(configData, null, 2));
 
     // Validate provider-specific required fields
-    if (configData.kbLlmProvider === 'azure-openai') {
+    const llmProvider = configData.kbLlmProvider || configData.provider;
+    if (llmProvider === 'azure-openai') {
       const requiredFields = ['kbllm_api_key', 'kbllm_azure_endpoint', 'kbllm_deployment'];
       const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
       console.log('[v0] Azure OpenAI Required Fields Check:', { requiredFields, currentFields: configData, missing });

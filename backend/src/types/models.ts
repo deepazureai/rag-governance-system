@@ -60,7 +60,7 @@ export interface KnowledgeBaseConfig {
   applicationId: string;
   
   // Embedding Configuration - Exact parameter names for Azure OpenAI embeddings
-  embeddingProvider: EmbeddingProvider;
+  embeddingProvider?: EmbeddingProvider;
   embeddingModel?: string;                 // Embedding model/deployment name (e.g., "text-embedding-3-large")
   embedding_api_key?: string;              // Exact: for embedding client
   embedding_azure_endpoint?: string;       // Exact: for embedding client
@@ -78,7 +78,7 @@ export interface KnowledgeBaseConfig {
   embeddingBedrockModelId?: string;
   
   // KB LLM Configuration - Exact parameter names for Azure OpenAI LLM
-  kbLlmProvider: KBLLMProvider;
+  kbLlmProvider?: KBLLMProvider;
   provider?: KBLLMProvider;  // Alternative field name for simplified UI
   kbllm_api_key?: string;              // Exact: for KB LLM client (Azure/OpenAI)
   kbllm_azure_endpoint?: string;       // Exact: for KB LLM client

@@ -44,7 +44,7 @@ export type LLMConfigInput = z.infer<typeof LLMConfigSchema>;
 // ============================================================
 export const KnowledgeBaseConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
-  embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']),
+  embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']).optional(),
   embeddingModel: z.string().optional(),
   // Exact parameter names for embedding (Azure OpenAI)
   embedding_api_key: z.string().optional(),
@@ -61,8 +61,8 @@ export const KnowledgeBaseConfigSchema = z.object({
   embeddingAwsAccessKeyId: z.string().optional(),
   embeddingAwsSecretAccessKey: z.string().optional(),
   embeddingBedrockModelId: z.string().optional(),
-  // KB LLM Provider - only kbLlmProvider is required
-  kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
+  // KB LLM Provider - kbLlmProvider is required, provider is fallback
+  kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
   provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
   // New simplified field names (from KBLLMSettings component - camelCase)
   azureEndpoint: z.string().optional(),
@@ -113,7 +113,13 @@ export const KnowledgeBaseConfigSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
   isDefault: z.boolean().optional(),
-});
+}).refine(
+  (data) => data.kbLlmProvider || data.provider,
+  {
+    message: 'Either kbLlmProvider or provider is required',
+    path: ['kbLlmProvider'],
+  }
+);
 
 export type KnowledgeBaseConfigInput = z.infer<typeof KnowledgeBaseConfigSchema>;
 
