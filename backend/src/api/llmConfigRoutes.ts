@@ -334,8 +334,9 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     // Validate request body
     const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
+      console.error('[v0] KB Config Validation Failed - Full Error:', JSON.stringify(validation.error, null, 2));
       const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
-      console.error('[v0] KB Config Validation Failed:', errorDetails);
+      console.error('[v0] KB Config Validation Failed - Formatted:', errorDetails);
       res.status(400).json({
         success: false,
         error: `Validation failed: ${errorDetails}`,
