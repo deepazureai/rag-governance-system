@@ -16,8 +16,13 @@ export class KnowledgeBaseConfigService {
    */
   async upsertConfig(input: KnowledgeBaseConfigInput): Promise<KnowledgeBaseConfig> {
     try {
+      console.log('[v0] upsertConfig input:', JSON.stringify({ ...input, kbllm_api_key: '****', embedding_api_key: '****' }, null, 2));
+      
       const validation = KnowledgeBaseConfigSchema.safeParse(input);
+      console.log('[v0] upsertConfig schema validation success:', validation.success);
+      
       if (!validation.success) {
+        console.error('[v0] upsertConfig validation errors:', validation.error.errors);
         throw new Error(`Validation failed: ${JSON.stringify(validation.error.errors)}`);
       }
 
@@ -37,6 +42,7 @@ export class KnowledgeBaseConfigService {
         throw new Error('Failed to upsert configuration');
       }
 
+      console.log('[v0] upsertConfig successful for app:', input.applicationId);
       return result.value as KnowledgeBaseConfig;
     } catch (error: unknown) {
       throw this.handleError('upsertConfig', error);

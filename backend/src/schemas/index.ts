@@ -61,7 +61,7 @@ export const KnowledgeBaseConfigSchema = z.object({
   embeddingAwsAccessKeyId: z.string().optional(),
   embeddingAwsSecretAccessKey: z.string().optional(),
   embeddingBedrockModelId: z.string().optional(),
-  // KB LLM Provider - kbLlmProvider is required, provider is fallback
+  // KB LLM Provider - accepts either kbLlmProvider or provider (validated in route handler)
   kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
   provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
   // New simplified field names (from KBLLMSettings component - camelCase)
@@ -113,13 +113,7 @@ export const KnowledgeBaseConfigSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
   isDefault: z.boolean().optional(),
-}).refine(
-  (data) => data.kbLlmProvider || data.provider,
-  {
-    message: 'Either kbLlmProvider or provider is required',
-    path: ['kbLlmProvider'],
-  }
-);
+});
 
 export type KnowledgeBaseConfigInput = z.infer<typeof KnowledgeBaseConfigSchema>;
 
