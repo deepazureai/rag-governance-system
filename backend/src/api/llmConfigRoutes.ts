@@ -318,11 +318,14 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
 
     // Normalize field names to standard format BEFORE validation
     const normalized = normalizeKBConfigFieldNames(body);
+    console.log('[v0] KB Config Request Body:', JSON.stringify(body, null, 2));
+    console.log('[v0] KB Config After Normalization:', JSON.stringify(normalized, null, 2));
 
     // Validate request body
     const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
     if (!validation.success) {
       const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
+      console.error('[v0] KB Config Validation Failed:', errorDetails);
       res.status(400).json({
         success: false,
         error: `Validation failed: ${errorDetails}`,
@@ -331,11 +334,13 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     }
 
     const configData = validation.data;
+    console.log('[v0] KB Config After Schema Validation:', JSON.stringify(configData, null, 2));
 
     // Validate provider-specific required fields
     if (configData.kbLlmProvider === 'azure-openai') {
       const requiredFields = ['kbllm_api_key', 'kbllm_azure_endpoint', 'kbllm_deployment'];
       const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
+      console.log('[v0] Azure OpenAI Required Fields Check:', { requiredFields, currentFields: configData, missing });
       if (missing.length > 0) {
         res.status(400).json({
           success: false,

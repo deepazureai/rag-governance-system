@@ -122,11 +122,11 @@ export interface KnowledgeBaseConfig {
   kbLlmOpenaiModel?: string;
   
   // Vector Store Configuration
-  vectorStoreType: VectorStoreType;
+  vectorStoreType?: VectorStoreType;
   vectorStoreUrl?: string;
   vectorStoreApiKey?: string;
-  chunkSize: number;
-  overlapSize: number;
+  chunkSize?: number;
+  overlapSize?: number;
   temperature?: number;
   maxTokens?: number;
   createdAt: Date;
