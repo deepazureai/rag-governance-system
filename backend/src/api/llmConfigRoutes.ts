@@ -309,69 +309,48 @@ llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response)
 llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
+    console.log('[v0-POST] 1. Received request for appId:', appId);
+    
     if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
 
     const body = req.body as Record<string, unknown>;
+    console.log('[v0-POST] 2. Request body:', JSON.stringify(body, null, 2));
 
-    // Normalize field names to standard format BEFORE validation
-    const normalized = normalizeKBConfigFieldNames(body);
-    console.log('[v0] KB Config Request Body:', JSON.stringify(body, null, 2));
-    console.log('[v0] KB Config After Normalization:', JSON.stringify(normalized, null, 2));
+    // STEP 1: Add applicationId
+    const dataWithAppId = { ...body, applicationId: appId };
+    console.log('[v0-POST] 3. Data with appId:', JSON.stringify(dataWithAppId, null, 2));
 
-    // Ensure we have a provider
-    if (!normalized.kbLlmProvider && !normalized.provider) {
-      console.error('[v0] No KB LLM provider specified');
-      res.status(400).json({
-        success: false,
-        error: 'KB LLM provider is required (kbLlmProvider or provider)',
-      } as ApiResponse<IKnowledgeBaseConfig>);
-      return;
-    }
-
-    // Validate request body
-    const validation = KnowledgeBaseConfigSchema.safeParse({ ...normalized, applicationId: appId });
+    // STEP 2: Validate schema
+    console.log('[v0-POST] 4. Starting schema validation...');
+    const validation = KnowledgeBaseConfigSchema.safeParse(dataWithAppId);
+    
     if (!validation.success) {
-      console.error('[v0] KB Config Validation Failed - Full Error:', JSON.stringify(validation.error, null, 2));
-      const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
-      console.error('[v0] KB Config Validation Failed - Formatted:', errorDetails);
-      res.status(400).json({
-        success: false,
-        error: `Validation failed: ${errorDetails}`,
-      } as ApiResponse<IKnowledgeBaseConfig>);
+      console.error('[v0-POST] 5. VALIDATION FAILED:', JSON.stringify(validation.error.errors, null, 2));
+      const errorMsg = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
+      res.status(400).json({ success: false, error: errorMsg });
       return;
     }
 
-    const configData = validation.data;
-    console.log('[v0] KB Config After Schema Validation:', JSON.stringify(configData, null, 2));
+    const validatedData = validation.data;
+    console.log('[v0-POST] 5. Schema validation passed. Validated data:', JSON.stringify(validatedData, null, 2));
 
-    // Validate provider-specific required fields
-    const llmProvider = configData.kbLlmProvider || configData.provider;
-    if (llmProvider === 'azure-openai') {
-      const requiredFields = ['kbllm_api_key', 'kbllm_azure_endpoint', 'kbllm_deployment'];
-      const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
-      console.log('[v0] Azure OpenAI Required Fields Check:', { requiredFields, currentFields: configData, missing });
-      if (missing.length > 0) {
-        res.status(400).json({
-          success: false,
-          error: `For Azure OpenAI, these fields are required: ${missing.join(', ')}`,
-        } as ApiResponse<IKnowledgeBaseConfig>);
-        return;
-      }
-    }
-
-    const config = await kbConfigService.upsertConfig(configData);
+    // STEP 3: Upsert to database
+    console.log('[v0-POST] 6. Calling upsertConfig...');
+    const config = await kbConfigService.upsertConfig(validatedData);
+    console.log('[v0-POST] 7. upsertConfig returned:', JSON.stringify(config, null, 2));
 
     res.json({
       success: true,
       data: config,
       message: 'Knowledge Base configuration saved successfully',
     } as ApiResponse<IKnowledgeBaseConfig>);
+    
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/kb-config/app/:appId Error:', message);
+    console.error('[v0-POST] ERROR:', message, error instanceof Error ? error.stack : '');
     res.status(500).json({
       success: false,
       error: message,

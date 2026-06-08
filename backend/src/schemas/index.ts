@@ -44,75 +44,30 @@ export type LLMConfigInput = z.infer<typeof LLMConfigSchema>;
 // ============================================================
 export const KnowledgeBaseConfigSchema = z.object({
   applicationId: z.string().min(1, 'Application ID is required'),
+  
+  // LLM Provider (mandatory)
+  provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']),
+  
+  // LLM Credentials (mandatory)
+  api_key: z.string().min(1, 'API key is required'),
+  endpoint: z.string().min(1, 'Endpoint is required'),
+  api_version: z.string().optional(),
+  deployment: z.string().optional(),
+  skipSslVerification: z.boolean().optional().default(false),
+  
+  // Embedding Provider (optional)
   embeddingProvider: z.enum(['azure-openai', 'openai', 'aws-bedrock']).optional(),
-  embeddingModel: z.string().optional(),
-  // Exact parameter names for embedding (Azure OpenAI)
+  
+  // Embedding Credentials (optional but all required together)
   embedding_api_key: z.string().optional(),
-  embedding_azure_endpoint: z.string().optional(),
+  embedding_endpoint: z.string().optional(),
   embedding_api_version: z.string().optional(),
   embedding_deployment: z.string().optional(),
   embedding_skipSslVerification: z.boolean().optional(),
-  // Legacy embedding fields
-  embeddingAzureEndpoint: z.string().optional(),
-  embeddingAzureApiKey: z.string().optional(),
-  embeddingAzureDeploymentName: z.string().optional(),
-  embeddingOpenaiApiKey: z.string().optional(),
-  embeddingAwsRegion: z.string().optional(),
-  embeddingAwsAccessKeyId: z.string().optional(),
-  embeddingAwsSecretAccessKey: z.string().optional(),
-  embeddingBedrockModelId: z.string().optional(),
-  // KB LLM Provider - accepts either kbLlmProvider or provider (validated in route handler)
-  kbLlmProvider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
-  provider: z.enum(['azure-openai', 'claude', 'aws-bedrock', 'openai']).optional(),
-  // New simplified field names (from KBLLMSettings component - camelCase)
-  azureEndpoint: z.string().optional(),
-  azureApiKey: z.string().optional(),
-  azureDeploymentName: z.string().optional(),
-  azureApiVersion: z.string().optional(),
-  openaiApiKey: z.string().optional(),
-  openaiModel: z.string().optional(),
-  claudeApiKey: z.string().optional(),
-  claudeModel: z.string().optional(),
-  awsRegion: z.string().optional(),
-  awsAccessKeyId: z.string().optional(),
-  awsSecretAccessKey: z.string().optional(),
-  bedrockModelId: z.string().optional(),
-  // Exact parameter names for KB LLM (Azure OpenAI - snake_case)
-  kbllm_api_key: z.string().optional(),
-  kbllm_azure_endpoint: z.string().optional(),
-  kbllm_api_version: z.string().optional(),
-  kbllm_deployment: z.string().optional(),
-  kbllm_skipSslVerification: z.boolean().optional(),
-  kbllm_claude_api_key: z.string().optional(),
-  kbllm_claude_model: z.string().optional(),
-  kbllm_aws_region: z.string().optional(),
-  kbllm_aws_access_key_id: z.string().optional(),
-  kbllm_aws_secret_access_key: z.string().optional(),
-  kbllm_bedrock_model_id: z.string().optional(),
-  kbllm_openai_api_key: z.string().optional(),
-  kbllm_openai_model: z.string().optional(),
-  // Legacy KB LLM fields
-  kbLlmAzureEndpoint: z.string().optional(),
-  kbLlmAzureApiKey: z.string().optional(),
-  kbLlmAzureDeploymentName: z.string().optional(),
-  kbLlmAzureApiVersion: z.string().optional(),
-  kbLlmClaudeApiKey: z.string().optional(),
-  kbLlmClaudeModel: z.string().optional(),
-  kbLlmAwsRegion: z.string().optional(),
-  kbLlmAwsAccessKeyId: z.string().optional(),
-  kbLlmAwsSecretAccessKey: z.string().optional(),
-  kbLlmBedrockModelId: z.string().optional(),
-  kbLlmOpenaiApiKey: z.string().optional(),
-  kbLlmOpenaiModel: z.string().optional(),
-  // Vector store and other optional settings
-  vectorStoreType: z.enum(['chroma', 'pinecone', 'weaviate', 'azure-search']).optional(),
-  vectorStoreUrl: z.string().optional(),
-  vectorStoreApiKey: z.string().optional(),
-  chunkSize: z.number().positive('Chunk size must be positive').optional(),
-  overlapSize: z.number().min(0, 'Overlap size cannot be negative').optional(),
+  
+  // Additional optional fields
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().positive().optional(),
-  isDefault: z.boolean().optional(),
 });
 
 export type KnowledgeBaseConfigInput = z.infer<typeof KnowledgeBaseConfigSchema>;
