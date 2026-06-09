@@ -4,7 +4,7 @@ import { llmConfigService } from '../services/LLMConfigService.js';
 import { kbConfigService } from '../services/KBConfigService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
-import { LLMConfigSchema, KnowledgeBaseConfigSchema } from '../schemas/index.js';
+import { LLMConfigSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { getQueryString } from '../utils/queryParamUtils.js';
 import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models.js';
@@ -317,30 +317,15 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     }
 
     const body = req.body as Record<string, unknown>;
-    console.log('[v0-POST] 2. Request body:', JSON.stringify(body, null, 2));
+    console.log('[v0-POST] 2. Request body received');
 
-    // STEP 1: Add applicationId
+    // Add applicationId to data
     const dataWithAppId = { ...body, applicationId: appId };
-    console.log('[v0-POST] 3. Data with appId:', JSON.stringify(dataWithAppId, null, 2));
+    console.log('[v0-POST] 3. Calling upsertConfig...');
 
-    // STEP 2: Validate schema
-    console.log('[v0-POST] 4. Starting schema validation...');
-    const validation = KnowledgeBaseConfigSchema.safeParse(dataWithAppId);
-    
-    if (!validation.success) {
-      console.error('[v0-POST] 5. VALIDATION FAILED:', JSON.stringify(validation.error.errors, null, 2));
-      const errorMsg = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
-      res.status(400).json({ success: false, error: errorMsg });
-      return;
-    }
-
-    const validatedData = validation.data;
-    console.log('[v0-POST] 5. Schema validation passed. Validated data:', JSON.stringify(validatedData, null, 2));
-
-    // STEP 3: Upsert to database
-    console.log('[v0-POST] 6. Calling upsertConfig...');
-    const config = await kbConfigService.upsertConfig(validatedData);
-    console.log('[v0-POST] 7. upsertConfig returned:', JSON.stringify(config, null, 2));
+    // Upsert to database (no validation)
+    const config = await kbConfigService.upsertConfig(dataWithAppId as any);
+    console.log('[v0-POST] 4. upsertConfig returned successfully');
 
     res.json({
       success: true,
@@ -350,7 +335,7 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
     
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0-POST] ERROR:', message, error instanceof Error ? error.stack : '');
+    console.error('[v0-POST] ERROR:', message);
     res.status(500).json({
       success: false,
       error: message,
