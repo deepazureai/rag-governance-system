@@ -20,14 +20,23 @@ export class PostgreSQLConnectorService {
    */
   private async createConnectionPool(dbConfig: any): Promise<Pool> {
     try {
+      let host = dbConfig.host;
+      
+      // Replace localhost with host.docker.internal when running inside Docker
+      // This allows Docker containers to reach services on the host machine
+      if (host === 'localhost' || host === '127.0.0.1') {
+        host = 'host.docker.internal';
+        logger.info('[PostgreSQLConnectorService] Replacing localhost with host.docker.internal for Docker connectivity');
+      }
+
       logger.info('[PostgreSQLConnectorService] Creating connection pool', {
-        host: dbConfig.host,
+        host,
         port: dbConfig.port,
         database: dbConfig.database,
       });
 
       const pool = new Pool({
-        host: dbConfig.host,
+        host,
         port: dbConfig.port,
         database: dbConfig.database,
         user: dbConfig.username,
