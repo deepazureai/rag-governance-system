@@ -163,24 +163,24 @@ services:
     networks:
       - v0-network
 
-  deepeval:
-    build:
-      context: .
-      dockerfile: deepeval-service/Dockerfile
-    container_name: v0-deepeval
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - v0-network
+  # deepeval:
+  #   build:
+  #     context: .
+  #     dockerfile: deepeval-service/Dockerfile
+  #   container_name: v0-deepeval
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY}
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+  #   networks:
+  #     - v0-network
 
   frontend:
     build:
@@ -197,8 +197,6 @@ services:
       NEXT_PUBLIC_DEEPEVAL_URL: http://localhost:8000
     depends_on:
       backend:
-        condition: service_healthy
-      deepeval:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
