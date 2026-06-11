@@ -286,8 +286,8 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
     console.log('[v0-validate] 6. Both providers created - returning success response');
     
     res.json({
-      success: true,
-      message: 'KB config parameters logged. Check backend logs for parameter details.',
+      valid: true,
+      error: undefined,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -295,7 +295,7 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
     console.error('[v0-validate] ERROR:', message);
     console.error('[v0-validate] ERROR STACK:', stack);
     res.status(500).json({
-      success: false,
+      valid: false,
       error: message,
     });
   }
