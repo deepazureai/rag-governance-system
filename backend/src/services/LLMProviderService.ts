@@ -128,21 +128,43 @@ export class LLMProviderService {
    */
   async getKBChatCompletionProvider(applicationId: string): Promise<ILLMProvider> {
     try {
-      console.log('[v0] Getting KB Chat Completion provider for app:', applicationId);
+      console.log('[v0-getChatCompletionProvider] 1. Starting for app:', applicationId);
       
+      console.log('[v0-getChatCompletionProvider] 2. Calling kbConfigService.getConfig');
       const kbConfig = await kbConfigService.getConfig(applicationId);
+      
+      console.log('[v0-getChatCompletionProvider] 3. MongoDB config fetched:', {
+        found: !!kbConfig,
+        appId: (kbConfig as any)?.applicationId,
+        keys: kbConfig ? Object.keys(kbConfig) : []
+      });
+      
       if (!kbConfig) {
-        throw new Error('KB Configuration not found');
+        throw new Error('KB Configuration not found in MongoDB');
       }
 
+      console.log('[v0-getChatCompletionProvider] 4. Calling mapKBConfigToChatCompletion');
       const llmConfig = this.mapKBConfigToChatCompletion(kbConfig);
+      
+      console.log('[v0-getChatCompletionProvider] 5. Mapped LLMConfig:', {
+        applicationId: llmConfig.applicationId,
+        provider: llmConfig.provider,
+        has_api_key: !!llmConfig.api_key,
+        has_azure_endpoint: !!llmConfig.azure_endpoint,
+        has_deployment: !!llmConfig.deployment,
+        has_api_version: !!llmConfig.api_version
+      });
+      
+      console.log('[v0-getChatCompletionProvider] 6. Creating provider via LLMClientFactory');
       const provider = LLMClientFactory.create(llmConfig);
       
-      console.log('[v0] Chat Completion provider created successfully');
+      console.log('[v0-getChatCompletionProvider] 7. Chat Completion provider created successfully');
       return provider;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('[v0] Error getting Chat Completion provider:', message);
+      const stack = error instanceof Error ? error.stack : '';
+      console.error('[v0-getChatCompletionProvider] ERROR at step:', message);
+      console.error('[v0-getChatCompletionProvider] STACK:', stack);
       throw new Error(`Failed to get Chat Completion provider: ${message}`);
     }
   }
@@ -152,21 +174,43 @@ export class LLMProviderService {
    */
   async getKBEmbeddingsProvider(applicationId: string): Promise<ILLMProvider> {
     try {
-      console.log('[v0] Getting KB Embeddings provider for app:', applicationId);
+      console.log('[v0-getEmbeddingsProvider] 1. Starting for app:', applicationId);
       
+      console.log('[v0-getEmbeddingsProvider] 2. Calling kbConfigService.getConfig');
       const kbConfig = await kbConfigService.getConfig(applicationId);
+      
+      console.log('[v0-getEmbeddingsProvider] 3. MongoDB config fetched:', {
+        found: !!kbConfig,
+        appId: (kbConfig as any)?.applicationId,
+        keys: kbConfig ? Object.keys(kbConfig) : []
+      });
+      
       if (!kbConfig) {
-        throw new Error('KB Configuration not found');
+        throw new Error('KB Configuration not found in MongoDB');
       }
 
+      console.log('[v0-getEmbeddingsProvider] 4. Calling mapKBConfigToEmbeddings');
       const llmConfig = this.mapKBConfigToEmbeddings(kbConfig);
+      
+      console.log('[v0-getEmbeddingsProvider] 5. Mapped LLMConfig:', {
+        applicationId: llmConfig.applicationId,
+        provider: llmConfig.provider,
+        has_api_key: !!llmConfig.api_key,
+        has_azure_endpoint: !!llmConfig.azure_endpoint,
+        has_deployment: !!llmConfig.deployment,
+        has_api_version: !!llmConfig.api_version
+      });
+      
+      console.log('[v0-getEmbeddingsProvider] 6. Creating provider via LLMClientFactory');
       const provider = LLMClientFactory.create(llmConfig);
       
-      console.log('[v0] Embeddings provider created successfully');
+      console.log('[v0-getEmbeddingsProvider] 7. Embeddings provider created successfully');
       return provider;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('[v0] Error getting Embeddings provider:', message);
+      const stack = error instanceof Error ? error.stack : '';
+      console.error('[v0-getEmbeddingsProvider] ERROR at step:', message);
+      console.error('[v0-getEmbeddingsProvider] STACK:', stack);
       throw new Error(`Failed to get Embeddings provider: ${message}`);
     }
   }
