@@ -163,6 +163,56 @@ export class LLMProviderService {
   }
 
   /**
+   * Validate KB Embeddings LLM configuration connectivity
+   */
+  async validateKBEmbeddingsConnection(applicationId: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      console.log('[v0] validateKBEmbeddingsConnection called for app:', applicationId);
+      const config = await kbConfigService.getConfig(applicationId);
+      
+      if (!config) {
+        return { valid: false, error: 'KB Configuration not found' };
+      }
+
+      const embeddingProvider = (config as any).embeddingProvider;
+      
+      if (!embeddingProvider) {
+        console.log('[v0] No embeddings provider configured - this is optional');
+        return { valid: true, message: 'No embeddings provider configured (optional)' } as any;
+      }
+
+      console.log('[v0] Embedding provider:', embeddingProvider);
+      
+      // Extract embedding credentials from config
+      const embeddingConfig = {
+        provider: embeddingProvider,
+        api_key: (config as any).embedding_api_key,
+        azure_endpoint: (config as any).embedding_azure_endpoint,
+        api_version: (config as any).embedding_api_version,
+        deployment: (config as any).embedding_deployment,
+        skipSslVerification: (config as any).embedding_skipSslVerification,
+      };
+
+      console.log('[v0] Embedding config fields:', {
+        provider: embeddingConfig.provider,
+        api_key_set: !!embeddingConfig.api_key,
+        azure_endpoint_set: !!embeddingConfig.azure_endpoint,
+        api_version_set: !!embeddingConfig.api_version,
+        deployment_set: !!embeddingConfig.deployment,
+      });
+
+      // Create provider instance for embeddings
+      const provider = LLMClientFactory.createProvider(embeddingConfig as any);
+      console.log('[v0] Created embeddings provider, validating...');
+      return await provider.validate();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[v0] validateKBEmbeddingsConnection error:', message);
+      return { valid: false, error: message };
+    }
+  }
+
+  /**
    * Generate recommendation text using configured LLM
    */
   async generateRecommendation(applicationId: string, prompt: string): Promise<string> {
