@@ -13,13 +13,20 @@ export const databaseSchemaRouter: ExpressRouter = Router();
  */
 databaseSchemaRouter.post('/test-connection', async (req: Request, res: Response) => {
   try {
-    const { type, host, port, database, username, password, table } = req.body;
+    let { type, host, port, database, username, password, table } = req.body;
 
     if (!type || !host || !port || !database || !username || !password || !table) {
       return res.status(400).json({
         success: false,
         message: 'Missing required connection parameters',
       });
+    }
+
+    // Replace localhost with host.docker.internal when running inside Docker
+    // This allows Docker containers to reach services on the host machine
+    if (host === 'localhost' || host === '127.0.0.1') {
+      host = 'host.docker.internal';
+      console.log('[v0] Replacing localhost with host.docker.internal for Docker connectivity');
     }
 
     console.log('[v0] Testing database connection to:', { type, host, database, table });
@@ -71,13 +78,18 @@ databaseSchemaRouter.post('/test-connection', async (req: Request, res: Response
  */
 databaseSchemaRouter.post('/schema', async (req: Request, res: Response) => {
   try {
-    const { type, host, port, database, username, password } = req.body;
+    let { type, host, port, database, username, password } = req.body;
 
     if (!type || !host || !port || !database || !username || !password) {
       return res.status(400).json({
         success: false,
         message: 'Missing required connection parameters',
       });
+    }
+
+    // Replace localhost with host.docker.internal when running inside Docker
+    if (host === 'localhost' || host === '127.0.0.1') {
+      host = 'host.docker.internal';
     }
 
     console.log('[v0] Loading schema for database:', database);
@@ -145,13 +157,18 @@ databaseSchemaRouter.post('/schema', async (req: Request, res: Response) => {
  */
 databaseSchemaRouter.post('/columns', async (req: Request, res: Response) => {
   try {
-    const { type, host, port, database, username, password, table } = req.body;
+    let { type, host, port, database, username, password, table } = req.body;
 
     if (!type || !host || !port || !database || !username || !password || !table) {
       return res.status(400).json({
         success: false,
         message: 'Missing required parameters',
       });
+    }
+
+    // Replace localhost with host.docker.internal when running inside Docker
+    if (host === 'localhost' || host === '127.0.0.1') {
+      host = 'host.docker.internal';
     }
 
     console.log('[v0] Loading columns for table:', table);
