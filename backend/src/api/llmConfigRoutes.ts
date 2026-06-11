@@ -53,32 +53,52 @@ llmConfigRouter.get('/app/:appId', async (req: Request, res: Response): Promise<
 llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
+    console.log('[v0-POST] 1. Received request for appId:', appId);
+    
     if (!appId) {
       res.status(400).json({ success: false, error: 'Application ID is required' });
       return;
     }
 
     const body = req.body as Record<string, unknown>;
-    console.log('[v0] LLM Config POST request received for appId:', appId);
+    console.log('[v0-POST] 2. Request body received');
+    console.log('[v0-POST] 3. Request body keys:', Object.keys(body));
+    console.log('[v0-POST] 4. KB LLM fields:', {
+      kbLlmProvider: body.kbLlmProvider,
+      has_kbllm_api_key: !!body.kbllm_api_key,
+      has_kbllm_azure_endpoint: !!body.kbllm_azure_endpoint,
+      has_kbllm_deployment: !!body.kbllm_deployment,
+      has_kbllm_api_version: !!body.kbllm_api_version,
+    });
+    console.log('[v0-POST] 5. Embedding fields:', {
+      embeddingProvider: body.embeddingProvider,
+      has_embedding_api_key: !!body.embedding_api_key,
+      has_embedding_azure_endpoint: !!body.embedding_azure_endpoint,
+      has_embedding_deployment: !!body.embedding_deployment,
+      has_embedding_api_version: !!body.embedding_api_version,
+    });
 
-    // Add applicationId to data and save directly (no validation)
-    const configData = { ...body, applicationId: appId };
-    console.log('[v0] Upserting config to database');
+    // Add applicationId to data
+    const dataWithAppId = { ...body, applicationId: appId };
+    console.log('[v0-POST] 6. Calling upsertConfig...');
 
-    const config = await llmConfigService.upsertConfig(configData as any);
+    // Upsert to database (no validation)
+    const config = await kbConfigService.upsertConfig(dataWithAppId as any);
+    console.log('[v0-POST] 7. upsertConfig returned successfully');
 
     res.json({
       success: true,
       data: config,
-      message: 'Configuration saved successfully',
-    } as ApiResponse<ILLMConfig>);
+      message: 'Knowledge Base configuration saved successfully',
+    } as ApiResponse<IKnowledgeBaseConfig>);
+    
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/llm-config/app/:appId Error:', message);
+    console.error('[v0-POST] ERROR:', message);
     res.status(500).json({
       success: false,
       error: message,
-    } as ApiResponse<ILLMConfig>);
+    } as ApiResponse<IKnowledgeBaseConfig>);
   }
 });
 
@@ -222,7 +242,7 @@ llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response)
  * POST /api/kb-config/app/:appId
  * Save or update Knowledge Base configuration
  */
-llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     console.log('[v0-POST] 1. Received request for appId:', appId);
