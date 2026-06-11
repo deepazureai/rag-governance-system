@@ -4,60 +4,11 @@ import { llmConfigService } from '../services/LLMConfigService.js';
 import { kbConfigService } from '../services/KBConfigService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
-import { LLMConfigSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { getQueryString } from '../utils/queryParamUtils.js';
 import type { ILLMConfig, IKnowledgeBaseConfig, ApiResponse } from '../types/models.js';
 
 const llmConfigRouter: ExpressRouter = Router();
-
-/**
- * Normalize legacy field names to exact format for LLMClientFactory
- * Converts: azureApiKey → api_key, azureEndpoint → azure_endpoint, etc.
- * Also extracts base endpoint if full URL is provided
- */
-function normalizeLegacyFieldNames(config: Record<string, unknown>): Record<string, unknown> {
-  const normalized = { ...config };
-
-  // Convert Azure OpenAI legacy names to exact format
-  if (config.azureApiKey && !config.api_key) {
-    normalized.api_key = config.azureApiKey;
-  }
-  if (config.azureEndpoint && !config.azure_endpoint) {
-    normalized.azure_endpoint = config.azureEndpoint;
-  }
-  if (config.azureDeploymentName && !config.deployment) {
-    normalized.deployment = config.azureDeploymentName;
-  }
-  if (config.azureApiVersion && !config.api_version) {
-    normalized.api_version = config.azureApiVersion;
-  }
-
-  // Also handle exact field names (not legacy)
-  // If azure_endpoint is provided but it's the full URL, extract just the base
-  if (normalized.azure_endpoint && typeof normalized.azure_endpoint === 'string') {
-    let endpoint = normalized.azure_endpoint;
-    
-    // First, remove any query parameters from the URL
-    if (endpoint.includes('?')) {
-      const parts = endpoint.split('?');
-      endpoint = parts[0] || endpoint;
-    }
-    
-    // If endpoint includes the full path with /openai/deployments/, extract just the base
-    if (endpoint.includes('/openai/deployments/')) {
-      const parts = endpoint.split('/openai/deployments/');
-      const baseUrl = parts[0] || endpoint;
-      normalized.azure_endpoint = baseUrl;
-      console.log('[v0] Extracted base endpoint from full URL:', {
-        original: normalized.azure_endpoint,
-        extracted: baseUrl,
-      });
-    }
-  }
-
-  return normalized;
-}
 
 /**
  * GET /api/llm-config/app/:appId
@@ -108,44 +59,13 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
     }
 
     const body = req.body as Record<string, unknown>;
+    console.log('[v0] LLM Config POST request received for appId:', appId);
 
-    // Log incoming request for debugging
-    console.error('[v0] LLM Config POST request body:', JSON.stringify(body, null, 2));
+    // Add applicationId to data and save directly (no validation)
+    const configData = { ...body, applicationId: appId };
+    console.log('[v0] Upserting config to database');
 
-    // Normalize legacy field names to exact format BEFORE validation
-    const normalized = normalizeLegacyFieldNames(body);
-    console.error('[v0] Normalized LLM Config:', JSON.stringify(normalized, null, 2));
-
-    // Validate request body with normalized names
-    const validation = LLMConfigSchema.safeParse({ ...normalized, applicationId: appId });
-    if (!validation.success) {
-      const errorDetails = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
-      console.error('[v0] LLM Config validation errors:', errorDetails);
-      res.status(400).json({
-        success: false,
-        error: `Validation failed: ${errorDetails}`,
-      } as ApiResponse<ILLMConfig>);
-      return;
-    }
-
-    const configData = validation.data;
-
-    // Validate provider-specific required fields
-    if (configData.provider === 'azure-openai') {
-      const requiredFields = ['api_key', 'azure_endpoint', 'api_version', 'deployment'];
-      const missing = requiredFields.filter((field) => !configData[field as keyof typeof configData]);
-      if (missing.length > 0) {
-        console.error('[v0] Missing Azure fields:', missing);
-        res.status(400).json({
-          success: false,
-          error: `For Azure OpenAI, these fields are required: ${missing.join(', ')}`,
-        } as ApiResponse<ILLMConfig>);
-        return;
-      }
-    }
-
-    console.error('[v0] LLM Config validation passed, upserting config');
-    const config = await llmConfigService.upsertConfig(configData);
+    const config = await llmConfigService.upsertConfig(configData as any);
 
     res.json({
       success: true,
@@ -154,10 +74,10 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
     } as ApiResponse<ILLMConfig>);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/llm-config/app/:appId Error:', message, error);
+    console.error('[v0] POST /api/llm-config/app/:appId Error:', message);
     res.status(500).json({
       success: false,
-      error: `Server error: ${message}`,
+      error: message,
     } as ApiResponse<ILLMConfig>);
   }
 });
