@@ -261,9 +261,9 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
 
 /**
  * POST /api/kb-config/validate/:appId
- * Log KB config parameters being passed to LLM models (Chat Completion & Embeddings)
+ * Test KB LLM connection (both Chat Completion and Embeddings)
  */
-llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
     const appId = getQueryString(req.params.appId);
     if (!appId) {
