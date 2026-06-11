@@ -56,7 +56,8 @@ const EMBEDDING_PROVIDER_FIELDS: Record<EmbeddingProvider, ProviderField[]> = {
   'azure-openai': [
     { name: 'embedding_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
     { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
-    { name: 'embedding_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2024-10-21' },
+    { name: 'embedding_deployment', label: 'Deployment Name', type: 'text', required: true, placeholder: 'e.g., text-embedding-3-small' },
+    { name: 'embedding_api_version', label: 'API Version', type: 'text', required: true, placeholder: '2023-05-15' },
   ],
   'openai': [
     { name: 'embedding_api_key', label: 'API Key', type: 'password', required: true },
