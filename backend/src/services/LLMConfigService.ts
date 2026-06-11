@@ -1,6 +1,5 @@
 import mongoose, { Types } from 'mongoose';
 import { LLMConfig, LLMConfigInput, ApiResponse } from '../types/models.js';
-import { LLMConfigSchema } from '../schemas/index.js';
 import { cryptoUtil } from '../utils/CryptoUtil.js';
 import { configManager } from '../utils/ConfigManager.js';
 
@@ -17,17 +16,10 @@ export class LLMConfigService {
    */
   async upsertConfig(input: LLMConfigInput): Promise<LLMConfig> {
     try {
-      console.log('[v0] upsertConfig starting with input:', { applicationId: (input as any).applicationId, provider: (input as any).provider });
+      console.log('[v0] upsertConfig starting with input for appId:', (input as any).applicationId);
       
-      const validation = LLMConfigSchema.safeParse(input);
-      if (!validation.success) {
-        const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
-        console.error('[v0] upsertConfig validation failed:', errors);
-        throw new Error(`Validation failed: ${errors}`);
-      }
-
-      // Encrypt sensitive fields
-      const config = this.encryptSensitiveFields(validation.data as any);
+      // Encrypt sensitive fields directly (no validation)
+      const config = this.encryptSensitiveFields(input as any);
       console.log('[v0] Encrypted config keys:', Object.keys(config));
 
       const db = mongoose.connection;
