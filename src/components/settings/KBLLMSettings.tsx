@@ -257,15 +257,24 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         body: JSON.stringify(testPayload),
       });
 
-      if (response.ok) {
-        const data = (await response.json()) as { valid: boolean; error?: string };
-        if (data.valid) {
-          setMessage({ type: 'success', text: 'Connection test successful!' });
-        } else {
-          setMessage({ type: 'error', text: `Connection failed: ${data.error}` });
-        }
+      console.log('[v0] Test Connection response status:', response.status);
+      
+      const responseText = await response.text();
+      console.log('[v0] Test Connection response body:', responseText);
+      
+      if (!responseText) {
+        setMessage({ type: 'error', text: 'Connection failed: Empty response from server' });
+        return;
+      }
+
+      const data = JSON.parse(responseText) as { valid: boolean; error?: string };
+      console.log('[v0] Test Connection parsed data:', data);
+      
+      if (response.ok && data.valid) {
+        setMessage({ type: 'success', text: 'Connection test successful!' });
       } else {
-        setMessage({ type: 'error', text: 'Failed to test connection' });
+        const errorMsg = data.error || 'Connection validation failed';
+        setMessage({ type: 'error', text: `Connection failed: ${errorMsg}` });
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
