@@ -84,18 +84,14 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 
 /**
  * POST /api/llm-config/validate/:appId
- * Test LLM connection
+ * Test LLM connection (removed - use KB config validate instead)
  */
 llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const appId = getQueryString(req.params.appId);
-    if (!appId) {
-      res.status(400).json({ success: false, error: 'Application ID is required' });
-      return;
-    }
-
-    const result = await llmProviderService.validateLLMConnection(appId);
-    res.json(result);
+    res.json({
+      success: true,
+      message: 'Use /kb-config/validate/:appId instead',
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] POST /api/llm-config/validate/:appId Error:', message);
@@ -265,7 +261,7 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
 
 /**
  * POST /api/kb-config/validate/:appId
- * Test KB LLM connection (both Chat Completion and Embeddings)
+ * Log KB config parameters being passed to LLM models (Chat Completion & Embeddings)
  */
 llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -275,35 +271,25 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
       return;
     }
 
-    console.log('[v0] Validating KB config for app:', appId);
+    console.log('[v0] Validate endpoint - logging KB config parameters for app:', appId);
     
-    // Test Chat Completion LLM
-    console.log('[v0] Testing Chat Completion LLM...');
-    const chatResult = await llmProviderService.validateKBLLMConnection(appId);
-    console.log('[v0] Chat Completion validation result:', chatResult);
+    // Get KB config and log Chat Completion parameters
+    const chatCompletionProvider = await llmProviderService.getKBChatCompletionProvider(appId);
     
-    // Test Embeddings LLM (if configured)
-    console.log('[v0] Testing Embeddings LLM...');
-    const embeddingsResult = await llmProviderService.validateKBEmbeddingsConnection(appId);
-    console.log('[v0] Embeddings validation result:', embeddingsResult);
+    // Get KB config and log Embeddings parameters
+    const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(appId);
     
-    // Return combined results
-    const allValid = chatResult.valid && embeddingsResult.valid;
-    const errors = [];
-    if (!chatResult.valid) errors.push(`Chat Completion: ${chatResult.error}`);
-    if (!embeddingsResult.valid && !(embeddingsResult as any).message) errors.push(`Embeddings: ${embeddingsResult.error}`);
+    console.log('[v0] Both Chat Completion and Embeddings providers created successfully');
     
     res.json({
-      valid: allValid,
-      chatCompletion: chatResult,
-      embeddings: embeddingsResult,
-      error: errors.length > 0 ? errors.join(' | ') : undefined,
+      success: true,
+      message: 'KB config parameters logged. Check backend logs for parameter details.',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0] POST /api/kb-config/validate/:appId Error:', message);
     res.status(500).json({
-      valid: false,
+      success: false,
       error: message,
     });
   }
