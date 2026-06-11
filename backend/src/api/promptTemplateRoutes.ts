@@ -307,8 +307,7 @@ promptTemplateRouter.post('/refine/:appId', async (req: Request, res: Response):
     }
 
     // Get LLM provider and check for app-specific config
-    const providerResult = await llmProviderService.getRecommendationLLMProvider(appId.toString());
-    const provider = providerResult.provider;
+    const provider = await llmProviderService.getRecommendationLLMProvider(appId.toString());
     
     // Try to retrieve app-specific LLM config
     let appLLMConfig = null;
@@ -753,7 +752,7 @@ Generate the complete template in production-ready YAML format.
     `;
 
     // Call LLM to generate template using the recommendation provider
-    const { provider: llmProvider } = await llmProviderService.getRecommendationLLMProvider('default-app');
+    const llmProvider = await llmProviderService.getRecommendationLLMProvider('default-app');
     
     const generatedTemplate = await llmProvider.generate(synthesisPrompt, {
       temperature: 0.7,
