@@ -114,11 +114,15 @@ export class LLMProviderService {
       console.log('[v0] Created llmConfig from KB config:', {
         provider: llmConfig.provider,
         api_key_first_20: llmConfig.api_key ? llmConfig.api_key.substring(0, 20) + '...' : 'NOT SET',
+        api_key_full: llmConfig.api_key,
         azureApiKey_first_20: llmConfig.azureApiKey ? llmConfig.azureApiKey.substring(0, 20) + '...' : 'NOT SET',
+        azureApiKey_full: llmConfig.azureApiKey,
         azure_endpoint: llmConfig.azure_endpoint,
         azureEndpoint: llmConfig.azureEndpoint,
         deployment: llmConfig.deployment,
         azureDeploymentName: llmConfig.azureDeploymentName,
+        api_version: llmConfig.api_version,
+        azureApiVersion: llmConfig.azureApiVersion,
       });
 
       const provider = LLMClientFactory.create(llmConfig);

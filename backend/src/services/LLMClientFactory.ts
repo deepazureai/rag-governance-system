@@ -43,10 +43,23 @@ export class AzureOpenAIProvider implements ILLMProvider {
     const deploymentName = config.deployment || config.azureDeploymentName;
     const apiVersion = config.api_version || config.azureApiVersion;
 
+    console.log('[v0] AzureOpenAIProvider constructor validation:', {
+      endpoint_value: endpoint ? endpoint.substring(0, 50) + '...' : 'NOT SET',
+      apiKey_set: !!apiKey,
+      deploymentName_value: deploymentName,
+      apiVersion_value: apiVersion,
+      config_keys: Object.keys(config),
+      config_azure_endpoint: config.azure_endpoint,
+      config_azureEndpoint: config.azureEndpoint,
+      config_api_key: config.api_key ? config.api_key.substring(0, 20) + '...' : 'NOT SET',
+      config_azureApiKey: config.azureApiKey ? config.azureApiKey.substring(0, 20) + '...' : 'NOT SET',
+    });
+
     if (!endpoint || !apiKey || !deploymentName || !apiVersion) {
       throw new Error(
         'Missing required Azure OpenAI configuration fields. Required: ' +
-        'api_key, azure_endpoint, api_version, deployment'
+        'api_key, azure_endpoint, api_version, deployment. ' +
+        `Got: endpoint=${!!endpoint}, apiKey=${!!apiKey}, deploymentName=${!!deploymentName}, apiVersion=${!!apiVersion}`
       );
     }
 
