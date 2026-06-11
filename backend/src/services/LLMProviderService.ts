@@ -36,7 +36,8 @@ export class LLMProviderService {
    * Logs all parameter assignments for verification
    */
   mapKBConfigToChatCompletion(kbConfig: KnowledgeBaseConfig): LLMConfig {
-    console.log('[v0-mapToChatCompletion] Mapping KB config to Chat Completion parameters');
+    console.log('[v0-mapToChatCompletion] 1. Starting mapping, kbConfig keys:', Object.keys(kbConfig));
+    console.log('[v0-mapToChatCompletion] 2. Raw KB config:', JSON.stringify(kbConfig, null, 2));
     
     const llmConfig: LLMConfig = {
       applicationId: kbConfig.applicationId,
@@ -56,10 +57,17 @@ export class LLMProviderService {
       updatedAt: new Date(),
     };
 
-    console.log('[v0-mapToChatCompletion] Chat Completion parameters:', {
+    console.log('[v0-mapToChatCompletion] 3. Field assignments:');
+    console.log('[v0-mapToChatCompletion]   provider = kbLlmProvider:', (kbConfig as any).kbLlmProvider);
+    console.log('[v0-mapToChatCompletion]   api_key = kbllm_api_key || kbLlmAzureApiKey:', (kbConfig as any).kbllm_api_key ? '[SET]' : '[MISSING]', '||', (kbConfig as any).kbLlmAzureApiKey ? '[SET]' : '[MISSING]');
+    console.log('[v0-mapToChatCompletion]   azure_endpoint = kbllm_azure_endpoint || kbLlmAzureEndpoint:', (kbConfig as any).kbllm_azure_endpoint || '[MISSING]');
+    console.log('[v0-mapToChatCompletion]   api_version = kbllm_api_version || kbLlmAzureApiVersion:', (kbConfig as any).kbllm_api_version);
+    console.log('[v0-mapToChatCompletion]   deployment = kbllm_deployment || kbLlmAzureDeploymentName:', (kbConfig as any).kbllm_deployment);
+    console.log('[v0-mapToChatCompletion] 4. Final Chat Completion LLMConfig:', {
+      applicationId: llmConfig.applicationId,
       provider: llmConfig.provider,
       api_key_length: llmConfig.api_key?.length || 0,
-      azure_endpoint: llmConfig.azure_endpoint?.substring(0, 50),
+      azure_endpoint: llmConfig.azure_endpoint,
       api_version: llmConfig.api_version,
       deployment: llmConfig.deployment,
       skipSslVerification: llmConfig.skipSslVerification,
@@ -75,9 +83,10 @@ export class LLMProviderService {
    * Logs all parameter assignments for verification
    */
   mapKBConfigToEmbeddings(kbConfig: KnowledgeBaseConfig): LLMConfig {
-    console.log('[v0-mapToEmbeddings] Mapping KB config to Embeddings parameters');
-
+    console.log('[v0-mapToEmbeddings] 1. Starting mapping, kbConfig keys:', Object.keys(kbConfig));
+    
     const embeddingProvider = (kbConfig as any).embeddingProvider;
+    console.log('[v0-mapToEmbeddings] 2. embeddingProvider:', embeddingProvider);
     
     const llmConfig: LLMConfig = {
       applicationId: kbConfig.applicationId,
@@ -95,10 +104,17 @@ export class LLMProviderService {
       updatedAt: new Date(),
     };
 
-    console.log('[v0-mapToEmbeddings] Embeddings parameters:', {
+    console.log('[v0-mapToEmbeddings] 3. Field assignments:');
+    console.log('[v0-mapToEmbeddings]   provider = embeddingProvider:', embeddingProvider);
+    console.log('[v0-mapToEmbeddings]   api_key = embedding_api_key || embeddingAzureApiKey:', (kbConfig as any).embedding_api_key ? '[SET]' : '[MISSING]', '||', (kbConfig as any).embeddingAzureApiKey ? '[SET]' : '[MISSING]');
+    console.log('[v0-mapToEmbeddings]   azure_endpoint = embedding_azure_endpoint || embeddingAzureEndpoint:', (kbConfig as any).embedding_azure_endpoint || '[MISSING]');
+    console.log('[v0-mapToEmbeddings]   api_version = embedding_api_version || embeddingAzureApiVersion:', (kbConfig as any).embedding_api_version);
+    console.log('[v0-mapToEmbeddings]   deployment = embedding_deployment || embeddingAzureDeploymentName:', (kbConfig as any).embedding_deployment);
+    console.log('[v0-mapToEmbeddings] 4. Final Embeddings LLMConfig:', {
+      applicationId: llmConfig.applicationId,
       provider: llmConfig.provider,
       api_key_length: llmConfig.api_key?.length || 0,
-      azure_endpoint: llmConfig.azure_endpoint?.substring(0, 50),
+      azure_endpoint: llmConfig.azure_endpoint,
       api_version: llmConfig.api_version,
       deployment: llmConfig.deployment,
       skipSslVerification: llmConfig.skipSslVerification,

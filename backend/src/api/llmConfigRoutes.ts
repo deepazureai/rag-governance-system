@@ -271,15 +271,19 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
       return;
     }
 
-    console.log('[v0] Validate endpoint - logging KB config parameters for app:', appId);
+    console.log('[v0-validate] 1. Starting validate endpoint for app:', appId);
     
     // Get KB config and log Chat Completion parameters
+    console.log('[v0-validate] 2. Calling getKBChatCompletionProvider');
     const chatCompletionProvider = await llmProviderService.getKBChatCompletionProvider(appId);
+    console.log('[v0-validate] 3. Chat Completion provider created successfully');
     
     // Get KB config and log Embeddings parameters
+    console.log('[v0-validate] 4. Calling getKBEmbeddingsProvider');
     const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(appId);
+    console.log('[v0-validate] 5. Embeddings provider created successfully');
     
-    console.log('[v0] Both Chat Completion and Embeddings providers created successfully');
+    console.log('[v0-validate] 6. Both providers created - returning success response');
     
     res.json({
       success: true,
@@ -287,7 +291,9 @@ llmConfigRouter.post('/kb-config/validate/:appId', async (req: Request, res: Res
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/kb-config/validate/:appId Error:', message);
+    const stack = error instanceof Error ? error.stack : '';
+    console.error('[v0-validate] ERROR:', message);
+    console.error('[v0-validate] ERROR STACK:', stack);
     res.status(500).json({
       success: false,
       error: message,
