@@ -94,11 +94,11 @@ export class LLMProviderService {
       api_key: (kbConfig as any).embedding_api_key || (kbConfig as any).embeddingAzureApiKey,
       azure_endpoint: (kbConfig as any).embedding_azure_endpoint || (kbConfig as any).embeddingAzureEndpoint,
       api_version: (kbConfig as any).embedding_api_version || (kbConfig as any).embeddingAzureApiVersion,
-      deployment: (kbConfig as any).embedding_deployment || (kbConfig as any).embeddingAzureDeploymentName,
+      deployment: (kbConfig as any).embedding_deployment || (kbConfig as any).embeddingModel || (kbConfig as any).embeddingAzureDeploymentName,
       skipSslVerification: (kbConfig as any).embedding_skipSslVerification,
       azureEndpoint: (kbConfig as any).embedding_azure_endpoint || (kbConfig as any).embeddingAzureEndpoint,
       azureApiKey: (kbConfig as any).embedding_api_key || (kbConfig as any).embeddingAzureApiKey,
-      azureDeploymentName: (kbConfig as any).embedding_deployment || (kbConfig as any).embeddingAzureDeploymentName,
+      azureDeploymentName: (kbConfig as any).embedding_deployment || (kbConfig as any).embeddingModel || (kbConfig as any).embeddingAzureDeploymentName,
       azureApiVersion: (kbConfig as any).embedding_api_version || (kbConfig as any).embeddingAzureApiVersion,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -109,7 +109,7 @@ export class LLMProviderService {
     console.log('[v0-mapToEmbeddings]   api_key = embedding_api_key || embeddingAzureApiKey:', (kbConfig as any).embedding_api_key ? '[SET]' : '[MISSING]', '||', (kbConfig as any).embeddingAzureApiKey ? '[SET]' : '[MISSING]');
     console.log('[v0-mapToEmbeddings]   azure_endpoint = embedding_azure_endpoint || embeddingAzureEndpoint:', (kbConfig as any).embedding_azure_endpoint || '[MISSING]');
     console.log('[v0-mapToEmbeddings]   api_version = embedding_api_version || embeddingAzureApiVersion:', (kbConfig as any).embedding_api_version);
-    console.log('[v0-mapToEmbeddings]   deployment = embedding_deployment || embeddingAzureDeploymentName:', (kbConfig as any).embedding_deployment);
+    console.log('[v0-mapToEmbeddings]   deployment = embedding_deployment || embeddingModel || embeddingAzureDeploymentName:', (kbConfig as any).embedding_deployment || (kbConfig as any).embeddingModel || '[MISSING]');
     console.log('[v0-mapToEmbeddings] 4. Final Embeddings LLMConfig:', {
       applicationId: llmConfig.applicationId,
       provider: llmConfig.provider,
