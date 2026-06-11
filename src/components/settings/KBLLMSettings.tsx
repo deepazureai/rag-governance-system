@@ -93,7 +93,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     const loadConfig = async (): Promise<void> => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-        const response = await fetch(`${apiUrl}/api/kb-config/app/${applicationId}`);
+        const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${applicationId}`);
         
         if (response.ok) {
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
@@ -230,7 +230,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         isDefault: true,
       };
 
-      const response = await fetch(`${apiUrl}/api/kb-config/app/${applicationId}`, {
+      const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${applicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -261,7 +261,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     setIsTesting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const response = await fetch(`${apiUrl}/api/kb-config/validate/${applicationId}`, {
+      const response = await fetch(`${apiUrl}/api/llm-config/validate/${applicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
