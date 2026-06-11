@@ -163,53 +163,18 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   };
 
   const validateKbForm = (): boolean => {
-    const fields = KB_PROVIDER_FIELDS[kbProvider];
-    
-    for (const field of fields) {
-      if (field.required && !kbFormData[field.name]?.trim()) {
-        return false;
-      }
-    }
-    
-    if (kbProvider === 'azure-openai') {
-      const apiVersion = kbFormData.kbllm_api_version?.trim() || '';
-      if (!apiVersion.match(/^\d{4}-\d{2}-\d{2}/)) {
-        setMessage({ type: 'error', text: 'Azure API Version must be in format like 2025-01-01-preview' });
-        return false;
-      }
-    }
-    
-    return true;
+    // Just check if provider is selected - no strict field validation
+    return !!kbProvider;
   };
 
   const validateEmbeddingForm = (): boolean => {
-    const fields = EMBEDDING_PROVIDER_FIELDS[embeddingProvider];
-    
-    for (const field of fields) {
-      if (field.required && !embeddingFormData[field.name]?.trim()) {
-        return false;
-      }
-    }
-    
-    if (embeddingProvider === 'azure-openai') {
-      const apiVersion = embeddingFormData.embedding_api_version?.trim() || '';
-      if (!apiVersion.match(/^\d{4}-\d{2}-\d{2}/)) {
-        setMessage({ type: 'error', text: 'Azure API Version must be in format like 2024-02-15-preview' });
-        return false;
-      }
-    }
-    
-    if (!embeddingModel?.trim()) {
-      setMessage({ type: 'error', text: 'Embedding model is required' });
-      return false;
-    }
-    
-    return true;
+    // Just check if provider is selected - no strict field validation
+    return !!embeddingProvider;
   };
 
   const handleSave = async (): Promise<void> => {
     if (!validateKbForm() || !validateEmbeddingForm()) {
-      setMessage({ type: 'error', text: 'Please fill in all required fields' });
+      setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
     }
 
@@ -229,6 +194,17 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         maxTokens,
         isDefault: true,
       };
+
+      console.log('[v0] Payload being sent to backend:', {
+        applicationId,
+        kbLlmProvider,
+        kbFormDataKeys: Object.keys(kbFormData),
+        kbFormData,
+        embeddingProvider,
+        embeddingModel,
+        embeddingFormDataKeys: Object.keys(embeddingFormData),
+        embeddingFormData,
+      });
 
       const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${applicationId}`, {
         method: 'POST',
@@ -254,22 +230,31 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
   const handleTestConnection = async (): Promise<void> => {
     if (!validateKbForm() || !validateEmbeddingForm()) {
-      setMessage({ type: 'error', text: 'Please fill in all required fields' });
+      setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
     }
 
     setIsTesting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const testPayload = {
+        kbProvider,
+        ...kbFormData,
+        embeddingProvider,
+        ...embeddingFormData,
+      };
+      
+      console.log('[v0] Test Connection payload:', {
+        kbProvider,
+        kbFormData,
+        embeddingProvider,
+        embeddingFormData,
+      });
+
       const response = await fetch(`${apiUrl}/api/llm-config/validate/${applicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kbProvider,
-          ...kbFormData,
-          embeddingProvider,
-          ...embeddingFormData,
-        }),
+        body: JSON.stringify(testPayload),
       });
 
       if (response.ok) {
