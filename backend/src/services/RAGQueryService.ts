@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { configManager } from '../utils/ConfigManager.js';
 import { getVectorStore } from './VectorStoreService.js';
+import { llmProviderService } from './LLMProviderService.js';
 
 // DocumentChunk interface for search results
 interface DocumentChunk {
@@ -47,7 +48,13 @@ class RAGQueryService {
     logger.info(`[RAGQueryService] Starting RAG query for app: ${applicationId}`);
 
     try {
-      // Step 1: Retrieve KB config with fallback to LLM config
+      // Get Chat Completion LLM provider from KB config (using mapper method)
+      // This fetches from MongoDB and maps fields to chat completion parameters
+      logger.info(`[RAGQueryService] 1. Getting chat completion provider for app: ${applicationId}`);
+      const chatCompletionProvider = await llmProviderService.getKBChatCompletionProvider(applicationId);
+      logger.info(`[RAGQueryService] 2. Chat completion provider created successfully`);
+      
+      // Get the KB config to extract LLM parameters
       const kbConfig = await configManager.getApplicationKBConfigWithFallback(applicationId);
       if (!kbConfig) {
         throw new Error(
@@ -55,9 +62,10 @@ class RAGQueryService {
         );
       }
 
-      logger.info(`[RAGQueryService] KB config retrieved (with fallback): provider=${kbConfig.kbLlmProvider}`);
+      logger.info(`[RAGQueryService] 3. KB config retrieved: provider=${kbConfig.kbLlmProvider}`);
 
-      // Step 2: Retrieve relevant documents using semantic search
+      // Retrieve relevant documents using semantic search
+      logger.info(`[RAGQueryService] 4. Retrieving documents from vector store`);
       const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
       const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, undefined, { k: topK });
 
@@ -73,10 +81,10 @@ class RAGQueryService {
       }
 
       logger.info(
-        `[RAGQueryService] Found ${searchResults.length} relevant documents with relevance scores: ${searchResults.map((d) => d.metadata.relevanceScore).join(', ')}`
+        `[RAGQueryService] 5. Found ${searchResults.length} relevant documents with relevance scores: ${searchResults.map((d) => d.metadata.relevanceScore).join(', ')}`
       );
 
-      // Step 3: Format context for LLM prompt
+      // Format context for LLM prompt
       const contextString = searchResults
         .map((doc: DocumentChunk, idx: number) => `[Document ${idx + 1}]\n${doc.content}`)
         .join('\n\n---\n\n');
@@ -95,29 +103,30 @@ Question: ${query}
 
 Please answer the question based on the provided context. If the context doesn't contain enough information, please say so.`;
 
-      // Step 4: Get LLM configuration
+      // Get LLM configuration from KB config
       const llmProvider = kbConfig.kbLlmProvider || 'azure-openai';
       const llmModel = kbConfig.kbllm_deployment || 'gpt-4';
       const finalTemperature = temperature ?? (kbConfig.temperature !== undefined ? kbConfig.temperature : 0.3);
       const finalMaxTokens = maxTokens ?? (kbConfig.maxTokens || 1000);
 
       logger.info(
-        `[RAGQueryService] Calling LLM: provider=${llmProvider}, model=${llmModel}, temperature=${finalTemperature}, maxTokens=${finalMaxTokens}`
+        `[RAGQueryService] 6. Chat completion config: provider=${llmProvider}, model=${llmModel}, temperature=${finalTemperature}, maxTokens=${finalMaxTokens}`
       );
 
-      // Step 5: Call LLM with proper Azure OpenAI configuration
+      // Call LLM with proper configuration
       let llmResponse: string;
       let tokensUsed = 0;
 
       if (llmProvider === 'azure-openai') {
+        logger.info(`[RAGQueryService] 7. Calling Azure OpenAI with chat completion parameters`);
         llmResponse = await this.callAzureOpenAI(kbConfig, systemPrompt, userPrompt, finalTemperature, finalMaxTokens);
       } else {
         throw new Error(`Unsupported LLM provider: ${llmProvider}`);
       }
 
-      logger.info(`[RAGQueryService] LLM response generated successfully`);
+      logger.info(`[RAGQueryService] 8. LLM response generated successfully`);
 
-      // Step 6: Format response with source citations
+      // Format response with source citations
       const response: RAGQueryResponse = {
         assistantMessage: llmResponse,
         contextUsed: searchResults.map((doc: DocumentChunk) => ({
@@ -130,7 +139,7 @@ Please answer the question based on the provided context. If the context doesn't
       };
 
       logger.info(
-        `[RAGQueryService] RAG query completed: contextDocs=${response.contextUsed.length}, tokensUsed=${tokensUsed}`
+        `[RAGQueryService] 9. RAG query completed: contextDocs=${response.contextUsed.length}, tokensUsed=${tokensUsed}`
       );
 
       return response;

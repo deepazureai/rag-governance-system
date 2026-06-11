@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
 import { configManager } from '../utils/ConfigManager.js';
+import { llmProviderService } from './LLMProviderService.js';
 
 interface ChromaConfig {
   collectionName: string;
@@ -48,56 +49,49 @@ export class VectorStoreService {
       let embeddingProvider = 'azure-openai';
       let skipSslVerification = false;
 
-      // Try to retrieve application KB config from MongoDB
-      // KB config has embedding-specific credentials separate from chat LLM credentials
+      // Get embeddings connection from KB LLM Provider Service (mapper methods)
+      // This fetches from MongoDB and maps fields to embeddings connection parameters
       if (this.applicationId) {
         try {
+          logger.info(`[VectorStoreService] 1. Getting embeddings provider for app ${this.applicationId}`);
+          const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(this.applicationId);
+          logger.info(`[VectorStoreService] 2. Embeddings provider created successfully`);
+          
+          // Get the MongoDB config to extract the actual values
           const kbConfig = await configManager.getApplicationKBConfig(this.applicationId);
-          if (kbConfig && kbConfig.embeddingProvider === 'azure-openai') {
-            logger.info(`[VectorStoreService] Found KB config for app ${this.applicationId}`);
+          if (kbConfig) {
+            logger.info(`[VectorStoreService] 3. KB config retrieved from MongoDB`);
             
-            // Use KB config embedding credentials (exact parameter names from schema)
+            // Extract embeddings parameters that were mapped by getKBEmbeddingsProvider()
             if (kbConfig.embedding_api_key) {
               apiKey = kbConfig.embedding_api_key;
-              logger.info(`[VectorStoreService] Using KB config embedding API key`);
+              logger.info(`[VectorStoreService] 4. Using KB config embedding API key`);
             }
             if (kbConfig.embedding_azure_endpoint) {
               endpoint = kbConfig.embedding_azure_endpoint;
-              logger.info(`[VectorStoreService] Using KB config embedding endpoint: ${endpoint}`);
+              logger.info(`[VectorStoreService] 5. Using KB config embedding endpoint`);
             }
             if (kbConfig.embedding_api_version) {
               apiVersion = kbConfig.embedding_api_version;
-              logger.info(`[VectorStoreService] Using KB config embedding API version: ${apiVersion}`);
+              logger.info(`[VectorStoreService] 6. Using KB config embedding API version`);
             }
-            // Use embeddingModel as the deployment name for Azure (must match Azure deployment name)
             if (kbConfig.embeddingModel) {
               deploymentName = kbConfig.embeddingModel;
-              logger.info(`[VectorStoreService] Using KB config embedding model (deployment): ${deploymentName}`);
+              logger.info(`[VectorStoreService] 7. Using KB config embedding model: ${deploymentName}`);
             }
             if (kbConfig.embedding_skipSslVerification) {
               skipSslVerification = kbConfig.embedding_skipSslVerification;
-              logger.info(`[VectorStoreService] Enabling SSL verification bypass for embeddings`);
             }
-            
-            embeddingProvider = 'azure-openai';
-          } else if (kbConfig && kbConfig.embeddingProvider === 'openai') {
-            logger.info(`[VectorStoreService] Using OpenAI embedding config for app ${this.applicationId}`);
-            if (kbConfig.embedding_api_key) {
-              apiKey = kbConfig.embedding_api_key;
-            }
-            // Use embeddingModel as the model name for standard OpenAI
-            if (kbConfig.embeddingModel) {
-              deploymentName = kbConfig.embeddingModel;
-              logger.info(`[VectorStoreService] Using OpenAI embedding model: ${deploymentName}`);
-            }
-            embeddingProvider = 'openai';
+            embeddingProvider = (kbConfig as any).embeddingProvider || 'azure-openai';
+            logger.info(`[VectorStoreService] 8. Embeddings provider: ${embeddingProvider}`);
           }
         } catch (error: unknown) {
           if (error instanceof Error) {
-            logger.warn(`[VectorStoreService] No KB config found for app, using env variables: ${error.message}`);
+            logger.warn(`[VectorStoreService] Failed to get embeddings provider from KB config: ${error.message}`);
           } else {
-            logger.warn(`[VectorStoreService] No KB config found for app, using env variables`);
+            logger.warn(`[VectorStoreService] Failed to get embeddings provider from KB config`);
           }
+          logger.info(`[VectorStoreService] Using env variables for embeddings`);
         }
       }
 
