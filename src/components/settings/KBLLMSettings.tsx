@@ -197,7 +197,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
       console.log('[v0] Payload being sent to backend:', {
         applicationId,
-        kbLlmProvider,
+        kbProvider,
         kbFormDataKeys: Object.keys(kbFormData),
         kbFormData,
         embeddingProvider,
