@@ -234,14 +234,29 @@ llmConfigRouter.post('/kb-config/app/:appId', async (req: Request, res: Response
 
     const body = req.body as Record<string, unknown>;
     console.log('[v0-POST] 2. Request body received');
+    console.log('[v0-POST] 3. Request body keys:', Object.keys(body));
+    console.log('[v0-POST] 4. KB LLM fields:', {
+      kbLlmProvider: body.kbLlmProvider,
+      has_kbllm_api_key: !!body.kbllm_api_key,
+      has_kbllm_azure_endpoint: !!body.kbllm_azure_endpoint,
+      has_kbllm_deployment: !!body.kbllm_deployment,
+      has_kbllm_api_version: !!body.kbllm_api_version,
+    });
+    console.log('[v0-POST] 5. Embedding fields:', {
+      embeddingProvider: body.embeddingProvider,
+      has_embedding_api_key: !!body.embedding_api_key,
+      has_embedding_azure_endpoint: !!body.embedding_azure_endpoint,
+      has_embedding_deployment: !!body.embedding_deployment,
+      has_embedding_api_version: !!body.embedding_api_version,
+    });
 
     // Add applicationId to data
     const dataWithAppId = { ...body, applicationId: appId };
-    console.log('[v0-POST] 3. Calling upsertConfig...');
+    console.log('[v0-POST] 6. Calling upsertConfig...');
 
     // Upsert to database (no validation)
     const config = await kbConfigService.upsertConfig(dataWithAppId as any);
-    console.log('[v0-POST] 4. upsertConfig returned successfully');
+    console.log('[v0-POST] 7. upsertConfig returned successfully');
 
     res.json({
       success: true,
