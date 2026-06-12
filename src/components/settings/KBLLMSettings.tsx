@@ -13,7 +13,7 @@
  * Data flows:
  * 1. Load: App selector → API /applications → Config loader → API /llm-config/kb/app/:appId
  * 2. Save: Form input → handleSave → API /llm-config/kb/app/:appId → MongoDB
- * 3. Test: Form input → handleTestConnection → API /llm-config/validate/:appId → Response
+ * 3. Test: Click Test Connection → API /llm-config/validate/:appId → Backend fetches from MongoDB → Tests with actual providers
  */
 
 import React, { useState, useEffect } from 'react';
@@ -346,16 +346,17 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
   };
 
   /**
-   * Test connectivity to both KB LLM and Embedding providers.
+   * Test connectivity to KB LLM providers.
    * 
    * Flow:
-   * 1. Validate application and provider selection
-   * 2. Send current form values to /api/llm-config/validate/:appId
-   * 3. Backend attempts connection to both providers
-   * 4. Backend returns validation result or error details
+   * 1. Call POST /validate/:appId with just appId (no form data)
+   * 2. Backend fetches saved KB config from MongoDB
+   * 3. Backend tests Chat Completion provider with saved credentials
+   * 4. Backend tests Embeddings provider with saved credentials
    * 5. Display result to user
    * 
-   * Does NOT save configuration - purely for testing connectivity before saving.
+   * Does NOT use form data - uses saved config from MongoDB.
+   * This ensures test uses actual stored credentials.
    */
   const handleTestConnection = async (): Promise<void> => {
     if (!selectedApplicationId) {
@@ -363,26 +364,15 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
       return;
     }
 
-    // Validate that both providers are selected (inline validation)
-    if (!kbProvider || !embeddingProvider) {
-      setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
-      return;
-    }
-
     setIsTesting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-      const testPayload = {
-        kbProvider,
-        ...kbFormData,
-        embeddingProvider,
-        ...embeddingFormData,
-      };
-
+      
+      // POST to validate with empty body - backend fetches config from MongoDB
       const response = await fetch(`${apiUrl}/api/llm-config/validate/${selectedApplicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testPayload),
+        body: JSON.stringify({}),
       });
 
       const responseText = await response.text();
@@ -392,10 +382,10 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
         return;
       }
 
-      const data = JSON.parse(responseText) as { valid: boolean; error?: string };
+      const data = JSON.parse(responseText) as { valid: boolean; error?: string; message?: string };
       
       if (response.ok && data.valid) {
-        setMessage({ type: 'success', text: 'Connection test successful!' });
+        setMessage({ type: 'success', text: data.message || 'Connection test successful!' });
       } else {
         const errorMsg = data.error || 'Connection validation failed';
         setMessage({ type: 'error', text: `Connection failed: ${errorMsg}` });

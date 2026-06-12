@@ -123,131 +123,6 @@ llmConfigRouter.get('/kb/app/:appId', async (req: Request, res: Response): Promi
 });
 
 /**
- * POST /api/llm-config/validate/:appId
- * Validate KB LLM configuration structure
- * 
- * Checks that:
- * 1. KB Chat LLM provider is specified and has required fields
- * 2. Embeddings provider is specified and has required fields
- * 
- * Does NOT test actual connectivity - purely validates configuration structure.
- * Returns detailed error if any required field is missing.
- */
-llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const appId = getQueryString(req.params.appId);
-    if (!appId) {
-      res.status(400).json({ valid: false, error: 'Application ID is required' });
-      return;
-    }
-
-    console.log(`[v0] Validation request for app ${appId}, body keys:`, Object.keys(req.body));
-    
-    const body = req.body as Record<string, unknown>;
-
-    // Normalize field names (handle legacy/alternate field names)
-    const normalizedConfig = normalizeKBConfigFieldNames(body);
-    console.log(`[v0] Normalized config keys:`, Object.keys(normalizedConfig));
-
-    // Validate KB Chat LLM provider is specified
-    const kbProvider = normalizedConfig.kbLlmProvider as string;
-    if (!kbProvider) {
-      res.status(400).json({ 
-        valid: false, 
-        error: 'KB LLM Provider must be specified' 
-      });
-      return;
-    }
-    console.log(`[v0] KB provider specified: ${kbProvider}`);
-    
-    // Validate KB provider has required fields based on type
-    let kbValidationError: string | null = null;
-    switch (kbProvider) {
-      case 'azure-openai':
-        if (!normalizedConfig.kbllm_azure_endpoint || !normalizedConfig.kbllm_api_key || 
-            !normalizedConfig.kbllm_deployment || !normalizedConfig.kbllm_api_version) {
-          kbValidationError = 'Azure OpenAI: Missing endpoint, API key, deployment, or API version';
-        }
-        break;
-      case 'openai':
-        if (!normalizedConfig.kbllm_openai_api_key) {
-          kbValidationError = 'OpenAI: Missing API key';
-        }
-        break;
-      case 'claude':
-        if (!normalizedConfig.kbllm_claude_api_key) {
-          kbValidationError = 'Claude: Missing API key';
-        }
-        break;
-      case 'aws-bedrock':
-        if (!normalizedConfig.kbllm_aws_region || !normalizedConfig.kbllm_bedrock_model_id) {
-          kbValidationError = 'AWS Bedrock: Missing region or model ID';
-        }
-        break;
-    }
-    
-    if (kbValidationError) {
-      console.error(`[v0] KB validation failed: ${kbValidationError}`);
-      res.status(400).json({ 
-        valid: false, 
-        error: `KB Chat LLM Error: ${kbValidationError}` 
-      });
-      return;
-    }
-
-    // Validate Embeddings provider is specified
-    const embeddingProvider = normalizedConfig.embeddingProvider as string;
-    if (!embeddingProvider) {
-      res.status(400).json({ 
-        valid: false, 
-        error: 'Embeddings Provider must be specified' 
-      });
-      return;
-    }
-    console.log(`[v0] Embedding provider specified: ${embeddingProvider}`);
-    
-    // Validate embeddings provider has required fields based on type
-    let embeddingValidationError: string | null = null;
-    switch (embeddingProvider) {
-      case 'azure-openai':
-        if (!normalizedConfig.embedding_azure_endpoint || !normalizedConfig.embedding_api_key || 
-            !normalizedConfig.embedding_deployment || !normalizedConfig.embedding_api_version) {
-          embeddingValidationError = 'Azure OpenAI: Missing endpoint, API key, deployment, or API version';
-        }
-        break;
-      case 'openai':
-        if (!normalizedConfig.embedding_api_key) {
-          embeddingValidationError = 'OpenAI: Missing API key';
-        }
-        break;
-    }
-    
-    if (embeddingValidationError) {
-      console.error(`[v0] Embeddings validation failed: ${embeddingValidationError}`);
-      res.status(400).json({ 
-        valid: false, 
-        error: `Embeddings Error: ${embeddingValidationError}` 
-      });
-      return;
-    }
-
-    // All validation passed
-    console.log(`[v0] Configuration validation passed for KB (${kbProvider}) and Embeddings (${embeddingProvider})`);
-    res.json({ 
-      valid: true, 
-      message: `Configuration validated successfully (KB: ${kbProvider}, Embeddings: ${embeddingProvider})` 
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/llm-config/validate/:appId Error:', message);
-    res.status(500).json({
-      valid: false,
-      error: message,
-    });
-  }
-});
-
-/**
  * POST /api/llm-config/kb/app/:appId
  * Save Knowledge Base LLM configuration (for embeddings and chat)
  */
@@ -285,6 +160,57 @@ llmConfigRouter.post('/kb/app/:appId', async (req: Request, res: Response): Prom
 });
 
 /**
+ * POST /api/llm-config/validate/:appId
+ * Validate KB LLM configuration by testing actual providers
+ * 
+ * Flow:
+ * 1. Fetch saved KB config from MongoDB for this application
+ * 2. Test Chat Completion provider connection
+ * 3. Test Embeddings provider connection
+ * 4. Return success/failure
+ * 
+ * This validates that saved credentials work with actual providers.
+ * Same config is reused by KB Services (upload and chat tabs).
+ */
+llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    console.log('[v0-validate] 1. Starting validate endpoint for app:', appId);
+    
+    // Step 1: Fetch saved KB config and test Chat Completion provider
+    console.log('[v0-validate] 2. Calling getKBChatCompletionProvider');
+    const chatCompletionProvider = await llmProviderService.getKBChatCompletionProvider(appId);
+    console.log('[v0-validate] 3. Chat Completion provider created successfully');
+    
+    // Step 2: Test Embeddings provider
+    console.log('[v0-validate] 4. Calling getKBEmbeddingsProvider');
+    const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(appId);
+    console.log('[v0-validate] 5. Embeddings provider created successfully');
+    
+    console.log('[v0-validate] 6. Both providers validated - returning success');
+    
+    res.json({
+      valid: true,
+      message: 'KB Configuration validated successfully',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : '';
+    console.error('[v0-validate] ERROR:', message);
+    console.error('[v0-validate] ERROR STACK:', stack);
+    res.status(500).json({
+      valid: false,
+      error: message,
+    });
+  }
+});
+
+/**
  * GET /api/llm-config/providers
  * Get list of supported providers and their required fields
  */
@@ -300,147 +226,6 @@ llmConfigRouter.get('/providers', (_req: Request, res: Response): void => {
     console.error('[v0] GET /api/llm-config/providers Error:', message);
     res.status(500).json({
       success: false,
-      error: message,
-    });
-  }
-});
-
-/**
- * Normalize KB config legacy field names to exact format before validation
- * Maps camelCase fields from UI to snake_case format for storage
- */
-function normalizeKBConfigFieldNames(config: Record<string, unknown>): Record<string, unknown> {
-  const normalized = { ...config };
-
-  // Ensure kbLlmProvider is set (use 'provider' if kbLlmProvider not provided)
-  if (!normalized.kbLlmProvider && normalized.provider) {
-    normalized.kbLlmProvider = normalized.provider;
-  }
-
-  // Azure OpenAI fields: map camelCase to snake_case
-  if (normalized.azureEndpoint && !normalized.kbllm_azure_endpoint) {
-    normalized.kbllm_azure_endpoint = normalized.azureEndpoint;
-  }
-  if (normalized.azureApiKey && !normalized.kbllm_api_key) {
-    normalized.kbllm_api_key = normalized.azureApiKey;
-  }
-  if (normalized.azureDeploymentName && !normalized.kbllm_deployment) {
-    normalized.kbllm_deployment = normalized.azureDeploymentName;
-  }
-  if (normalized.azureApiVersion && !normalized.kbllm_api_version) {
-    normalized.kbllm_api_version = normalized.azureApiVersion;
-  }
-
-  // OpenAI fields
-  if (normalized.openaiApiKey && !normalized.kbLlmOpenaiApiKey) {
-    normalized.kbLlmOpenaiApiKey = normalized.openaiApiKey;
-  }
-  if (normalized.openaiModel && !normalized.kbLlmOpenaiModel) {
-    normalized.kbLlmOpenaiModel = normalized.openaiModel;
-  }
-
-  // Claude fields
-  if (normalized.claudeApiKey && !normalized.kbLlmClaudeApiKey) {
-    normalized.kbLlmClaudeApiKey = normalized.claudeApiKey;
-  }
-  if (normalized.claudeModel && !normalized.kbLlmClaudeModel) {
-    normalized.kbLlmClaudeModel = normalized.claudeModel;
-  }
-
-  // AWS Bedrock fields
-  if (normalized.awsRegion && !normalized.kbLlmAwsRegion) {
-    normalized.kbLlmAwsRegion = normalized.awsRegion;
-  }
-  if (normalized.awsAccessKeyId && !normalized.kbLlmAwsAccessKeyId) {
-    normalized.kbLlmAwsAccessKeyId = normalized.awsAccessKeyId;
-  }
-  if (normalized.awsSecretAccessKey && !normalized.kbLlmAwsSecretAccessKey) {
-    normalized.kbLlmAwsSecretAccessKey = normalized.awsSecretAccessKey;
-  }
-  if (normalized.bedrockModelId && !normalized.kbLlmBedrockModelId) {
-    normalized.kbLlmBedrockModelId = normalized.bedrockModelId;
-  }
-
-  return normalized;
-}
-
-/**
- * GET /api/kb-config/app/:appId
- * Get Knowledge Base configuration for an application
- */
-llmConfigRouter.get('/kb-config/app/:appId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const appId = getQueryString(req.params.appId);
-    if (!appId) {
-      res.status(400).json({ success: false, error: 'Application ID is required' });
-      return;
-    }
-
-    const config = await kbConfigService.getConfig(appId);
-
-    if (!config) {
-      res.json({
-        success: true,
-        data: null,
-      } as any);
-      return;
-    }
-
-    res.json({
-      success: true,
-      data: config,
-    } as ApiResponse<IKnowledgeBaseConfig>);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] GET /api/kb-config/app/:appId Error:', message);
-    res.status(500).json({
-      success: false,
-      error: message,
-    } as ApiResponse<IKnowledgeBaseConfig>);
-  }
-});
-
-/**
- * POST /api/kb-config/app/:appId
- * Save or update Knowledge Base configuration
- */
-/**
- * POST /api/kb-config/validate/:appId
- * Test KB LLM connection (both Chat Completion and Embeddings)
- */
-llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const appId = getQueryString(req.params.appId);
-    if (!appId) {
-      res.status(400).json({ success: false, error: 'Application ID is required' });
-      return;
-    }
-
-    console.log('[v0-validate] 1. Starting validate endpoint for app:', appId);
-    
-    // Get KB config and log Chat Completion parameters
-    console.log('[v0-validate] 2. Calling getKBChatCompletionProvider');
-    const chatCompletionProvider = await llmProviderService.getKBChatCompletionProvider(appId);
-    console.log('[v0-validate] 3. Chat Completion provider created successfully');
-    
-    // Get KB config and log Embeddings parameters
-    console.log('[v0-validate] 4. Calling getKBEmbeddingsProvider');
-    const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(appId);
-    console.log('[v0-validate] 5. Embeddings provider created successfully');
-    
-    console.log('[v0-validate] 6. Both providers created - returning success response');
-    
-    res.json({
-      valid: true,
-      error: undefined,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : '';
-    console.error('[v0-validate] ERROR:', message);
-    console.error('[v0-validate] ERROR STACK:', stack);
-    res.status(500).json({
-      valid: false,
       error: message,
     });
   }
