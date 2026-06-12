@@ -55,8 +55,10 @@ export class KnowledgeBaseConfigService {
           { upsert: true, returnDocument: 'after' }
         );
         console.log('[v0-upsertConfig] 8. findOneAndUpdate returned:', !!result);
-        console.log('[v0-upsertConfig] 8a. result.value exists:', !!result?.value);
-        console.log('[v0-upsertConfig] 8b. result.ok:', result?.ok);
+        console.log('[v0-upsertConfig] 8a. result type:', typeof result);
+        console.log('[v0-upsertConfig] 8b. result.value exists:', !!result?.value);
+        console.log('[v0-upsertConfig] 8c. result._id exists:', !!result?._id);
+        console.log('[v0-upsertConfig] 8d. result has applicationId:', !!result?.applicationId);
       } catch (mongoError: unknown) {
         const errorMsg = mongoError instanceof Error ? mongoError.message : String(mongoError);
         console.error('[v0-upsertConfig] 8-MONGO-ERROR:', errorMsg);
@@ -64,17 +66,23 @@ export class KnowledgeBaseConfigService {
         throw mongoError;
       }
 
-      if (!result?.value) {
-        console.error('[v0-upsertConfig] 9. ERROR: result.value is null or undefined');
-        console.error('[v0-upsertConfig] 9a. Full result object:', JSON.stringify(result, null, 2));
-        throw new Error('Failed to upsert configuration - result.value is null');
+      // MongoDB driver returns document directly in result, not in result.value
+      const savedConfig = result?.value || result;
+      console.log('[v0-upsertConfig] 9. Extracted config from result:', !!savedConfig);
+      console.log('[v0-upsertConfig] 9a. Config has _id:', !!savedConfig?._id);
+      console.log('[v0-upsertConfig] 9b. Config has applicationId:', savedConfig?.applicationId);
+
+      if (!savedConfig) {
+        console.error('[v0-upsertConfig] 10. ERROR: No config found in result object');
+        console.error('[v0-upsertConfig] 10a. Full result object:', JSON.stringify(result, null, 2));
+        throw new Error('Failed to upsert configuration - no data returned from MongoDB');
       }
 
-      console.log('[v0-upsertConfig] 10. MongoDB upsert successful for appId:', input.applicationId);
-      console.log('[v0-upsertConfig] 11. Saved config has kbllm_api_key with colon:', (result.value as any).kbllm_api_key?.includes(':'));
-      console.log('[v0-upsertConfig] 12. Returning config');
+      console.log('[v0-upsertConfig] 11. MongoDB upsert successful for appId:', input.applicationId);
+      console.log('[v0-upsertConfig] 12. Saved config has kbllm_api_key with colon:', (savedConfig as any).kbllm_api_key?.includes(':'));
+      console.log('[v0-upsertConfig] 13. Returning encrypted config');
       
-      return result.value as KnowledgeBaseConfig;
+      return savedConfig as KnowledgeBaseConfig;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : 'N/A';
