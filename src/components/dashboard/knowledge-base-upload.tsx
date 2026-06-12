@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, ChangeEvent, DragEvent } from 'react';
+import { useState, useRef, ChangeEvent, DragEvent, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle, Download } from 'lucide-react';
 import { validateResponse, UploadResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
+import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
 interface UploadedDocument {
   documentId: string;
@@ -37,6 +38,9 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use KB Services hook to fetch config and operations
+  const { config, isLoadingConfig, configError } = useKnowledgeBase(applicationId);
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -350,6 +354,25 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
 
   return (
     <div className="space-y-6">
+      {/* Loading Config */}
+      {isLoadingConfig && (
+        <Card className="bg-blue-50 border border-blue-200 p-4 flex gap-3 items-center">
+          <Spinner className="w-5 h-5" />
+          <p className="text-sm text-blue-700">Loading KB configuration...</p>
+        </Card>
+      )}
+
+      {/* KB Config Error Alert */}
+      {configError && (
+        <Card className="bg-yellow-50 border border-yellow-200 p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-yellow-900">KB Configuration Required</h3>
+            <p className="text-sm text-yellow-700 mt-1">{configError}</p>
+          </div>
+        </Card>
+      )}
+
       {/* Error Alert */}
       {error && (
         <Card className="bg-red-50 border border-red-200 p-4 flex gap-3">
@@ -390,7 +413,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
               onChange={handleFileInput}
               accept=".pdf,.docx,.txt,.md"
               className="hidden"
-              disabled={uploadingFiles.length > 0}
+              disabled={uploadingFiles.length > 0 || isLoadingConfig || !!configError}
             />
           </div>
         </div>

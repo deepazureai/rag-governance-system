@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle, Download } from 'lucide-react';
 import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
+import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
 interface ContextSource {
   documentId: string;
@@ -61,6 +62,9 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     avgSearchTime: 0,
     lastQueryTime: 0,
   });
+
+  // Use KB Services hook to fetch config and operations
+  const { config, isLoadingConfig, configError } = useKnowledgeBase(applicationId);
 
   // Load threads from localStorage on mount
   useEffect(() => {
