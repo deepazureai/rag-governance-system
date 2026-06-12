@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter, Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { llmConfigService } from '../services/LLMConfigService.js';
-import { kbConfigService } from '../services/KBConfigService.js';
+import { kbConfigService } from '../services/KnowledgeBaseConfigService.js';
 import { llmProviderService } from '../services/LLMProviderService.js';
 import { LLMClientFactory } from '../services/LLMClientFactory.js';
 import { logger } from '../utils/logger.js';
