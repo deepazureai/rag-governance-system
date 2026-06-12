@@ -65,10 +65,20 @@ const EMBEDDING_PROVIDER_FIELDS: Record<EmbeddingProvider, ProviderField[]> = {
 };
 
 interface KBLLMSettingsProps {
-  applicationId: string;
+  applicationId?: string;
 }
 
-export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) => {
+interface Application {
+  _id: string;
+  name: string;
+}
+
+export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: initialAppId }) => {
+  // Application Selection State
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>(initialAppId || '');
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+
   // KB LLM Chat State
   const [kbProvider, setKbProvider] = useState<KBProvider>('azure-openai');
   const [kbFormData, setKbFormData] = useState<Record<string, string>>({});
@@ -76,7 +86,6 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
   // Embedding State
   const [embeddingProvider, setEmbeddingProvider] = useState<EmbeddingProvider>('azure-openai');
-  const [embeddingModel, setEmbeddingModel] = useState<string>('text-embedding-3-large');
   const [embeddingFormData, setEmbeddingFormData] = useState<Record<string, string>>({});
   const [embeddingSkipSslVerification, setEmbeddingSkipSslVerification] = useState(false);
 
@@ -88,12 +97,36 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
 
-  // Load existing config on mount
+  // Load applications on mount
   useEffect(() => {
+    const loadApplications = async (): Promise<void> => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        const response = await fetch(`${apiUrl}/api/applications`);
+        if (response.ok) {
+          const data = (await response.json()) as { data: Application[] };
+          setApplications(data.data || []);
+          if (!selectedApplicationId && data.data?.length > 0) {
+            setSelectedApplicationId(data.data[0]._id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load applications:', error);
+      } finally {
+        setApplicationsLoading(false);
+      }
+    };
+    loadApplications();
+  }, []);
+
+  // Load existing config when application changes
+  useEffect(() => {
+    if (!selectedApplicationId) return;
+
     const loadConfig = async (): Promise<void> => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-        const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${applicationId}`);
+        const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${selectedApplicationId}`);
         
         if (response.ok) {
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
@@ -108,7 +141,6 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
             
             // Load Embedding settings
             setEmbeddingProvider((data.data.embeddingProvider || 'azure-openai') as EmbeddingProvider);
-            setEmbeddingModel(data.data.embeddingModel || 'text-embedding-3-large');
             setEmbeddingSkipSslVerification(data.data.embedding_skipSslVerification ?? false);
             
             // Populate KB LLM form
@@ -144,7 +176,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     };
 
     loadConfig();
-  }, [applicationId]);
+  }, [selectedApplicationId]);
 
   const handleKbInputChange = (fieldName: string, value: string): void => {
     setKbFormData(prev => ({
@@ -173,6 +205,11 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   };
 
   const handleSave = async (): Promise<void> => {
+    if (!selectedApplicationId) {
+      setMessage({ type: 'error', text: 'Please select an application' });
+      return;
+    }
+    
     if (!validateKbForm() || !validateEmbeddingForm()) {
       setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
@@ -182,12 +219,11 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const payload = {
-        applicationId,
+        applicationId: selectedApplicationId,
         kbLlmProvider: kbProvider,
         kbllm_skipSslVerification: kbSkipSslVerification,
         ...kbFormData,
         embeddingProvider,
-        embeddingModel,
         embedding_skipSslVerification: embeddingSkipSslVerification,
         ...embeddingFormData,
         temperature,
@@ -229,6 +265,11 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
   };
 
   const handleTestConnection = async (): Promise<void> => {
+    if (!selectedApplicationId) {
+      setMessage({ type: 'error', text: 'Please select an application' });
+      return;
+    }
+
     if (!validateKbForm() || !validateEmbeddingForm()) {
       setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
@@ -243,24 +284,14 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
         embeddingProvider,
         ...embeddingFormData,
       };
-      
-      console.log('[v0] Test Connection payload:', {
-        kbProvider,
-        kbFormData,
-        embeddingProvider,
-        embeddingFormData,
-      });
 
-      const response = await fetch(`${apiUrl}/api/llm-config/validate/${applicationId}`, {
+      const response = await fetch(`${apiUrl}/api/llm-config/validate/${selectedApplicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testPayload),
       });
 
-      console.log('[v0] Test Connection response status:', response.status);
-      
       const responseText = await response.text();
-      console.log('[v0] Test Connection response body:', responseText);
       
       if (!responseText) {
         setMessage({ type: 'error', text: 'Connection failed: Empty response from server' });
@@ -268,7 +299,6 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
       }
 
       const data = JSON.parse(responseText) as { valid: boolean; error?: string };
-      console.log('[v0] Test Connection parsed data:', data);
       
       if (response.ok && data.valid) {
         setMessage({ type: 'success', text: 'Connection test successful!' });
@@ -289,6 +319,44 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
 
   return (
     <div className="space-y-8">
+      {/* Application Selector */}
+      <Card className="p-6 bg-blue-50 border-blue-200">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-2">Select Application</h3>
+          <p className="text-sm text-gray-600">Choose which application&apos;s KB settings you want to configure</p>
+        </div>
+        
+        {applicationsLoading ? (
+          <p className="text-sm text-gray-500">Loading applications...</p>
+        ) : applications.length === 0 ? (
+          <p className="text-sm text-red-600">No applications available. Please create an application first.</p>
+        ) : (
+          <Select value={selectedApplicationId} onValueChange={(value: string) => {
+            setSelectedApplicationId(value);
+            setMessage(null);
+          }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select an application..." />
+            </SelectTrigger>
+            <SelectContent>
+              {applications.map((app: Application) => (
+                <SelectItem key={app._id} value={app._id}>
+                  {app.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </Card>
+
+      {!selectedApplicationId && (
+        <Card className="p-4 bg-yellow-50 border-yellow-200">
+          <p className="text-sm text-yellow-800">Please select an application to configure its KB settings.</p>
+        </Card>
+      )}
+
+      {selectedApplicationId && (
+      <>
       {/* Status Card */}
       {savedConfig && (
         <Card className="p-4 bg-green-50 border-green-200">
@@ -325,21 +393,6 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
               <SelectItem value="openai">OpenAI</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-2">Embedding Model</label>
-          <Input
-            type="text"
-            placeholder="e.g., text-embedding-3-large (must match your Azure deployment name)"
-            value={embeddingModel}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setEmbeddingModel(e.target.value);
-              setMessage(null);
-            }}
-            className="w-full"
-          />
-          <p className="text-xs text-gray-500 mt-1">Model name must match your Azure deployment name or OpenAI model ID</p>
         </div>
 
         <div className="space-y-4 mt-6">
@@ -484,6 +537,8 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId }) =
           {isLoading ? 'Saving...' : 'Save Configuration'}
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 };
