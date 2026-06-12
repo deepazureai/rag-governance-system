@@ -183,19 +183,31 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
   /**
    * Load existing KB configuration when application changes.
    * Fetches saved settings from backend and populates all form fields.
-   * This allows users to edit existing configuration instead of entering from scratch.
+   * Clears previous form data immediately to avoid showing stale data.
    */
   useEffect(() => {
     if (!selectedApplicationId) return;
 
+    // Clear form data immediately when app changes (while fetching new config)
+    console.log('[v0-kbsettings] 1. App changed to:', selectedApplicationId);
+    setKbFormData({});
+    setEmbeddingFormData({});
+    setSavedConfig(null);
+
     const loadConfig = async (): Promise<void> => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        console.log('[v0-kbsettings] 2. Fetching KB config for app:', selectedApplicationId);
         const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${selectedApplicationId}`);
+        
+        console.log('[v0-kbsettings] 3. Response status:', response.status);
         
         if (response.ok) {
           const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
+          console.log('[v0-kbsettings] 4. Config received - KB Provider:', data.data?.kbLlmProvider);
+          
           if (data.data) {
+            console.log('[v0-kbsettings] 5. Setting config data');
             setSavedConfig(data.data);
             
             // Load KB LLM settings from saved config
@@ -221,6 +233,7 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
                   kbForm[field.name] = value;
                 }
               });
+              console.log('[v0-kbsettings] 6. Setting KB form data with fields:', Object.keys(kbForm));
               setKbFormData(kbForm);
               
               const embeddingProviderValue = (data.data.embeddingProvider || 'azure-openai') as EmbeddingProvider;
@@ -231,12 +244,19 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
                   embeddingForm[field.name] = value;
                 }
               });
+              console.log('[v0-kbsettings] 7. Setting embedding form data with fields:', Object.keys(embeddingForm));
               setEmbeddingFormData(embeddingForm);
             }
+          } else {
+            console.log('[v0-kbsettings] 8. No config data in response - initializing empty forms');
           }
+        } else if (response.status === 404) {
+          console.log('[v0-kbsettings] 9. No config found (404) - forms will be empty for new app');
+        } else {
+          console.error('[v0-kbsettings] 10. API error:', response.status);
         }
       } catch (error: unknown) {
-        console.error('[v0] Error loading KB config:', error);
+        console.error('[v0-kbsettings] 11. Error loading KB config:', error);
       }
     };
 
@@ -416,11 +436,20 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
           <p className="text-sm text-red-600">No applications available. Please create an application first.</p>
         ) : (
           <Select value={selectedApplicationId} onValueChange={(value: string) => {
+            console.log('[v0-kbsettings] Application changed to:', value);
             setSelectedApplicationId(value);
             setMessage(null);
           }}>
             <SelectTrigger>
-              <SelectValue placeholder="Select an application..." />
+              <SelectValue 
+                placeholder="Select an application..."
+              >
+                {selectedApplicationId ? (
+                  applications.find((app: Application) => app._id === selectedApplicationId)?.name || 'Select an application...'
+                ) : (
+                  'Select an application...'
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {applications.map((app: Application) => (
