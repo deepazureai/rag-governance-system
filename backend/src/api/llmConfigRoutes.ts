@@ -84,6 +84,121 @@ llmConfigRouter.post('/app/:appId', async (req: Request, res: Response): Promise
 });
 
 /**
+ * GET /api/llm-config/kb/app/:appId
+ * Retrieve Knowledge Base LLM configuration for an application
+ * 
+ * Used by KB Settings frontend to load saved configuration for editing.
+ * Returns all KB provider settings (both chat completion and embeddings).
+ */
+llmConfigRouter.get('/kb/app/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
+      res.status(400).json({ success: false, error: 'Application ID is required' });
+      return;
+    }
+
+    const config = await kbConfigService.getConfig(appId);
+
+    if (!config) {
+      res.status(404).json({
+        success: false,
+        error: 'Knowledge Base configuration not found',
+      } as ApiResponse<IKnowledgeBaseConfig>);
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: config,
+    } as ApiResponse<IKnowledgeBaseConfig>);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] GET /api/llm-config/kb/app/:appId Error:', message);
+    res.status(500).json({
+      success: false,
+      error: message,
+    } as ApiResponse<IKnowledgeBaseConfig>);
+  }
+});
+
+/**
+ * POST /api/llm-config/validate/:appId
+ * Validate KB LLM connection for both chat and embeddings
+ * 
+ * Tests connectivity to:
+ * 1. KB Chat LLM provider (Azure OpenAI, OpenAI, Claude, AWS Bedrock)
+ * 2. Embeddings provider (Azure OpenAI or OpenAI)
+ * 
+ * Does NOT save configuration - purely for testing before save.
+ * Logs detailed error information to help diagnose connection issues.
+ */
+llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appId = getQueryString(req.params.appId);
+    if (!appId) {
+      res.status(400).json({ valid: false, error: 'Application ID is required' });
+      return;
+    }
+
+    console.log(`[v0] Validation request for app ${appId}, body keys:`, Object.keys(req.body));
+    
+    const body = req.body as Record<string, unknown>;
+
+    // Normalize field names (handle legacy/alternate field names)
+    const normalizedConfig = normalizeKBConfigFieldNames(body);
+    console.log(`[v0] Normalized config keys:`, Object.keys(normalizedConfig));
+
+    // Test KB Chat LLM provider connection
+    const kbProvider = normalizedConfig.kbLlmProvider as string || 'azure-openai';
+    console.log(`[v0] Testing KB provider: ${kbProvider}`);
+    
+    try {
+      const chatClient = llmProviderService.mapToChatCompletion(normalizedConfig);
+      console.log(`[v0] Chat client created successfully for ${kbProvider}`);
+    } catch (chatError: unknown) {
+      const msg = chatError instanceof Error ? chatError.message : String(chatError);
+      console.error(`[v0] Chat client creation failed for ${kbProvider}:`, msg);
+      res.status(400).json({ 
+        valid: false, 
+        error: `KB Chat LLM Error (${kbProvider}): ${msg}` 
+      });
+      return;
+    }
+
+    // Test Embeddings provider connection
+    const embeddingProvider = normalizedConfig.embeddingProvider as string || 'azure-openai';
+    console.log(`[v0] Testing embedding provider: ${embeddingProvider}`);
+    
+    try {
+      const embeddingClient = llmProviderService.mapToEmbeddings(normalizedConfig);
+      console.log(`[v0] Embedding client created successfully for ${embeddingProvider}`);
+    } catch (embeddingError: unknown) {
+      const msg = embeddingError instanceof Error ? embeddingError.message : String(embeddingError);
+      console.error(`[v0] Embedding client creation failed for ${embeddingProvider}:`, msg);
+      res.status(400).json({ 
+        valid: false, 
+        error: `Embeddings Error (${embeddingProvider}): ${msg}` 
+      });
+      return;
+    }
+
+    // Both providers validated successfully
+    res.json({ 
+      valid: true, 
+      message: `Both KB chat (${kbProvider}) and embeddings (${embeddingProvider}) providers validated successfully` 
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[v0] POST /api/llm-config/validate/:appId Error:', message);
+    res.status(500).json({
+      valid: false,
+      error: message,
+    });
+  }
+});
+
+/**
  * POST /api/llm-config/kb/app/:appId
  * Save Knowledge Base LLM configuration (for embeddings and chat)
  */
@@ -117,26 +232,6 @@ llmConfigRouter.post('/kb/app/:appId', async (req: Request, res: Response): Prom
       success: false,
       error: message,
     } as ApiResponse<IKnowledgeBaseConfig>);
-  }
-});
-
-/**
- * POST /api/llm-config/validate/:appId
- * Test LLM connection (removed - use KB config validate instead)
- */
-llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    res.json({
-      success: true,
-      message: 'Use /kb-config/validate/:appId instead',
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[v0] POST /api/llm-config/validate/:appId Error:', message);
-    res.status(500).json({
-      valid: false,
-      error: message,
-    });
   }
 });
 
