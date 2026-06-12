@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * KB LLM Settings Component
+ * 
+ * Manages configuration for Knowledge Base embeddings and chat completion providers.
+ * Users select an application and configure:
+ * - Embedding provider (for vectorizing documents)
+ * - Chat LLM provider (for generating KB responses)
+ * - Connection parameters specific to each provider
+ * - Common parameters (temperature, max tokens)
+ * 
+ * Data flows:
+ * 1. Load: App selector → API /applications → Config loader → API /llm-config/kb/app/:appId
+ * 2. Save: Form input → handleSave → API /llm-config/kb/app/:appId → MongoDB
+ * 3. Test: Form input → handleTestConnection → API /llm-config/validate/:appId → Response
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -18,6 +34,10 @@ import { KnowledgeBaseConfig, ApiResponse } from '@/src/types/models';
 type KBProvider = 'azure-openai' | 'claude' | 'aws-bedrock' | 'openai';
 type EmbeddingProvider = 'azure-openai' | 'openai';
 
+/**
+ * Configuration field metadata for provider-specific settings.
+ * Each field includes label, type, placeholder, and validation requirement.
+ */
 interface ProviderField {
   name: string;
   label: string;
@@ -26,7 +46,15 @@ interface ProviderField {
   placeholder?: string;
 }
 
-// KB LLM Chat Configuration Fields
+/**
+ * KB LLM Chat Configuration Fields
+ * 
+ * Field naming: "kbllm_*" prefix distinguishes KB settings from general LLM config
+ * Examples:
+ * - kbllm_azure_endpoint: Azure resource URL (e.g., https://resource.openai.azure.com)
+ * - kbllm_deployment: Azure deployment name (maps to Azure SDK's deploymentId)
+ * - kbllm_api_version: Azure API version (e.g., 2025-01-01-preview)
+ */
 const KB_PROVIDER_FIELDS: Record<KBProvider, ProviderField[]> = {
   'azure-openai': [
     { name: 'kbllm_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
@@ -50,8 +78,17 @@ const KB_PROVIDER_FIELDS: Record<KBProvider, ProviderField[]> = {
   ],
 };
 
-// Embedding Configuration Fields
-// Note: Parameter names match Azure OpenAI SDK requirements
+/**
+ * Embedding Configuration Fields
+ * 
+ * Field naming: "embedding_*" prefix for embeddings provider settings
+ * Examples:
+ * - embedding_deployment: Azure deployment name for embeddings model (e.g., text-embedding-3-small)
+ * - embedding_api_key: API credentials for embeddings provider
+ * 
+ * Note: These are distinct from KB LLM settings to support different providers
+ * (e.g., KB chat from Azure, embeddings from OpenAI or vice versa)
+ */
 const EMBEDDING_PROVIDER_FIELDS: Record<EmbeddingProvider, ProviderField[]> = {
   'azure-openai': [
     { name: 'embedding_azure_endpoint', label: 'Azure Endpoint', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
@@ -73,6 +110,20 @@ interface Application {
   name: string;
 }
 
+/**
+ * KBLLMSettings Component
+ * 
+ * @param props.applicationId - Optional application ID passed from parent (used as initial selection)
+ * @returns React component for KB LLM settings configuration
+ * 
+ * Key features:
+ * - Application selector dropdown (loads from /api/applications)
+ * - Separate provider selection for KB chat and embeddings
+ * - Provider-specific configuration fields populated dynamically
+ * - Test Connection button to validate provider connectivity
+ * - Save button to persist configuration to MongoDB
+ * - Success/error messages with auto-clear after 5 seconds
+ */
 export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: initialAppId }) => {
   // Application Selection State
   const [applications, setApplications] = useState<Application[]>([]);
@@ -97,21 +148,31 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
 
-  // Load applications on mount
+  /**
+   * Load applications list from backend on component mount.
+   * Sets first application as default if no initialAppId provided.
+   * Displays error message to user if load fails.
+   */
   useEffect(() => {
     const loadApplications = async (): Promise<void> => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
         const response = await fetch(`${apiUrl}/api/applications`);
         if (response.ok) {
-          const data = (await response.json()) as { data: Application[] };
-          setApplications(data.data || []);
-          if (!selectedApplicationId && data.data?.length > 0) {
-            setSelectedApplicationId(data.data[0]._id);
+          const responseData = (await response.json()) as Record<string, unknown>;
+          // Extract applications array, defaulting to empty array if not present
+          const apps = Array.isArray(responseData.data) ? responseData.data : [];
+          setApplications(apps as Application[]);
+          // Auto-select first app if none selected
+          if (!selectedApplicationId && Array.isArray(apps) && apps.length > 0) {
+            const firstApp = apps[0] as Application;
+            setSelectedApplicationId(firstApp._id);
           }
+        } else {
+          setMessage({ type: 'error', text: 'Failed to load applications' });
         }
       } catch (error) {
-        console.error('Failed to load applications:', error);
+        setMessage({ type: 'error', text: 'Error loading applications. Please refresh the page.' });
       } finally {
         setApplicationsLoading(false);
       }
@@ -119,7 +180,11 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     loadApplications();
   }, []);
 
-  // Load existing config when application changes
+  /**
+   * Load existing KB configuration when application changes.
+   * Fetches saved settings from backend and populates all form fields.
+   * This allows users to edit existing configuration instead of entering from scratch.
+   */
   useEffect(() => {
     if (!selectedApplicationId) return;
 
@@ -133,17 +198,17 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
           if (data.data) {
             setSavedConfig(data.data);
             
-            // Load KB LLM settings
+            // Load KB LLM settings from saved config
             setKbProvider((data.data.kbLlmProvider || 'azure-openai') as KBProvider);
             setKbSkipSslVerification(data.data.kbllm_skipSslVerification ?? false);
             setTemperature(data.data.temperature ?? 0.7);
             setMaxTokens(data.data.maxTokens ?? 2048);
             
-            // Load Embedding settings
+            // Load Embedding settings from saved config
             setEmbeddingProvider((data.data.embeddingProvider || 'azure-openai') as EmbeddingProvider);
             setEmbeddingSkipSslVerification(data.data.embedding_skipSslVerification ?? false);
             
-            // Populate KB LLM form
+            // Populate KB LLM form fields with saved values
             if (data.data) {
               const kbForm: Record<string, string> = {};
               const embeddingForm: Record<string, string> = {};
@@ -178,6 +243,22 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     loadConfig();
   }, [selectedApplicationId]);
 
+  /**
+   * Auto-clear success messages after 5 seconds.
+   * Keeps UI clean while ensuring users see confirmation of successful operations.
+   */
+  useEffect(() => {
+    if (message?.type === 'success') {
+      const timer = setTimeout(() => setMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [message]);
+
+  /**
+   * Handle KB LLM field changes.
+   * Clears previous messages to indicate user is making changes.
+   */
   const handleKbInputChange = (fieldName: string, value: string): void => {
     setKbFormData(prev => ({
       ...prev,
@@ -186,6 +267,10 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     setMessage(null);
   };
 
+  /**
+   * Handle Embedding field changes.
+   * Clears previous messages to indicate user is making changes.
+   */
   const handleEmbeddingInputChange = (fieldName: string, value: string): void => {
     setEmbeddingFormData(prev => ({
       ...prev,
@@ -194,23 +279,26 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     setMessage(null);
   };
 
-  const validateKbForm = (): boolean => {
-    // Just check if provider is selected - no strict field validation
-    return !!kbProvider;
-  };
-
-  const validateEmbeddingForm = (): boolean => {
-    // Just check if provider is selected - no strict field validation
-    return !!embeddingProvider;
-  };
-
+  /**
+   * Save KB LLM and Embedding configuration.
+   * 
+   * Flow:
+   * 1. Validate application and provider selection
+   * 2. Construct payload with current form values
+   * 3. POST to /api/llm-config/kb/app/:appId
+   * 4. On success: Show confirmation, clear form, update savedConfig
+   * 5. On error: Display error message
+   * 
+   * The backend encrypts sensitive fields (API keys) before storing in MongoDB.
+   */
   const handleSave = async (): Promise<void> => {
     if (!selectedApplicationId) {
       setMessage({ type: 'error', text: 'Please select an application' });
       return;
     }
     
-    if (!validateKbForm() || !validateEmbeddingForm()) {
+    // Validate that both providers are selected (inline validation)
+    if (!kbProvider || !embeddingProvider) {
       setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
     }
@@ -218,31 +306,21 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     setIsLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      // Payload combines provider selection, provider-specific credentials, and common settings
       const payload = {
         applicationId: selectedApplicationId,
         kbLlmProvider: kbProvider,
         kbllm_skipSslVerification: kbSkipSslVerification,
-        ...kbFormData,
+        ...kbFormData,  // Spreads KB-specific fields (e.g., kbllm_api_key, kbllm_deployment)
         embeddingProvider,
         embedding_skipSslVerification: embeddingSkipSslVerification,
-        ...embeddingFormData,
+        ...embeddingFormData,  // Spreads embedding-specific fields (e.g., embedding_deployment)
         temperature,
         maxTokens,
         isDefault: true,
       };
 
-      console.log('[v0] Payload being sent to backend:', {
-        applicationId,
-        kbProvider,
-        kbFormDataKeys: Object.keys(kbFormData),
-        kbFormData,
-        embeddingProvider,
-        embeddingModel,
-        embeddingFormDataKeys: Object.keys(embeddingFormData),
-        embeddingFormData,
-      });
-
-      const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${applicationId}`, {
+      const response = await fetch(`${apiUrl}/api/llm-config/kb/app/${selectedApplicationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -251,7 +329,10 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
       if (response.ok) {
         const data = (await response.json()) as ApiResponse<KnowledgeBaseConfig>;
         setSavedConfig(data.data ?? null);
-        setMessage({ type: 'success', text: 'KB configuration (embeddings + chat) saved successfully!' });
+        setMessage({ type: 'success', text: 'KB configuration saved successfully!' });
+        // Reset form after successful save to prevent confusion
+        setKbFormData({});
+        setEmbeddingFormData({});
       } else {
         const error = await response.text();
         setMessage({ type: 'error', text: `Failed to save: ${error}` });
@@ -264,13 +345,26 @@ export const KBLLMSettings: React.FC<KBLLMSettingsProps> = ({ applicationId: ini
     }
   };
 
+  /**
+   * Test connectivity to both KB LLM and Embedding providers.
+   * 
+   * Flow:
+   * 1. Validate application and provider selection
+   * 2. Send current form values to /api/llm-config/validate/:appId
+   * 3. Backend attempts connection to both providers
+   * 4. Backend returns validation result or error details
+   * 5. Display result to user
+   * 
+   * Does NOT save configuration - purely for testing connectivity before saving.
+   */
   const handleTestConnection = async (): Promise<void> => {
     if (!selectedApplicationId) {
       setMessage({ type: 'error', text: 'Please select an application' });
       return;
     }
 
-    if (!validateKbForm() || !validateEmbeddingForm()) {
+    // Validate that both providers are selected (inline validation)
+    if (!kbProvider || !embeddingProvider) {
       setMessage({ type: 'error', text: 'Please select both KB and Embedding providers' });
       return;
     }
