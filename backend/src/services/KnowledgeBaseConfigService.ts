@@ -22,10 +22,14 @@ export class KnowledgeBaseConfigService {
       // Encrypt sensitive fields
       console.log('[v0-upsertConfig] 3. Encrypting sensitive fields...');
       const encrypted = this.encryptSensitiveFields(input);
-      console.log('[v0-upsertConfig] 4. Encrypted kbllm_api_key format:', (encrypted as any).kbllm_api_key?.substring(0, 30) + '...');
+      
+      // Verify encryption happened
+      console.log('[v0-upsertConfig] 4. Encrypted kbllm_api_key type:', typeof (encrypted as any).kbllm_api_key);
+      console.log('[v0-upsertConfig] 5. Encrypted kbllm_api_key length:', (encrypted as any).kbllm_api_key?.length);
+      console.log('[v0-upsertConfig] 6. Encrypted kbllm_api_key contains colon (encrypted format):', (encrypted as any).kbllm_api_key?.includes(':'));
 
       // Save to MongoDB
-      console.log('[v0-upsertConfig] 5. Saving to MongoDB...');
+      console.log('[v0-upsertConfig] 7. Saving to MongoDB with encrypted config...');
       const db = mongoose.connection;
       const collection = db.collection(this.collection);
 
@@ -39,8 +43,9 @@ export class KnowledgeBaseConfigService {
         throw new Error('Failed to upsert configuration');
       }
 
-      console.log('[v0-upsertConfig] 6. MongoDB upsert successful for appId:', input.applicationId);
-      console.log('[v0-upsertConfig] 7. Returning config with encrypted fields');
+      console.log('[v0-upsertConfig] 8. MongoDB upsert successful for appId:', input.applicationId);
+      console.log('[v0-upsertConfig] 9. Saved config has kbllm_api_key with colon:', (result.value as any).kbllm_api_key?.includes(':'));
+      console.log('[v0-upsertConfig] 10. Returning config');
       
       return result.value as KnowledgeBaseConfig;
     } catch (error: unknown) {
@@ -260,9 +265,14 @@ export class KnowledgeBaseConfigService {
 
     // Encrypt LLM mandatory fields (kbllm_* fields from frontend)
     if ((encrypted as any).kbllm_api_key) {
-      console.log('[v0-encrypt] 2a. Encrypting kbllm_api_key');
+      console.log('[v0-encrypt] 2a. Before encrypt - kbllm_api_key type:', typeof (encrypted as any).kbllm_api_key, 'length:', (encrypted as any).kbllm_api_key.length);
+      const original = (encrypted as any).kbllm_api_key;
       (encrypted as any).kbllm_api_key = cryptoUtil.encrypt((encrypted as any).kbllm_api_key);
+      console.log('[v0-encrypt] 2a-after. After encrypt - kbllm_api_key type:', typeof (encrypted as any).kbllm_api_key, 'length:', (encrypted as any).kbllm_api_key.length, 'contains colon:', (encrypted as any).kbllm_api_key.includes(':'));
+    } else {
+      console.log('[v0-encrypt] 2a-skip. No kbllm_api_key to encrypt');
     }
+
     if ((encrypted as any).kbllm_azure_endpoint) {
       console.log('[v0-encrypt] 2b. Encrypting kbllm_azure_endpoint');
       (encrypted as any).kbllm_azure_endpoint = cryptoUtil.encrypt((encrypted as any).kbllm_azure_endpoint);
@@ -294,7 +304,7 @@ export class KnowledgeBaseConfigService {
       (encrypted as any).embedding_deployment = cryptoUtil.encrypt((encrypted as any).embedding_deployment);
     }
 
-    console.log('[v0-encrypt] 4. Encryption complete');
+    console.log('[v0-encrypt] 4. Encryption complete. Encrypted object has kbllm_api_key with colon:', (encrypted as any).kbllm_api_key?.includes(':'));
     return encrypted;
   }
 }
