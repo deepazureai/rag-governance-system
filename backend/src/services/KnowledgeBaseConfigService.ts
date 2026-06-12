@@ -30,26 +30,56 @@ export class KnowledgeBaseConfigService {
 
       // Save to MongoDB
       console.log('[v0-upsertConfig] 7. Saving to MongoDB with encrypted config...');
+      console.log('[v0-upsertConfig] 7a. Encrypted object keys:', Object.keys(encrypted).join(', '));
+      console.log('[v0-upsertConfig] 7b. Encrypted object has applicationId:', !!(encrypted as any).applicationId);
+      
       const db = mongoose.connection;
+      console.log('[v0-upsertConfig] 7c. MongoDB connection state:', db.readyState, '(0=disconnected, 1=connected, 2=connecting, 3=disconnecting)');
+      
       const collection = db.collection(this.collection);
+      console.log('[v0-upsertConfig] 7d. Collection name:', this.collection);
 
-      const result = await collection.findOneAndUpdate(
-        { applicationId: input.applicationId },
-        { $set: { ...encrypted, updatedAt: new Date() } },
-        { upsert: true, returnDocument: 'after' }
-      );
+      const updateOp = {
+        $set: { 
+          ...encrypted, 
+          updatedAt: new Date() 
+        }
+      };
+      console.log('[v0-upsertConfig] 7e. Update operation has', Object.keys(updateOp.$set).length, 'fields');
 
-      if (!result?.value) {
-        throw new Error('Failed to upsert configuration');
+      let result;
+      try {
+        result = await collection.findOneAndUpdate(
+          { applicationId: input.applicationId },
+          updateOp,
+          { upsert: true, returnDocument: 'after' }
+        );
+        console.log('[v0-upsertConfig] 8. findOneAndUpdate returned:', !!result);
+        console.log('[v0-upsertConfig] 8a. result.value exists:', !!result?.value);
+        console.log('[v0-upsertConfig] 8b. result.ok:', result?.ok);
+      } catch (mongoError: unknown) {
+        const errorMsg = mongoError instanceof Error ? mongoError.message : String(mongoError);
+        console.error('[v0-upsertConfig] 8-MONGO-ERROR:', errorMsg);
+        console.error('[v0-upsertConfig] 8-MONGO-ERROR-STACK:', mongoError instanceof Error ? mongoError.stack : 'N/A');
+        throw mongoError;
       }
 
-      console.log('[v0-upsertConfig] 8. MongoDB upsert successful for appId:', input.applicationId);
-      console.log('[v0-upsertConfig] 9. Saved config has kbllm_api_key with colon:', (result.value as any).kbllm_api_key?.includes(':'));
-      console.log('[v0-upsertConfig] 10. Returning config');
+      if (!result?.value) {
+        console.error('[v0-upsertConfig] 9. ERROR: result.value is null or undefined');
+        console.error('[v0-upsertConfig] 9a. Full result object:', JSON.stringify(result, null, 2));
+        throw new Error('Failed to upsert configuration - result.value is null');
+      }
+
+      console.log('[v0-upsertConfig] 10. MongoDB upsert successful for appId:', input.applicationId);
+      console.log('[v0-upsertConfig] 11. Saved config has kbllm_api_key with colon:', (result.value as any).kbllm_api_key?.includes(':'));
+      console.log('[v0-upsertConfig] 12. Returning config');
       
       return result.value as KnowledgeBaseConfig;
     } catch (error: unknown) {
-      console.error('[v0-upsertConfig] ERROR:', error instanceof Error ? error.message : String(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : 'N/A';
+      console.error('[v0-upsertConfig] CATCH-BLOCK-ERROR:', errorMsg);
+      console.error('[v0-upsertConfig] CATCH-BLOCK-STACK:', errorStack);
       throw this.handleError('upsertConfig', error);
     }
   }
@@ -62,50 +92,128 @@ export class KnowledgeBaseConfigService {
       console.log('[v0-getConfig] 1. Fetching config for appId:', applicationId);
       
       const db = mongoose.connection;
+      console.log('[v0-getConfig] 1a. DB connection state:', db.readyState);
+      
       const collection = db.collection(this.collection);
+      console.log('[v0-getConfig] 1b. Querying collection:', this.collection);
 
-      const config = await collection.findOne({ applicationId }) as KnowledgeBaseConfig | null;
+      let config;
+      try {
+        config = (await collection.findOne({ applicationId })) as KnowledgeBaseConfig | null;
+      } catch (mongoError: unknown) {
+        const errorMsg = mongoError instanceof Error ? mongoError.message : String(mongoError);
+        console.error('[v0-getConfig] 1c-MONGO-ERROR:', errorMsg);
+        throw mongoError;
+      }
+
       console.log('[v0-getConfig] 2. Found config:', !!config);
       
       if (!config) {
+        console.log('[v0-getConfig] 2a. No config found for appId:', applicationId);
         return null;
       }
 
+      console.log('[v0-getConfig] 2b. Config keys:', Object.keys(config).join(', '));
+      console.log('[v0-getConfig] 2c. Config has encrypted kbllm_api_key:', !!((config as any).kbllm_api_key));
+
       // Decrypt sensitive fields (kbllm_* fields from stored data)
-      console.log('[v0-getConfig] 3. Decrypting sensitive fields...');
+      console.log('[v0-getConfig] 3. Starting decryption of sensitive fields...');
       const decrypted = { ...config };
       
+      let decryptedCount = 0;
       if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
-        (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
+        try {
+          console.log('[v0-getConfig] 3a. Decrypting kbllm_api_key (encrypted length:', (decrypted as any).kbllm_api_key.length + ')');
+          (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
+          decryptedCount++;
+          console.log('[v0-getConfig] 3a-OK. Decrypted kbllm_api_key (decrypted length:', (decrypted as any).kbllm_api_key.length + ')');
+        } catch (decryptError: unknown) {
+          const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
+          console.error('[v0-getConfig] 3a-DECRYPT-ERROR:', errorMsg);
+          throw decryptError;
+        }
       }
       if ((decrypted as any).kbllm_azure_endpoint && typeof (decrypted as any).kbllm_azure_endpoint === 'string') {
-        (decrypted as any).kbllm_azure_endpoint = cryptoUtil.decrypt((decrypted as any).kbllm_azure_endpoint);
+        try {
+          console.log('[v0-getConfig] 3b. Decrypting kbllm_azure_endpoint');
+          (decrypted as any).kbllm_azure_endpoint = cryptoUtil.decrypt((decrypted as any).kbllm_azure_endpoint);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3b-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       if ((decrypted as any).kbllm_api_version && typeof (decrypted as any).kbllm_api_version === 'string') {
-        (decrypted as any).kbllm_api_version = cryptoUtil.decrypt((decrypted as any).kbllm_api_version);
+        try {
+          console.log('[v0-getConfig] 3c. Decrypting kbllm_api_version');
+          (decrypted as any).kbllm_api_version = cryptoUtil.decrypt((decrypted as any).kbllm_api_version);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3c-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       if ((decrypted as any).kbllm_deployment && typeof (decrypted as any).kbllm_deployment === 'string') {
-        (decrypted as any).kbllm_deployment = cryptoUtil.decrypt((decrypted as any).kbllm_deployment);
+        try {
+          console.log('[v0-getConfig] 3d. Decrypting kbllm_deployment');
+          (decrypted as any).kbllm_deployment = cryptoUtil.decrypt((decrypted as any).kbllm_deployment);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3d-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       
       // Decrypt embedding fields if present
       if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
-        (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
+        try {
+          console.log('[v0-getConfig] 3e. Decrypting embedding_api_key');
+          (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3e-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       if ((decrypted as any).embedding_azure_endpoint && typeof (decrypted as any).embedding_azure_endpoint === 'string') {
-        (decrypted as any).embedding_azure_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_azure_endpoint);
+        try {
+          console.log('[v0-getConfig] 3f. Decrypting embedding_azure_endpoint');
+          (decrypted as any).embedding_azure_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_azure_endpoint);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3f-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       if ((decrypted as any).embedding_api_version && typeof (decrypted as any).embedding_api_version === 'string') {
-        (decrypted as any).embedding_api_version = cryptoUtil.decrypt((decrypted as any).embedding_api_version);
+        try {
+          console.log('[v0-getConfig] 3g. Decrypting embedding_api_version');
+          (decrypted as any).embedding_api_version = cryptoUtil.decrypt((decrypted as any).embedding_api_version);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3g-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
       if ((decrypted as any).embedding_deployment && typeof (decrypted as any).embedding_deployment === 'string') {
-        (decrypted as any).embedding_deployment = cryptoUtil.decrypt((decrypted as any).embedding_deployment);
+        try {
+          console.log('[v0-getConfig] 3h. Decrypting embedding_deployment');
+          (decrypted as any).embedding_deployment = cryptoUtil.decrypt((decrypted as any).embedding_deployment);
+          decryptedCount++;
+        } catch (e) {
+          console.error('[v0-getConfig] 3h-ERROR:', e instanceof Error ? e.message : String(e));
+          throw e;
+        }
       }
 
-      console.log('[v0-getConfig] 4. Decryption complete. Returning config');
+      console.log('[v0-getConfig] 4. Decryption complete. Decrypted', decryptedCount, 'fields');
+      console.log('[v0-getConfig] 5. Returning decrypted config for appId:', applicationId);
       return decrypted;
     } catch (error: unknown) {
-      console.error('[v0-getConfig] ERROR:', error instanceof Error ? error.message : String(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : 'N/A';
+      console.error('[v0-getConfig] CATCH-ERROR:', errorMsg);
+      console.error('[v0-getConfig] CATCH-STACK:', errorStack);
       throw this.handleError('getConfig', error);
     }
   }
