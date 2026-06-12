@@ -124,14 +124,14 @@ llmConfigRouter.get('/kb/app/:appId', async (req: Request, res: Response): Promi
 
 /**
  * POST /api/llm-config/validate/:appId
- * Validate KB LLM connection for both chat and embeddings
+ * Validate KB LLM configuration structure
  * 
- * Tests connectivity to:
- * 1. KB Chat LLM provider (Azure OpenAI, OpenAI, Claude, AWS Bedrock)
- * 2. Embeddings provider (Azure OpenAI or OpenAI)
+ * Checks that:
+ * 1. KB Chat LLM provider is specified and has required fields
+ * 2. Embeddings provider is specified and has required fields
  * 
- * Does NOT save configuration - purely for testing before save.
- * Logs detailed error information to help diagnose connection issues.
+ * Does NOT test actual connectivity - purely validates configuration structure.
+ * Returns detailed error if any required field is missing.
  */
 llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -149,44 +149,93 @@ llmConfigRouter.post('/validate/:appId', async (req: Request, res: Response): Pr
     const normalizedConfig = normalizeKBConfigFieldNames(body);
     console.log(`[v0] Normalized config keys:`, Object.keys(normalizedConfig));
 
-    // Test KB Chat LLM provider connection
-    const kbProvider = normalizedConfig.kbLlmProvider as string || 'azure-openai';
-    console.log(`[v0] Testing KB provider: ${kbProvider}`);
-    
-    try {
-      const chatClient = llmProviderService.mapToChatCompletion(normalizedConfig);
-      console.log(`[v0] Chat client created successfully for ${kbProvider}`);
-    } catch (chatError: unknown) {
-      const msg = chatError instanceof Error ? chatError.message : String(chatError);
-      console.error(`[v0] Chat client creation failed for ${kbProvider}:`, msg);
+    // Validate KB Chat LLM provider is specified
+    const kbProvider = normalizedConfig.kbLlmProvider as string;
+    if (!kbProvider) {
       res.status(400).json({ 
         valid: false, 
-        error: `KB Chat LLM Error (${kbProvider}): ${msg}` 
+        error: 'KB LLM Provider must be specified' 
+      });
+      return;
+    }
+    console.log(`[v0] KB provider specified: ${kbProvider}`);
+    
+    // Validate KB provider has required fields based on type
+    let kbValidationError: string | null = null;
+    switch (kbProvider) {
+      case 'azure-openai':
+        if (!normalizedConfig.kbllm_azure_endpoint || !normalizedConfig.kbllm_api_key || 
+            !normalizedConfig.kbllm_deployment || !normalizedConfig.kbllm_api_version) {
+          kbValidationError = 'Azure OpenAI: Missing endpoint, API key, deployment, or API version';
+        }
+        break;
+      case 'openai':
+        if (!normalizedConfig.kbllm_openai_api_key) {
+          kbValidationError = 'OpenAI: Missing API key';
+        }
+        break;
+      case 'claude':
+        if (!normalizedConfig.kbllm_claude_api_key) {
+          kbValidationError = 'Claude: Missing API key';
+        }
+        break;
+      case 'aws-bedrock':
+        if (!normalizedConfig.kbllm_aws_region || !normalizedConfig.kbllm_bedrock_model_id) {
+          kbValidationError = 'AWS Bedrock: Missing region or model ID';
+        }
+        break;
+    }
+    
+    if (kbValidationError) {
+      console.error(`[v0] KB validation failed: ${kbValidationError}`);
+      res.status(400).json({ 
+        valid: false, 
+        error: `KB Chat LLM Error: ${kbValidationError}` 
       });
       return;
     }
 
-    // Test Embeddings provider connection
-    const embeddingProvider = normalizedConfig.embeddingProvider as string || 'azure-openai';
-    console.log(`[v0] Testing embedding provider: ${embeddingProvider}`);
-    
-    try {
-      const embeddingClient = llmProviderService.mapToEmbeddings(normalizedConfig);
-      console.log(`[v0] Embedding client created successfully for ${embeddingProvider}`);
-    } catch (embeddingError: unknown) {
-      const msg = embeddingError instanceof Error ? embeddingError.message : String(embeddingError);
-      console.error(`[v0] Embedding client creation failed for ${embeddingProvider}:`, msg);
+    // Validate Embeddings provider is specified
+    const embeddingProvider = normalizedConfig.embeddingProvider as string;
+    if (!embeddingProvider) {
       res.status(400).json({ 
         valid: false, 
-        error: `Embeddings Error (${embeddingProvider}): ${msg}` 
+        error: 'Embeddings Provider must be specified' 
+      });
+      return;
+    }
+    console.log(`[v0] Embedding provider specified: ${embeddingProvider}`);
+    
+    // Validate embeddings provider has required fields based on type
+    let embeddingValidationError: string | null = null;
+    switch (embeddingProvider) {
+      case 'azure-openai':
+        if (!normalizedConfig.embedding_azure_endpoint || !normalizedConfig.embedding_api_key || 
+            !normalizedConfig.embedding_deployment || !normalizedConfig.embedding_api_version) {
+          embeddingValidationError = 'Azure OpenAI: Missing endpoint, API key, deployment, or API version';
+        }
+        break;
+      case 'openai':
+        if (!normalizedConfig.embedding_api_key) {
+          embeddingValidationError = 'OpenAI: Missing API key';
+        }
+        break;
+    }
+    
+    if (embeddingValidationError) {
+      console.error(`[v0] Embeddings validation failed: ${embeddingValidationError}`);
+      res.status(400).json({ 
+        valid: false, 
+        error: `Embeddings Error: ${embeddingValidationError}` 
       });
       return;
     }
 
-    // Both providers validated successfully
+    // All validation passed
+    console.log(`[v0] Configuration validation passed for KB (${kbProvider}) and Embeddings (${embeddingProvider})`);
     res.json({ 
       valid: true, 
-      message: `Both KB chat (${kbProvider}) and embeddings (${embeddingProvider}) providers validated successfully` 
+      message: `Configuration validated successfully (KB: ${kbProvider}, Embeddings: ${embeddingProvider})` 
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
