@@ -10,6 +10,25 @@ import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCi
 import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
+/**
+ * KnowledgeBaseChat Component
+ *
+ * Enables chat-based querying of the knowledge base.
+ * Does NOT save KB configuration - that's done in Settings→KB tab.
+ *
+ * Uses the chat completion provider configuration (Azure OpenAI endpoint, API key, model, temperature, max tokens) 
+ * saved in Settings→KB tab to generate responses based on knowledge base embeddings.
+ *
+ * Workflow:
+ * 1. User creates new chat thread and sends query
+ * 2. Backend fetches KB config from MongoDB (chat completion provider)
+ * 3. Query is converted to embedding using the configured embeddings model
+ * 4. Similarity search finds relevant documents from vector database
+ * 5. Relevant context passed to chat completion model
+ * 6. Chat completion generates response with context awareness
+ * 7. Response displayed with source references
+ */
+
 interface ContextSource {
   documentId: string;
   chunkId: string;
@@ -63,7 +82,9 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     lastQueryTime: 0,
   });
 
-  // Use KB Services hook to fetch config and operations
+  // Fetch KB configuration from Settings→KB tab for this application
+  // This includes: chat completion provider (Azure endpoint, API key, model, temperature, max tokens)
+  // Backend handles decryption of sensitive credentials transparently
   const { config, isLoadingConfig, configError } = useKnowledgeBase(applicationId);
 
   // Load threads from localStorage on mount

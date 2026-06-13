@@ -6,6 +6,17 @@ import { Upload, MessageSquare } from 'lucide-react';
 import { KnowledgeBaseUpload } from './knowledge-base-upload';
 import { KnowledgeBaseChat } from './knowledge-base-chat';
 
+/**
+ * KnowledgeBaseTab Component
+ *
+ * Container for KB operational features.
+ * Note: KB configuration (LLM provider, embeddings model, etc.) is managed in Settings→KB tab.
+ * This component uses the saved configuration to enable document upload and chat operations.
+ *
+ * Two sub-tabs:
+ * 1. Upload & Manage: Create vector embeddings from documents using the embeddings provider from KB settings
+ * 2. Chat: Query the knowledge base using the chat completion provider from KB settings
+ */
 export function KnowledgeBaseTab({ applicationId }: { applicationId: string }) {
   const [activeTab, setActiveTab] = useState<'upload' | 'chat'>('upload');
 

@@ -9,6 +9,23 @@ import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriang
 import { validateResponse, UploadResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
 import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
+/**
+ * KnowledgeBaseUpload Component
+ *
+ * Manages document upload and embedding creation for the knowledge base.
+ * Does NOT save KB configuration - that's done in Settings→KB tab.
+ *
+ * Uses the embeddings provider configuration (Azure OpenAI endpoint, API key, model) 
+ * saved in Settings→KB tab to create vector embeddings from uploaded documents.
+ *
+ * Workflow:
+ * 1. User uploads document (PDF, DOCX, TXT, MD)
+ * 2. Backend fetches KB config from MongoDB (embeddings provider)
+ * 3. Document is chunked and embedded using the configured embeddings model
+ * 4. Vector embeddings stored in vector database
+ * 5. Documents list updated in UI
+ */
+
 interface UploadedDocument {
   documentId: string;
   fileName: string;
@@ -39,7 +56,9 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use KB Services hook to fetch config and operations
+  // Fetch KB configuration from Settings→KB tab for this application
+  // This includes: embeddings provider (Azure endpoint, API key, model)
+  // Backend handles decryption of sensitive credentials transparently
   const { config, isLoadingConfig, configError } = useKnowledgeBase(applicationId);
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
