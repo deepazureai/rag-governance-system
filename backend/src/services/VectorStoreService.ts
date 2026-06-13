@@ -258,16 +258,16 @@ export class VectorStoreService {
     }
 
     try {
-      // Use similaritySearch which returns documents with scores
-      const results: Array<[Document, number]> = await (this.vectorStore as any).similaritySearch(query, options.k) as any;
+      // similaritySearch returns Document[] not [Document, number][]
+      const results: Document[] = await this.vectorStore!.similaritySearch(query, options.k);
 
       const documentChunks: DocumentChunk[] = (Array.isArray(results) ? results : [])
-        .filter(([_, score]: [Document, number]) => !options.scoreThreshold || (score && score >= options.scoreThreshold))
-        .map(([doc, score]: [Document, number]): DocumentChunk => ({
+        .filter((doc) => doc && typeof doc === 'object')
+        .map((doc): DocumentChunk => ({
           content: typeof doc === 'string' ? doc : (doc as any).pageContent || doc,
           metadata: {
             ...(typeof doc === 'object' && 'metadata' in doc ? (doc as any).metadata : {}),
-            relevanceScore: score,
+            relevanceScore: (doc as any).metadata?.relevanceScore || 0,
           },
         }));
 

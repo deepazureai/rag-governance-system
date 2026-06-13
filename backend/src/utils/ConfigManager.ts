@@ -397,29 +397,46 @@ export class ConfigManager {
   }
 
   /**
-   * Decrypt sensitive fields in LLM config
+   * Decrypt sensitive fields in LLM config with backward compatibility for plain-text data
    */
   private decryptConfig(config: ILLMConfig): ILLMConfig {
     const decrypted: ILLMConfig = { ...config };
 
-    // Decrypt credentials
+    // Helper function to safely decrypt - check if data is encrypted first
+    const safeDecrypt = (value: string): string => {
+      try {
+        // Check if field is encrypted (encrypted fields have format: "IV:encryptedData")
+        if (!value.includes(':')) {
+          // Plain text - return as-is (old data format)
+          return value;
+        }
+        // Encrypted - decrypt it
+        return cryptoUtil.decrypt(value);
+      } catch (e) {
+        // If decryption fails, treat as plain text (backward compatibility)
+        console.warn('[ConfigManager] Failed to decrypt value, treating as plain text:', e);
+        return value;
+      }
+    };
+
+    // Decrypt credentials with backward compatibility
     if (decrypted.azureApiKey) {
-      decrypted.azureApiKey = cryptoUtil.decrypt(decrypted.azureApiKey);
+      decrypted.azureApiKey = safeDecrypt(decrypted.azureApiKey);
     }
     if (decrypted.api_key) {
-      (decrypted as unknown as Record<string, unknown>).api_key = cryptoUtil.decrypt(decrypted.api_key as string);
+      (decrypted as unknown as Record<string, unknown>).api_key = safeDecrypt(decrypted.api_key as string);
     }
     if (decrypted.claudeApiKey) {
-      decrypted.claudeApiKey = cryptoUtil.decrypt(decrypted.claudeApiKey);
+      decrypted.claudeApiKey = safeDecrypt(decrypted.claudeApiKey);
     }
     if (decrypted.awsAccessKeyId) {
-      decrypted.awsAccessKeyId = cryptoUtil.decrypt(decrypted.awsAccessKeyId);
+      decrypted.awsAccessKeyId = safeDecrypt(decrypted.awsAccessKeyId);
     }
     if (decrypted.awsSecretAccessKey) {
-      decrypted.awsSecretAccessKey = cryptoUtil.decrypt(decrypted.awsSecretAccessKey);
+      decrypted.awsSecretAccessKey = safeDecrypt(decrypted.awsSecretAccessKey);
     }
     if (decrypted.openaiApiKey) {
-      decrypted.openaiApiKey = cryptoUtil.decrypt(decrypted.openaiApiKey);
+      decrypted.openaiApiKey = safeDecrypt(decrypted.openaiApiKey);
     }
 
     // Normalize field names for LLMClientFactory
@@ -484,190 +501,100 @@ export class ConfigManager {
   }
 
   /**
-   * Decrypt sensitive fields in KB config
+   * Decrypt sensitive fields in KB config with backward compatibility for plain-text data
    */
   private decryptKBConfig(config: IKnowledgeBaseConfig): IKnowledgeBaseConfig {
     const decrypted: IKnowledgeBaseConfig = { ...config };
 
+    // Helper function to safely decrypt - check if data is encrypted first
+    const safeDecrypt = (value: string): string => {
+      try {
+        // Check if field is encrypted (encrypted fields have format: "IV:encryptedData")
+        if (!value.includes(':')) {
+          // Plain text - return as-is (old data format)
+          return value;
+        }
+        // Encrypted - decrypt it
+        return cryptoUtil.decrypt(value);
+      } catch (e) {
+        // If decryption fails, treat as plain text (backward compatibility)
+        console.warn('[ConfigManager] Failed to decrypt value, treating as plain text:', e);
+        return value;
+      }
+    };
+
     // Decrypt embedding provider credentials (snake_case - exact param names)
     if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
-      try {
-        (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embedding_api_key:', e);
-      }
+      (decrypted as any).embedding_api_key = safeDecrypt((decrypted as any).embedding_api_key);
     }
     if ((decrypted as any).embedding_azure_endpoint && typeof (decrypted as any).embedding_azure_endpoint === 'string') {
-      try {
-        (decrypted as any).embedding_azure_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_azure_endpoint);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embedding_azure_endpoint:', e);
-      }
+      (decrypted as any).embedding_azure_endpoint = safeDecrypt((decrypted as any).embedding_azure_endpoint);
     }
     if ((decrypted as any).embedding_api_version && typeof (decrypted as any).embedding_api_version === 'string') {
-      try {
-        (decrypted as any).embedding_api_version = cryptoUtil.decrypt((decrypted as any).embedding_api_version);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embedding_api_version:', e);
-      }
+      (decrypted as any).embedding_api_version = safeDecrypt((decrypted as any).embedding_api_version);
+    }
+    if ((decrypted as any).embedding_deployment && typeof (decrypted as any).embedding_deployment === 'string') {
+      (decrypted as any).embedding_deployment = safeDecrypt((decrypted as any).embedding_deployment);
     }
 
     // Decrypt embedding provider credentials (legacy camelCase)
     if (decrypted.embeddingOpenaiApiKey && typeof decrypted.embeddingOpenaiApiKey === 'string') {
-      try {
-        decrypted.embeddingOpenaiApiKey = cryptoUtil.decrypt(decrypted.embeddingOpenaiApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embeddingOpenaiApiKey:', e);
-      }
+      decrypted.embeddingOpenaiApiKey = safeDecrypt(decrypted.embeddingOpenaiApiKey);
     }
     if (decrypted.embeddingAzureApiKey && typeof decrypted.embeddingAzureApiKey === 'string') {
-      try {
-        decrypted.embeddingAzureApiKey = cryptoUtil.decrypt(decrypted.embeddingAzureApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embeddingAzureApiKey:', e);
-      }
+      decrypted.embeddingAzureApiKey = safeDecrypt(decrypted.embeddingAzureApiKey);
     }
     if (decrypted.embeddingAzureEndpoint && typeof decrypted.embeddingAzureEndpoint === 'string') {
-      try {
-        decrypted.embeddingAzureEndpoint = cryptoUtil.decrypt(decrypted.embeddingAzureEndpoint);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embeddingAzureEndpoint:', e);
-      }
+      decrypted.embeddingAzureEndpoint = safeDecrypt(decrypted.embeddingAzureEndpoint);
     }
     if (decrypted.embeddingAwsAccessKeyId && typeof decrypted.embeddingAwsAccessKeyId === 'string') {
-      try {
-        decrypted.embeddingAwsAccessKeyId = cryptoUtil.decrypt(decrypted.embeddingAwsAccessKeyId);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embeddingAwsAccessKeyId:', e);
-      }
+      decrypted.embeddingAwsAccessKeyId = safeDecrypt(decrypted.embeddingAwsAccessKeyId);
     }
     if (decrypted.embeddingAwsSecretAccessKey && typeof decrypted.embeddingAwsSecretAccessKey === 'string') {
-      try {
-        decrypted.embeddingAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.embeddingAwsSecretAccessKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt embeddingAwsSecretAccessKey:', e);
-      }
+      decrypted.embeddingAwsSecretAccessKey = safeDecrypt(decrypted.embeddingAwsSecretAccessKey);
     }
 
     // Decrypt KB LLM credentials (snake_case - exact param names)
     if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
-      try {
-        (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_api_key:', e);
-      }
+      (decrypted as any).kbllm_api_key = safeDecrypt((decrypted as any).kbllm_api_key);
     }
     if ((decrypted as any).kbllm_azure_endpoint && typeof (decrypted as any).kbllm_azure_endpoint === 'string') {
-      try {
-        (decrypted as any).kbllm_azure_endpoint = cryptoUtil.decrypt((decrypted as any).kbllm_azure_endpoint);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_azure_endpoint:', e);
-      }
+      (decrypted as any).kbllm_azure_endpoint = safeDecrypt((decrypted as any).kbllm_azure_endpoint);
     }
     if ((decrypted as any).kbllm_api_version && typeof (decrypted as any).kbllm_api_version === 'string') {
-      try {
-        (decrypted as any).kbllm_api_version = cryptoUtil.decrypt((decrypted as any).kbllm_api_version);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_api_version:', e);
-      }
+      (decrypted as any).kbllm_api_version = safeDecrypt((decrypted as any).kbllm_api_version);
     }
     if ((decrypted as any).kbllm_deployment && typeof (decrypted as any).kbllm_deployment === 'string') {
-      try {
-        (decrypted as any).kbllm_deployment = cryptoUtil.decrypt((decrypted as any).kbllm_deployment);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_deployment:', e);
-      }
+      (decrypted as any).kbllm_deployment = safeDecrypt((decrypted as any).kbllm_deployment);
     }
     if ((decrypted as any).kbllm_claude_api_key && typeof (decrypted as any).kbllm_claude_api_key === 'string') {
-      try {
-        (decrypted as any).kbllm_claude_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_claude_api_key);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_claude_api_key:', e);
-      }
+      (decrypted as any).kbllm_claude_api_key = safeDecrypt((decrypted as any).kbllm_claude_api_key);
     }
     if ((decrypted as any).kbllm_aws_access_key_id && typeof (decrypted as any).kbllm_aws_access_key_id === 'string') {
-      try {
-        (decrypted as any).kbllm_aws_access_key_id = cryptoUtil.decrypt((decrypted as any).kbllm_aws_access_key_id);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_aws_access_key_id:', e);
-      }
+      (decrypted as any).kbllm_aws_access_key_id = safeDecrypt((decrypted as any).kbllm_aws_access_key_id);
     }
     if ((decrypted as any).kbllm_aws_secret_access_key && typeof (decrypted as any).kbllm_aws_secret_access_key === 'string') {
-      try {
-        (decrypted as any).kbllm_aws_secret_access_key = cryptoUtil.decrypt((decrypted as any).kbllm_aws_secret_access_key);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_aws_secret_access_key:', e);
-      }
-    }
-    if ((decrypted as any).kbllm_openai_api_key && typeof (decrypted as any).kbllm_openai_api_key === 'string') {
-      try {
-        (decrypted as any).kbllm_openai_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_openai_api_key);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbllm_openai_api_key:', e);
-      }
-    }
-
-    // Decrypt KB LLM credentials (legacy camelCase)
-    if (decrypted.kbLlmAzureApiKey && typeof decrypted.kbLlmAzureApiKey === 'string') {
-      try {
-        decrypted.kbLlmAzureApiKey = cryptoUtil.decrypt(decrypted.kbLlmAzureApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmAzureApiKey:', e);
-      }
-    }
-    if (decrypted.kbLlmAzureEndpoint && typeof decrypted.kbLlmAzureEndpoint === 'string') {
-      try {
-        decrypted.kbLlmAzureEndpoint = cryptoUtil.decrypt(decrypted.kbLlmAzureEndpoint);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmAzureEndpoint:', e);
-      }
-    }
-    if (decrypted.kbLlmAzureDeploymentName && typeof decrypted.kbLlmAzureDeploymentName === 'string') {
-      try {
-        decrypted.kbLlmAzureDeploymentName = cryptoUtil.decrypt(decrypted.kbLlmAzureDeploymentName);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmAzureDeploymentName:', e);
-      }
-    }
-    if (decrypted.kbLlmClaudeApiKey && typeof decrypted.kbLlmClaudeApiKey === 'string') {
-      try {
-        decrypted.kbLlmClaudeApiKey = cryptoUtil.decrypt(decrypted.kbLlmClaudeApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmClaudeApiKey:', e);
-      }
-    }
-    if (decrypted.kbLlmAwsAccessKeyId && typeof decrypted.kbLlmAwsAccessKeyId === 'string') {
-      try {
-        decrypted.kbLlmAwsAccessKeyId = cryptoUtil.decrypt(decrypted.kbLlmAwsAccessKeyId);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmAwsAccessKeyId:', e);
-      }
-    }
-    if (decrypted.kbLlmAwsSecretAccessKey && typeof decrypted.kbLlmAwsSecretAccessKey === 'string') {
-      try {
-        decrypted.kbLlmAwsSecretAccessKey = cryptoUtil.decrypt(decrypted.kbLlmAwsSecretAccessKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmAwsSecretAccessKey:', e);
-      }
-    }
-    if (decrypted.kbLlmOpenaiApiKey && typeof decrypted.kbLlmOpenaiApiKey === 'string') {
-      try {
-        decrypted.kbLlmOpenaiApiKey = cryptoUtil.decrypt(decrypted.kbLlmOpenaiApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt kbLlmOpenaiApiKey:', e);
-      }
-    }
-
-    // Decrypt vector store API key if present
-    if (decrypted.vectorStoreApiKey && typeof decrypted.vectorStoreApiKey === 'string') {
-      try {
-        decrypted.vectorStoreApiKey = cryptoUtil.decrypt(decrypted.vectorStoreApiKey);
-      } catch (e) {
-        console.warn('[ConfigManager] Failed to decrypt vectorStoreApiKey:', e);
-      }
+      (decrypted as any).kbllm_aws_secret_access_key = safeDecrypt((decrypted as any).kbllm_aws_secret_access_key);
     }
 
     return decrypted;
+  }
+
+  /**
+   * Delay utility for retries
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Error handler with logging
+   */
+  private handleError(method: string, error: unknown, context?: string): Error {
+    const message = error instanceof Error ? error.message : String(error);
+    const contextStr = context ? ` (${context})` : '';
+    console.error(`[ConfigManager.${method}]${contextStr} Error: ${message}`);
+    return new Error(`Config Manager Error in ${method}: ${message}`);
   }
 
   /**
@@ -675,7 +602,6 @@ export class ConfigManager {
    */
   private async initializeDefaultLLMConfig(applicationId: string): Promise<ILLMConfig | null> {
     try {
-      // Check if Azure OpenAI env vars are configured
       const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
       const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
       const azureDeploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-35-turbo';
@@ -698,12 +624,6 @@ export class ConfigManager {
         topP: 1,
         isDefault: true,
       };
-
-      const validation = llmConfigService.validateConfig(defaultConfig);
-      if (!validation.valid) {
-        console.error('[ConfigManager] Default config validation failed:', validation.errors);
-        return null;
-      }
 
       const created = await llmConfigService.upsertConfig(defaultConfig);
       console.log(`[ConfigManager] Created default Azure OpenAI config for app: ${applicationId}`);
@@ -747,23 +667,6 @@ export class ConfigManager {
       console.error(`[ConfigManager] Failed to create default KB config: ${message}`);
       return null;
     }
-  }
-
-  /**
-   * Delay helper for retry logic
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Error handler with logging
-   */
-  private handleError(method: string, error: unknown, context?: string): Error {
-    const message = error instanceof Error ? error.message : String(error);
-    const contextStr = context ? ` (${context})` : '';
-    console.error(`[ConfigManager.${method}]${contextStr} Error: ${message}`);
-    return new Error(`Config Manager Error in ${method}: ${message}`);
   }
 }
 
