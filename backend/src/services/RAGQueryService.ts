@@ -72,17 +72,10 @@ class RAGQueryService {
       logger.info(`[RAGQueryService] 4. Retrieving documents from vector store for app: ${applicationId}`);
       const collectionName = `app-${applicationId}`;
       const vectorStore = await getVectorStore(collectionName, applicationId);
-      
-      // Log the search parameters for debugging
-      logger.info(`[RAGQueryService] Searching with query: "${query}"`);
-      logger.info(`[RAGQueryService] Applying filters: { applicationId: "${applicationId}", namespace: "default" }`);
-      
       const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, { 
         applicationId, 
         namespace: 'default' 
       }, { k: topK });
-      
-      logger.info(`[RAGQueryService] Search returned ${searchResults.length} results after filtering`);
 
       if (searchResults.length === 0) {
         logger.warn(

@@ -220,7 +220,7 @@ export class VectorStoreService {
     }
 
     try {
-      logger.info(`[VectorStoreService] Adding ${documents.length} documents to vector store...`);
+      logger.info(`[VectorStoreService] Adding ${documents.length} documents to vector store in collection: ${this.collectionName}`);
       
       const langchainDocs = documents.map(
         (doc): Document =>
@@ -236,6 +236,7 @@ export class VectorStoreService {
 
       // Log the metadata of the first document for debugging
       logger.info(`[VectorStoreService] Created ${langchainDocs.length} LangChain documents for vectorization`);
+      logger.info(`[VectorStoreService] Created vectorstore directory: ${this.persistDir}`);
 
       logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
       const startTime = Date.now();
@@ -269,8 +270,12 @@ export class VectorStoreService {
     }
 
     try {
+      logger.info(`[VectorStoreService] Starting similarity search in collection: ${this.collectionName}, query: "${query.substring(0, 50)}..."`);
+      
       // similaritySearch returns Document[] not [Document, number][]
       const results: Document[] = await this.vectorStore!.similaritySearch(query, options.k);
+      
+      logger.info(`[VectorStoreService] similaritySearch returned ${results?.length || 0} raw results`);
 
       const documentChunks: DocumentChunk[] = (Array.isArray(results) ? results : [])
         .filter((doc) => doc && typeof doc === 'object')
@@ -282,6 +287,7 @@ export class VectorStoreService {
           },
         }));
 
+      logger.info(`[VectorStoreService] After mapping: ${documentChunks.length} DocumentChunks`);
       return documentChunks;
     } catch (error) {
       logger.error('[VectorStoreService] Search failed:', error);
@@ -373,17 +379,20 @@ export class VectorStoreService {
     try {
       // Perform similarity search
       let results: DocumentChunk[] = await this.search(query, options);
-      
-      logger.debug(`[VectorStoreService] hybridSearch: got ${results.length} results from similarity search`);
+      logger.info(`[VectorStoreService] hybridSearch: got ${results.length} results from search()`);
 
       // Apply metadata filters if provided
       if (filters) {
-        logger.debug(`[VectorStoreService] Applying filters: ${JSON.stringify(filters)}`);
+        logger.info(`[VectorStoreService] Applying filters: ${JSON.stringify(filters)}`);
         const beforeFilterCount = results.length;
         results = results.filter((doc: DocumentChunk): boolean => {
-          return Object.entries(filters).every(([key, value]) => doc.metadata[key] === value);
+          const matches = Object.entries(filters).every(([key, value]) => doc.metadata[key] === value);
+          if (!matches && beforeFilterCount > 0) {
+            logger.debug(`[VectorStoreService] Document filtered out: has metadata ${JSON.stringify(doc.metadata)}, expected ${JSON.stringify(filters)}`);
+          }
+          return matches;
         });
-        logger.debug(`[VectorStoreService] After filtering: ${beforeFilterCount} → ${results.length} results`);
+        logger.info(`[VectorStoreService] After filtering: ${beforeFilterCount} → ${results.length} results`);
       }
 
       const sortedResults: DocumentChunk[] = results.sort(
