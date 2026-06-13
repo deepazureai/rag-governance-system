@@ -234,6 +234,11 @@ export class VectorStoreService {
       await this.initialize();
     }
 
+    // Ensure embeddings is available
+    if (!this.embeddings) {
+      throw new Error('Embeddings service failed to initialize. Check Azure OpenAI configuration.');
+    }
+
     try {
       logger.info(`[VectorStoreService] Adding ${documents.length} documents to vector store in collection: ${this.collectionName}`);
       
@@ -257,7 +262,7 @@ export class VectorStoreService {
         
         try {
           // Try Docker first
-          this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings, {
+          this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings!, {
             collectionName: this.collectionName,
             url: 'http://chroma:8000',
           });
@@ -265,7 +270,7 @@ export class VectorStoreService {
         } catch (dockerError) {
           try {
             // Try localhost fallback
-            this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings, {
+            this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings!, {
               collectionName: this.collectionName,
               url: 'http://localhost:8888',
             });

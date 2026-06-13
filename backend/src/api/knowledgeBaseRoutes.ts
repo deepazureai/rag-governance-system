@@ -8,6 +8,7 @@ import { VectorStoreService, getVectorStore } from '../services/VectorStoreServi
 import { DocumentProcessorService } from '../services/DocumentProcessorService.js';
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { ragQueryService } from '../services/RAGQueryService.js';
+import { ragSessionManager } from '../services/RAGSessionManager.js';
 import { kbPromptService } from '../services/KBPromptService.js';
 import { kbDocumentService } from '../services/KnowledgeBaseDocumentService.js';
 import { logger } from '../utils/logger.js';
@@ -759,7 +760,7 @@ knowledgeBaseRouter.post('/query', async (req: Request, res: Response): Promise<
 /**
  * POST /api/knowledge-base/chat
  * Execute RAG query: retrieve context, call LLM, return response with sources
- * Complete RAG pipeline: semantic search → context formatting → LLM call → response
+ * Also persists user message and assistant response to chat history
  */
 knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -786,9 +787,28 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
       maxTokens,
     });
 
-    // TODO: Store chat history in RAG session if threadId provided
-    if (threadId) {
-      logger.debug(`[KnowledgeBase] TODO: Store message in RAG session ${threadId}`);
+    // Store chat messages in RAG session if threadId provided
+    if (threadId?.trim()) {
+      try {
+        logger.info(`[KnowledgeBase] Saving chat messages to RAG session: ${threadId}`);
+        
+        // Add user message to chat history
+        await ragSessionManager.addChatMessage(threadId, 'user', userMessage);
+        logger.debug(`[KnowledgeBase] Saved user message to session ${threadId}`);
+        
+        // Add assistant response to chat history
+        await ragSessionManager.addChatMessage(threadId, 'assistant', ragResponse.assistantMessage);
+        logger.debug(`[KnowledgeBase] Saved assistant response to session ${threadId}`);
+        
+        // Update token usage statistics
+        if (ragResponse.tokensUsed) {
+          await ragSessionManager.updateTokenUsage(threadId, ragResponse.tokensUsed);
+          logger.debug(`[KnowledgeBase] Updated token usage: ${ragResponse.tokensUsed}`);
+        }
+      } catch (sessionError) {
+        logger.error('[KnowledgeBase] Failed to save chat to session:', sessionError);
+        // Don't fail the chat request if session storage fails - return response anyway
+      }
     }
 
     res.json({
@@ -814,6 +834,87 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
   }
 });
 
+
+/**
+ * GET /api/knowledge-base/chat/:threadId/history
+ * Fetch chat history for a specific thread
+ */
+knowledgeBaseRouter.get('/chat/:threadId/history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const threadId = asString(req.params.threadId);
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    if (!threadId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Thread ID is required',
+      });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching chat history for thread: ${threadId}, limit: ${limit}`);
+
+    const chatHistory = await ragSessionManager.getChatHistory(threadId, limit);
+
+    res.json({
+      success: true,
+      data: {
+        threadId,
+        chatHistory,
+        count: chatHistory.length,
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to fetch chat history:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch chat history';
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
+/**
+ * GET /api/knowledge-base/chat/:threadId/stats
+ * Fetch session statistics (tokens, message count, etc.)
+ */
+knowledgeBaseRouter.get('/chat/:threadId/stats', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const threadId = asString(req.params.threadId);
+
+    if (!threadId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Thread ID is required',
+      });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching session stats for thread: ${threadId}`);
+
+    const stats = await ragSessionManager.getSessionStats(threadId);
+
+    if (!stats) {
+      res.status(404).json({
+        success: false,
+        error: 'Session not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to fetch session stats:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch session stats';
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
 
 /**
  * GET /api/knowledge-base/kb-prompts/approved
