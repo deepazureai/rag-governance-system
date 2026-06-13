@@ -154,28 +154,28 @@ export class KnowledgeBaseConfigService {
       if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
         const decryptedValue = safeDecrypt('kbllm_api_key', (decrypted as any).kbllm_api_key);
         if (decryptedValue) {
-          (decrypted as any).kbllm_api_key = decryptedValue;
+          (decrypted as any).kbllm_api_key = decryptedValue.trim();
           decryptedCount++;
         }
       }
       if ((decrypted as any).kbllm_azure_endpoint && typeof (decrypted as any).kbllm_azure_endpoint === 'string') {
         const decryptedValue = safeDecrypt('kbllm_azure_endpoint', (decrypted as any).kbllm_azure_endpoint);
         if (decryptedValue) {
-          (decrypted as any).kbllm_azure_endpoint = decryptedValue;
+          (decrypted as any).kbllm_azure_endpoint = decryptedValue.trim();
           decryptedCount++;
         }
       }
       if ((decrypted as any).kbllm_api_version && typeof (decrypted as any).kbllm_api_version === 'string') {
         const decryptedValue = safeDecrypt('kbllm_api_version', (decrypted as any).kbllm_api_version);
         if (decryptedValue) {
-          (decrypted as any).kbllm_api_version = decryptedValue;
+          (decrypted as any).kbllm_api_version = decryptedValue.trim();
           decryptedCount++;
         }
       }
       if ((decrypted as any).kbllm_deployment && typeof (decrypted as any).kbllm_deployment === 'string') {
         const decryptedValue = safeDecrypt('kbllm_deployment', (decrypted as any).kbllm_deployment);
         if (decryptedValue) {
-          (decrypted as any).kbllm_deployment = decryptedValue;
+          (decrypted as any).kbllm_deployment = decryptedValue.trim();
           decryptedCount++;
         }
       }
@@ -184,21 +184,21 @@ export class KnowledgeBaseConfigService {
       if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
         const decryptedValue = safeDecrypt('embedding_api_key', (decrypted as any).embedding_api_key);
         if (decryptedValue) {
-          (decrypted as any).embedding_api_key = decryptedValue;
+          (decrypted as any).embedding_api_key = decryptedValue.trim();
           decryptedCount++;
         }
       }
       if ((decrypted as any).embedding_azure_endpoint && typeof (decrypted as any).embedding_azure_endpoint === 'string') {
         const decryptedValue = safeDecrypt('embedding_azure_endpoint', (decrypted as any).embedding_azure_endpoint);
         if (decryptedValue) {
-          (decrypted as any).embedding_azure_endpoint = decryptedValue;
+          (decrypted as any).embedding_azure_endpoint = decryptedValue.trim();
           decryptedCount++;
         }
       }
       if ((decrypted as any).embedding_api_version && typeof (decrypted as any).embedding_api_version === 'string') {
         const decryptedValue = safeDecrypt('embedding_api_version', (decrypted as any).embedding_api_version);
         if (decryptedValue) {
-          (decrypted as any).embedding_api_version = decryptedValue;
+          (decrypted as any).embedding_api_version = decryptedValue.trim();
           decryptedCount++;
         }
       }

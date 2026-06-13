@@ -176,10 +176,11 @@ Please answer the question based on the provided context. If the context doesn't
   ): Promise<string> {
     try {
       // TEMPORARY: Plain text credentials for baseline testing (no decryption needed)
-      const apiKey = kbConfig.kbllm_api_key || kbConfig.azureApiKey;
-      const endpoint = kbConfig.kbllm_azure_endpoint || kbConfig.azureEndpoint;
-      const apiVersion = kbConfig.kbllm_api_version || kbConfig.azureApiVersion || '2024-02-15-preview';
-      const deploymentName = kbConfig.kbllm_deployment || kbConfig.azureDeploymentName || 'gpt-4';
+      // Trim all config values to remove leading/trailing spaces from KB settings
+      const apiKey = (kbConfig.kbllm_api_key || kbConfig.azureApiKey || '').trim();
+      const endpoint = (kbConfig.kbllm_azure_endpoint || kbConfig.azureEndpoint || '').trim();
+      const apiVersion = ((kbConfig.kbllm_api_version || kbConfig.azureApiVersion) || '2024-02-15-preview').trim();
+      const deploymentName = ((kbConfig.kbllm_deployment || kbConfig.azureDeploymentName) || 'gpt-4').trim();
 
       logger.info(
         `[RAGQueryService] Azure OpenAI config: endpoint=${endpoint}, deployment=${deploymentName}, apiVersion=${apiVersion}`
