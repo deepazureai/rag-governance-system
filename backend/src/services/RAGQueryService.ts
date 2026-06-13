@@ -22,6 +22,8 @@ export interface RAGQueryResponse {
   assistantMessage: string;
   contextUsed: Array<{
     source: string;
+    documentId: string;
+    chunkId: string;
     content: string;
     relevanceScore: number;
   }>;
@@ -140,6 +142,8 @@ Please answer the question based on the provided context. If the context doesn't
         assistantMessage: llmResponse,
         contextUsed: searchResults.map((doc: DocumentChunk) => ({
           source: String(doc.metadata.source || 'Unknown'),
+          documentId: String(doc.metadata.documentId || 'unknown'),
+          chunkId: String(doc.metadata.chunkId || 'unknown'),
           content: doc.content.substring(0, 300) + (doc.content.length > 300 ? '...' : ''),
           relevanceScore: typeof doc.metadata.relevanceScore === 'number' ? doc.metadata.relevanceScore : 0,
         })),

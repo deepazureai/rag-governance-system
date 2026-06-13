@@ -703,6 +703,60 @@ knowledgeBaseRouter.get('/badged-prompts/:applicationId', async (req: Request, r
 });
 
 /**
+ * POST /api/knowledge-base/query
+ * Query the knowledge base using RAG pipeline
+ * Frontend-facing endpoint that matches expected request/response format
+ * Complete RAG pipeline: semantic search → context formatting → LLM call → response
+ */
+knowledgeBaseRouter.post('/query', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    const body = req.body as any;
+    const { applicationId, query, threadId, temperature, maxTokens } = body;
+
+    if (!applicationId || !query?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'applicationId and query are required',
+      });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Query: app=${applicationId}, thread=${threadId}, query="${query.substring(0, 100)}"`);
+
+    // Execute full RAG pipeline
+    const ragResponse = await ragQueryService.query({
+      applicationId,
+      query,
+      topK: 5,
+      temperature,
+      maxTokens,
+    });
+
+    // TODO: Store chat history in RAG session if threadId provided
+    if (threadId) {
+      logger.debug(`[KnowledgeBase] TODO: Store message in RAG session ${threadId}`);
+    }
+
+    const totalTime = Date.now() - startTime;
+
+    res.json({
+      message: ragResponse.assistantMessage,
+      contextSources: ragResponse.contextUsed,
+      queryTime: totalTime,
+      searchTime: 0, // TODO: track actual search time separately
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Query failed:', error);
+    const message = error instanceof Error ? error.message : 'Query failed';
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
+/**
  * POST /api/knowledge-base/chat
  * Execute RAG query: retrieve context, call LLM, return response with sources
  * Complete RAG pipeline: semantic search → context formatting → LLM call → response
