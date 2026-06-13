@@ -1089,8 +1089,13 @@ knowledgeBaseRouter.get('/documents', async (req: Request, res: Response): Promi
  */
 knowledgeBaseRouter.delete('/documents/:documentId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { documentId } = req.params;
-    const applicationId = req.query.applicationId as string;
+    const { documentId } = req.params as { documentId?: string };
+    const applicationId = req.query.applicationId as string | undefined;
+
+    if (!documentId) {
+      res.status(400).json({ error: 'Missing documentId parameter' });
+      return;
+    }
 
     if (!applicationId) {
       res.status(400).json({ error: 'Missing applicationId query parameter' });
