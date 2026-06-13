@@ -196,7 +196,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       const durationSec = (endTime.getTime() - startTime.getTime()) / 1000;
       const uploadSpeed = durationSec > 0 ? file.size / durationSec : 0;
 
-      // Add document to list
+      // Add document to list with 'success' status since backend has already vectorized it
       setDocuments((prev) => [
         ...prev,
         {
@@ -205,7 +205,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
           fileSize: file.size,
           uploadDate: new Date(),
           totalChunks: result.totalChunks,
-          status: 'processing',
+          status: 'success', // Backend returned successfully - embeddings are in Chroma
         },
       ]);
 
@@ -549,7 +549,9 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
                           ${(doc.status === 'failed' || doc.status === 'error') && 'bg-red-50 text-red-700 border-red-200'}
                         `}
                       >
-                        {doc.status === 'indexed' || doc.status === 'complete' || doc.status === 'success' ? 'Complete' : doc.status === 'processing' ? 'Processing' : 'Error'}
+                        {(doc.status === 'indexed' || doc.status === 'complete' || doc.status === 'success') && 'Complete'}
+                        {doc.status === 'processing' && 'Processing'}
+                        {(doc.status === 'failed' || doc.status === 'error') && 'Error'}
                       </Badge>
                     </div>
 

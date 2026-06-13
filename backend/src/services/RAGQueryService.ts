@@ -65,15 +65,22 @@ class RAGQueryService {
       logger.info(`[RAGQueryService] 3. KB config retrieved: provider=${kbConfig.kbLlmProvider}`);
 
       // Retrieve relevant documents using semantic search
-      logger.info(`[RAGQueryService] 4. Retrieving documents from vector store`);
-      const vectorStore = await getVectorStore(`app-${applicationId}`, applicationId);
-      const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, undefined, { k: topK });
+      // Filter by applicationId and namespace to find documents for this specific app
+      logger.info(`[RAGQueryService] 4. Retrieving documents from vector store for app: ${applicationId}`);
+      const vectorStore = await getVectorStore('knowledge-base', applicationId);
+      const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, { 
+        applicationId, 
+        namespace: 'default' 
+      }, { k: topK });
 
       if (searchResults.length === 0) {
-        logger.warn(`[RAGQueryService] No relevant documents found for query: "${query}"`);
+        logger.warn(
+          `[RAGQueryService] No relevant documents found for query: "${query}" in app: ${applicationId}. ` +
+          `Check that documents have been uploaded to this application and embeddings are stored in Chroma DB.`
+        );
         return {
           assistantMessage:
-            'No relevant documents found in the knowledge base to answer your question. Please upload relevant documents first.',
+            'No relevant documents found in the knowledge base to answer your question. Please ensure you have uploaded relevant documents and that the Knowledge Base configuration is correctly set up. Check Settings -> LLM for KB configuration.',
           contextUsed: [],
           tokensUsed: 0,
           searchResults: 0,
