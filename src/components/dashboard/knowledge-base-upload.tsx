@@ -255,7 +255,11 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
           doc.documentId,
           `"${doc.fileName}"`,
           doc.fileSizeMB,
-          new Date(doc.uploadDate).toLocaleString(),
+          typeof doc.uploadDate === 'string' 
+            ? new Date(doc.uploadDate).toLocaleString() 
+            : (doc.uploadDate instanceof Date 
+                ? doc.uploadDate.toLocaleString() 
+                : new Date(doc.uploadDate).toLocaleString()),
           doc.totalChunks,
           doc.status,
         ].join(',')
@@ -315,13 +319,22 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+  const formatDate = (date: Date | string) => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid date';
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(dateObj);
+    } catch (error) {
+      console.warn('[v0] Invalid date in formatDate:', date, error);
+      return 'Invalid date';
+    }
   };
 
   const getStatusIcon = (status: 'indexed' | 'processing' | 'failed') => {

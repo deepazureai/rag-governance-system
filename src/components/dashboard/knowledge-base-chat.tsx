@@ -389,13 +389,22 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+  const formatDate = (date: Date | string) => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid date';
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(dateObj);
+    } catch (error) {
+      console.warn('[v0] Invalid date in formatDate:', date, error);
+      return 'Invalid date';
+    }
   };
 
   const formatScoreColor = (score: number) => {
