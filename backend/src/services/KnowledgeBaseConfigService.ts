@@ -129,93 +129,89 @@ export class KnowledgeBaseConfigService {
       const decrypted = { ...config };
       
       let decryptedCount = 0;
-      if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
+      
+      // Helper function to safely decrypt a field
+      const safeDecrypt = (fieldName: string, fieldValue: string): string | null => {
         try {
-          console.log('[v0-getConfig] 3a. Decrypting kbllm_api_key (encrypted length:', (decrypted as any).kbllm_api_key.length + ')');
-          (decrypted as any).kbllm_api_key = cryptoUtil.decrypt((decrypted as any).kbllm_api_key);
+          // Check if field is encrypted (encrypted fields have format: "IV:encryptedData")
+          if (!fieldValue.includes(':')) {
+            console.log(`[v0-getConfig] ${fieldName} is PLAIN TEXT (not encrypted) - skipping decryption (old data format)`);
+            return fieldValue; // Return as-is if not encrypted
+          }
+          
+          console.log(`[v0-getConfig] Decrypting ${fieldName}`);
+          const decrypted = cryptoUtil.decrypt(fieldValue);
+          console.log(`[v0-getConfig] ${fieldName} decrypted successfully`);
+          return decrypted;
+        } catch (error: unknown) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn(`[v0-getConfig] Failed to decrypt ${fieldName}: ${errorMsg} (treating as plain text)`);
+          // If decryption fails, treat as plain text (backward compatibility with old data)
+          return fieldValue;
+        }
+      };
+      
+      if ((decrypted as any).kbllm_api_key && typeof (decrypted as any).kbllm_api_key === 'string') {
+        const decryptedValue = safeDecrypt('kbllm_api_key', (decrypted as any).kbllm_api_key);
+        if (decryptedValue) {
+          (decrypted as any).kbllm_api_key = decryptedValue;
           decryptedCount++;
-          console.log('[v0-getConfig] 3a-OK. Decrypted kbllm_api_key (decrypted length:', (decrypted as any).kbllm_api_key.length + ')');
-        } catch (decryptError: unknown) {
-          const errorMsg = decryptError instanceof Error ? decryptError.message : String(decryptError);
-          console.error('[v0-getConfig] 3a-DECRYPT-ERROR:', errorMsg);
-          throw decryptError;
         }
       }
       if ((decrypted as any).kbllm_azure_endpoint && typeof (decrypted as any).kbllm_azure_endpoint === 'string') {
-        try {
-          console.log('[v0-getConfig] 3b. Decrypting kbllm_azure_endpoint');
-          (decrypted as any).kbllm_azure_endpoint = cryptoUtil.decrypt((decrypted as any).kbllm_azure_endpoint);
+        const decryptedValue = safeDecrypt('kbllm_azure_endpoint', (decrypted as any).kbllm_azure_endpoint);
+        if (decryptedValue) {
+          (decrypted as any).kbllm_azure_endpoint = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3b-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       if ((decrypted as any).kbllm_api_version && typeof (decrypted as any).kbllm_api_version === 'string') {
-        try {
-          console.log('[v0-getConfig] 3c. Decrypting kbllm_api_version');
-          (decrypted as any).kbllm_api_version = cryptoUtil.decrypt((decrypted as any).kbllm_api_version);
+        const decryptedValue = safeDecrypt('kbllm_api_version', (decrypted as any).kbllm_api_version);
+        if (decryptedValue) {
+          (decrypted as any).kbllm_api_version = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3c-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       if ((decrypted as any).kbllm_deployment && typeof (decrypted as any).kbllm_deployment === 'string') {
-        try {
-          console.log('[v0-getConfig] 3d. Decrypting kbllm_deployment');
-          (decrypted as any).kbllm_deployment = cryptoUtil.decrypt((decrypted as any).kbllm_deployment);
+        const decryptedValue = safeDecrypt('kbllm_deployment', (decrypted as any).kbllm_deployment);
+        if (decryptedValue) {
+          (decrypted as any).kbllm_deployment = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3d-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       
       // Decrypt embedding fields if present
       if ((decrypted as any).embedding_api_key && typeof (decrypted as any).embedding_api_key === 'string') {
-        try {
-          console.log('[v0-getConfig] 3e. Decrypting embedding_api_key');
-          (decrypted as any).embedding_api_key = cryptoUtil.decrypt((decrypted as any).embedding_api_key);
+        const decryptedValue = safeDecrypt('embedding_api_key', (decrypted as any).embedding_api_key);
+        if (decryptedValue) {
+          (decrypted as any).embedding_api_key = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3e-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       if ((decrypted as any).embedding_azure_endpoint && typeof (decrypted as any).embedding_azure_endpoint === 'string') {
-        try {
-          console.log('[v0-getConfig] 3f. Decrypting embedding_azure_endpoint');
-          (decrypted as any).embedding_azure_endpoint = cryptoUtil.decrypt((decrypted as any).embedding_azure_endpoint);
+        const decryptedValue = safeDecrypt('embedding_azure_endpoint', (decrypted as any).embedding_azure_endpoint);
+        if (decryptedValue) {
+          (decrypted as any).embedding_azure_endpoint = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3f-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       if ((decrypted as any).embedding_api_version && typeof (decrypted as any).embedding_api_version === 'string') {
-        try {
-          console.log('[v0-getConfig] 3g. Decrypting embedding_api_version');
-          (decrypted as any).embedding_api_version = cryptoUtil.decrypt((decrypted as any).embedding_api_version);
+        const decryptedValue = safeDecrypt('embedding_api_version', (decrypted as any).embedding_api_version);
+        if (decryptedValue) {
+          (decrypted as any).embedding_api_version = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3g-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
       if ((decrypted as any).embedding_deployment && typeof (decrypted as any).embedding_deployment === 'string') {
-        try {
-          console.log('[v0-getConfig] 3h. Decrypting embedding_deployment');
-          (decrypted as any).embedding_deployment = cryptoUtil.decrypt((decrypted as any).embedding_deployment);
+        const decryptedValue = safeDecrypt('embedding_deployment', (decrypted as any).embedding_deployment);
+        if (decryptedValue) {
+          (decrypted as any).embedding_deployment = decryptedValue;
           decryptedCount++;
-        } catch (e) {
-          console.error('[v0-getConfig] 3h-ERROR:', e instanceof Error ? e.message : String(e));
-          throw e;
         }
       }
 
-      console.log('[v0-getConfig] 4. Decryption complete. Decrypted', decryptedCount, 'fields');
-      console.log('[v0-getConfig] 5. Returning decrypted config for appId:', applicationId);
+      console.log('[v0-getConfig] 4. Decryption/parsing complete. Processed', decryptedCount, 'fields');
+      console.log('[v0-getConfig] 5. Returning config for appId:', applicationId);
       return decrypted;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
