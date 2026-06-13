@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Plus, Trash2, Flag, CheckCircle2, Zap, FileText, AlertCircle, Download } from 'lucide-react';
-import { validateResponse, ChatResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
+import { queryKnowledgeBase } from '@/api/kb-services-client';
 import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
 /**
@@ -189,43 +189,15 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      const response = await fetch(`${apiUrl}/api/knowledge-base/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId,
-          threadId: activeThreadId,
-          userMessage: userInput,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 400) {
-          throw new Error('Invalid request. KB Config may not be configured.');
-        } else if (response.status === 404) {
-          throw new Error('Knowledge base not found for this application.');
-        } else if (response.status === 500) {
-          throw new Error('Server error. Azure service may be unavailable.');
-        }
-        throw new Error(`Server error (${response.status}): ${errorText}`);
-      }
-
-      const rawData = await response.json();
-      
-      if (!rawData.success) {
-        throw new Error(rawData.error || 'Failed to generate response');
-      }
-
-      const data = validateResponse(ChatResponseSchema, rawData.data);
+      // Use centralized kb-services-client for query
+      // Handles config fetching, chat provider setup, similarity search, and response generation
+      const result = await queryKnowledgeBase(applicationId, userInput, activeThreadId);
 
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: data.assistantMessage,
-        contextUsed: data.contextUsed,
+        content: result.message,
+        contextUsed: result.contextSources,
         timestamp: new Date(),
       };
 
@@ -239,7 +211,7 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
         lastQueryTime: queryDuration,
         totalQueries: prev.totalQueries + 1,
         avgQueryTime: (prev.avgQueryTime * prev.totalQueries + queryDuration) / (prev.totalQueries + 1),
-        avgSearchTime: prev.avgSearchTime,
+        avgSearchTime: result.searchTime || 0,
       }));
 
       console.log('[v0] Query completed in', Math.round(queryDuration), 'ms');
@@ -251,7 +223,7 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       const errorMessage_: Message = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: `⚠️ Error: ${errorMessage}. Please check your KB Config settings and try again.`,
+        content: `Error: ${errorMessage}. Please check your KB Config settings and try again.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage_]);
@@ -277,9 +249,6 @@ export function KnowledgeBaseChat({ applicationId }: KnowledgeBaseChatProps) {
       if (!response.ok) {
         throw new Error('Failed to finalize');
       }
-
-      const rawData = await response.json();
-      validateResponse(DeleteResponseSchema, rawData);
 
       // Update thread state
       setThreads((prev) =>

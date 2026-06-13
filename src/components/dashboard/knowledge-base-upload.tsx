@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Upload, FileText, Trash2, AlertCircle, CheckCircle2, Clock, AlertTriangle, Download } from 'lucide-react';
-import { validateResponse, UploadResponseSchema, DeleteResponseSchema } from '@/lib/knowledge-base-validation';
+import { 
+  uploadDocumentToKB, 
+  deleteDocumentFromKB, 
+  listKBDocuments,
+  type KBConfig,
+} from '@/api/kb-services-client';
 import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
 
 /**
@@ -96,22 +101,27 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     // Validate file type
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
     if (!allowedTypes.includes(file.type)) {
-      setError('❌ Invalid file type. Supported formats: PDF, DOCX, TXT, and Markdown (.md) files.');
+      setError('Invalid file type. Supported formats: PDF, DOCX, TXT, and Markdown (.md) files.');
       return;
     }
 
     // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
-      setError(`❌ File too large (${formatFileSize(file.size)}). Maximum size is 50MB.`);
+      setError(`File too large (${formatFileSize(file.size)}). Maximum size is 50MB.`);
       return;
     }
 
     // Validate file name
     if (!file.name || file.name.trim().length === 0) {
-      setError('❌ Invalid file name. Please select a file with a valid name.');
+      setError('Invalid file name. Please select a file with a valid name.');
       return;
     }
 
+    // Call upload function with validated file
+    await handleUploadFile(file);
+  };
+
+  const handleUploadFile = async (file: File) => {
     // Create upload tracking entry
     const uploadId = `upload-${Date.now()}-${Math.random()}`;
     const startTime = new Date();
@@ -129,40 +139,21 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     ]);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('applicationId', applicationId);
-      formData.append('append', 'true');
-
       if (!applicationId || applicationId.trim().length === 0) {
         throw new Error('Application ID is missing. Please refresh the page.');
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      const response = await fetch(`${apiUrl}/api/knowledge-base/upload`, {
-        method: 'POST',
-        body: formData,
+      // Use centralized kb-services-client for upload
+      // Handles config fetching, embeddings provider setup, and error handling
+      const result = await uploadDocumentToKB(applicationId, file, (progress: number) => {
+        setUploadingFiles((prev) =>
+          prev.map((uf) =>
+            uf.id === uploadId
+              ? { ...uf, progress: Math.min(progress, 99) } // Cap at 99% until completion
+              : uf
+          )
+        );
       });
-
-      if (!response.ok) {
-        if (response.status === 400) {
-          throw new Error('Upload validation failed. Please check your file and try again. If issues persist, verify LLM Configuration in Settings.');
-        } else if (response.status === 413) {
-          throw new Error('File too large for server. Please reduce file size.');
-        } else if (response.status === 500) {
-          throw new Error('Server error during upload. Please verify LLM Configuration in Settings.');
-        }
-        throw new Error(`Upload failed (${response.status}). Please try again.`);
-      }
-
-      const rawData = await response.json();
-      
-      if (!rawData.success) {
-        throw new Error(rawData.error || 'Upload validation failed');
-      }
-
-      const data = validateResponse(UploadResponseSchema, rawData.data);
 
       // Calculate upload speed
       const endTime = new Date();
@@ -173,11 +164,11 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
       setDocuments((prev) => [
         ...prev,
         {
-          documentId: data.documentId,
+          documentId: result.documentId,
           fileName: file.name,
           fileSize: file.size,
           uploadDate: new Date(),
-          totalChunks: data.chunksCreated,
+          totalChunks: result.totalChunks,
           status: 'processing',
         },
       ]);
@@ -201,7 +192,7 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         fileInputRef.current.value = '';
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '❌ Upload failed. Please try again.';
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed. Please try again.';
       setError(errorMessage);
       
       // Mark as failed
@@ -228,35 +219,15 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
-      const response = await fetch(`${apiUrl}/api/knowledge-base/documents/${documentId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Document not found. It may have already been deleted.');
-        } else if (response.status === 500) {
-          throw new Error('Server error during deletion. Please try again.');
-        }
-        throw new Error('Failed to delete document');
-      }
-
-      const rawData = await response.json();
-      
-      if (!rawData.success) {
-        throw new Error(rawData.error || 'Delete validation failed');
-      }
+      // Use centralized kb-services-client for delete
+      await deleteDocumentFromKB(applicationId, documentId);
 
       // Remove from UI
       setDocuments((prev) => prev.filter((doc) => doc.documentId !== documentId));
       console.log('[v0] Document deleted:', documentId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete document';
-      setError(`❌ ${errorMessage}`);
+      setError(`${errorMessage}`);
       console.error('[v0] Delete error:', err);
     }
   };
@@ -326,13 +297,9 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
         throw new Error('Failed to delete knowledge base');
       }
 
-      const rawData = await response.json();
-      validateResponse(DeleteResponseSchema, rawData);
-
       setDocuments([]);
       console.log('[v0] All knowledge base data deleted');
       setShowDeleteConfirm(false);
-      console.log('[v0] All knowledge base data deleted');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Delete failed';
       setError(errorMessage);
