@@ -49,40 +49,48 @@ export class VectorStoreService {
       let embeddingProvider = 'azure-openai';
       let skipSslVerification = false;
 
-      // Get embeddings connection from KB LLM Provider Service (mapper methods)
-      // This fetches from MongoDB and maps fields to embeddings connection parameters
+      // Get embeddings provider from LLMProviderService
+      // This handles:
+      // - Fetching KB config from MongoDB
+      // - Decrypting sensitive fields (with backward compatibility for old plain-text data)
+      // - Mapping fields to standardized LLMConfig (handles both snake_case and camelCase field names)
+      // - Same implementation as Test Connection in Settings->KB tab
       if (this.applicationId) {
         try {
           logger.info(`[VectorStoreService] 1. Getting embeddings provider for app ${this.applicationId}`);
           const embeddingsProvider = await llmProviderService.getKBEmbeddingsProvider(this.applicationId);
           logger.info(`[VectorStoreService] 2. Embeddings provider created successfully`);
           
-          // Get the MongoDB config to extract the actual values
+          // Get KB config and the mapped LLMConfig to extract standardized field values
+          // This ensures consistency with how Test Connection validates the configuration
           const kbConfig = await configManager.getApplicationKBConfig(this.applicationId);
           if (kbConfig) {
             logger.info(`[VectorStoreService] 3. KB config retrieved from MongoDB`);
             
-            // Extract embeddings parameters that were mapped by getKBEmbeddingsProvider()
-            if (kbConfig.embedding_api_key) {
-              apiKey = kbConfig.embedding_api_key;
-              logger.info(`[VectorStoreService] 4. Using KB config embedding API key`);
+            // Map KB config to embeddings LLM config using same logic as Test Connection
+            const llmConfig = llmProviderService.mapKBConfigToEmbeddings(kbConfig);
+            
+            // Use mapped standardized fields (handles field name variants and fallbacks)
+            if (llmConfig.api_key) {
+              apiKey = llmConfig.api_key;
+              logger.info(`[VectorStoreService] 4. Using mapped embedding API key`);
             }
-            if (kbConfig.embedding_azure_endpoint) {
-              endpoint = kbConfig.embedding_azure_endpoint;
-              logger.info(`[VectorStoreService] 5. Using KB config embedding endpoint`);
+            if (llmConfig.azure_endpoint) {
+              endpoint = llmConfig.azure_endpoint;
+              logger.info(`[VectorStoreService] 5. Using mapped embedding endpoint`);
             }
-            if (kbConfig.embedding_api_version) {
-              apiVersion = kbConfig.embedding_api_version;
-              logger.info(`[VectorStoreService] 6. Using KB config embedding API version`);
+            if (llmConfig.api_version) {
+              apiVersion = llmConfig.api_version;
+              logger.info(`[VectorStoreService] 6. Using mapped embedding API version`);
             }
-            if (kbConfig.embeddingModel) {
-              deploymentName = kbConfig.embeddingModel;
-              logger.info(`[VectorStoreService] 7. Using KB config embedding model: ${deploymentName}`);
+            if (llmConfig.deployment) {
+              deploymentName = llmConfig.deployment;
+              logger.info(`[VectorStoreService] 7. Using mapped embedding deployment: ${deploymentName}`);
             }
-            if (kbConfig.embedding_skipSslVerification) {
-              skipSslVerification = kbConfig.embedding_skipSslVerification;
+            if (llmConfig.skipSslVerification) {
+              skipSslVerification = llmConfig.skipSslVerification;
             }
-            embeddingProvider = (kbConfig as any).embeddingProvider || 'azure-openai';
+            embeddingProvider = llmConfig.provider || 'azure-openai';
             logger.info(`[VectorStoreService] 8. Embeddings provider: ${embeddingProvider}`);
           }
         } catch (error: unknown) {

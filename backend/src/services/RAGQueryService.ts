@@ -103,28 +103,30 @@ Question: ${query}
 
 Please answer the question based on the provided context. If the context doesn't contain enough information, please say so.`;
 
-      // Get LLM configuration from KB config
-      const llmProvider = kbConfig.kbLlmProvider || 'azure-openai';
-      const llmModel = kbConfig.kbllm_deployment || 'gpt-4';
-      const finalTemperature = temperature ?? (kbConfig.temperature !== undefined ? kbConfig.temperature : 0.3);
-      const finalMaxTokens = maxTokens ?? (kbConfig.maxTokens || 1000);
+      // Get LLM configuration from KB config using standardized mapper (same as Test Connection)
+      // This ensures consistent field extraction, decryption, and fallback handling
+      logger.info(`[RAGQueryService] 6. Mapping KB config to chat completion LLMConfig`);
+      const llmConfig = llmProviderService.mapKBConfigToChatCompletion(kbConfig);
+      
+      const finalTemperature = temperature ?? (llmConfig.temperature !== undefined ? llmConfig.temperature : 0.3);
+      const finalMaxTokens = maxTokens ?? (llmConfig.maxTokens || 1000);
 
       logger.info(
-        `[RAGQueryService] 6. Chat completion config: provider=${llmProvider}, model=${llmModel}, temperature=${finalTemperature}, maxTokens=${finalMaxTokens}`
+        `[RAGQueryService] 7. Chat completion config: provider=${llmConfig.provider}, deployment=${llmConfig.deployment}, temperature=${finalTemperature}, maxTokens=${finalMaxTokens}`
       );
 
       // Call LLM with proper configuration
       let llmResponse: string;
       let tokensUsed = 0;
 
-      if (llmProvider === 'azure-openai') {
-        logger.info(`[RAGQueryService] 7. Calling Azure OpenAI with chat completion parameters`);
+      if (llmConfig.provider === 'azure-openai') {
+        logger.info(`[RAGQueryService] 8. Calling Azure OpenAI with chat completion parameters`);
         llmResponse = await this.callAzureOpenAI(kbConfig, systemPrompt, userPrompt, finalTemperature, finalMaxTokens);
       } else {
-        throw new Error(`Unsupported LLM provider: ${llmProvider}`);
+        throw new Error(`Unsupported LLM provider: ${llmConfig.provider}`);
       }
 
-      logger.info(`[RAGQueryService] 8. LLM response generated successfully`);
+      logger.info(`[RAGQueryService] 9. LLM response generated successfully`);
 
       // Format response with source citations
       const response: RAGQueryResponse = {
