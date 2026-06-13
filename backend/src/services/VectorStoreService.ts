@@ -234,6 +234,9 @@ export class VectorStoreService {
           })
       );
 
+      // Log the metadata of the first document for debugging
+      logger.info(`[VectorStoreService] Created ${langchainDocs.length} LangChain documents for vectorization`);
+
       logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
       const startTime = Date.now();
       
@@ -370,12 +373,17 @@ export class VectorStoreService {
     try {
       // Perform similarity search
       let results: DocumentChunk[] = await this.search(query, options);
+      
+      logger.debug(`[VectorStoreService] hybridSearch: got ${results.length} results from similarity search`);
 
       // Apply metadata filters if provided
       if (filters) {
+        logger.debug(`[VectorStoreService] Applying filters: ${JSON.stringify(filters)}`);
+        const beforeFilterCount = results.length;
         results = results.filter((doc: DocumentChunk): boolean => {
           return Object.entries(filters).every(([key, value]) => doc.metadata[key] === value);
         });
+        logger.debug(`[VectorStoreService] After filtering: ${beforeFilterCount} → ${results.length} results`);
       }
 
       const sortedResults: DocumentChunk[] = results.sort(
