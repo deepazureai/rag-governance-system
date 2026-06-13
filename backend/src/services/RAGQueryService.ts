@@ -67,9 +67,11 @@ class RAGQueryService {
       logger.info(`[RAGQueryService] 3. KB config retrieved: provider=${kbConfig.kbLlmProvider}`);
 
       // Retrieve relevant documents using semantic search
-      // Filter by applicationId and namespace to find documents for this specific app
+      // Use same collection name as used during document upload: app-${applicationId}
+      // This ensures we search in the correct Chroma collection for this specific application
       logger.info(`[RAGQueryService] 4. Retrieving documents from vector store for app: ${applicationId}`);
-      const vectorStore = await getVectorStore('knowledge-base', applicationId);
+      const collectionName = `app-${applicationId}`;
+      const vectorStore = await getVectorStore(collectionName, applicationId);
       const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, { 
         applicationId, 
         namespace: 'default' 
