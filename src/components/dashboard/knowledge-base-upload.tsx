@@ -37,7 +37,7 @@ interface UploadedDocument {
   fileSize: number;
   uploadDate: Date;
   totalChunks: number;
-  status: 'indexed' | 'processing' | 'failed';
+  status: 'processing' | 'success' | 'error' | 'complete' | 'indexed' | 'failed';
 }
 
 interface UploadingFile {
@@ -59,12 +59,48 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch KB configuration from Settings→KB tab for this application
   // This includes: embeddings provider (Azure endpoint, API key, model)
   // Backend handles decryption of sensitive credentials transparently
   const { config, isLoadingConfig, configError } = useKnowledgeBase(applicationId);
+
+  // Load documents on component mount and when applicationId changes
+  useEffect(() => {
+    const loadDocuments = async () => {
+      if (!applicationId) return;
+      
+      setIsLoadingDocs(true);
+      try {
+        console.log('[v0] Loading KB documents for app:', applicationId);
+        const docs = await listKBDocuments(applicationId);
+        
+        // Convert from backend format to UI format
+        setDocuments(
+          docs.map((doc) => ({
+            documentId: doc.documentId,
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            uploadDate: new Date(doc.uploadDate),
+            totalChunks: doc.totalChunks || 0,
+            status: (doc.status as any) || 'processing',
+          }))
+        );
+        console.log('[v0] Loaded', docs.length, 'documents');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load documents';
+        console.warn('[v0] Failed to load documents:', message);
+        // Don't show error to user - just start with empty list
+        setDocuments([]);
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    };
+
+    loadDocuments();
+  }, [applicationId]);
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -337,14 +373,19 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
     }
   };
 
-  const getStatusIcon = (status: 'indexed' | 'processing' | 'failed') => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'indexed':
+      case 'success':
+      case 'complete':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case 'processing':
         return <Clock className="w-5 h-5 text-blue-500 animate-spin" />;
       case 'failed':
+      case 'error':
         return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      default:
+        return <Clock className="w-5 h-5 text-blue-500 animate-spin" />;
     }
   };
 
@@ -503,14 +544,12 @@ export function KnowledgeBaseUpload({ applicationId }: KnowledgeBaseUploadProps)
                       <Badge
                         variant="outline"
                         className={`
-                          ${doc.status === 'indexed' && 'bg-green-50 text-green-700 border-green-200'}
+                          ${(doc.status === 'indexed' || doc.status === 'success' || doc.status === 'complete') && 'bg-green-50 text-green-700 border-green-200'}
                           ${doc.status === 'processing' && 'bg-blue-50 text-blue-700 border-blue-200'}
-                          ${doc.status === 'failed' && 'bg-red-50 text-red-700 border-red-200'}
+                          ${(doc.status === 'failed' || doc.status === 'error') && 'bg-red-50 text-red-700 border-red-200'}
                         `}
                       >
-                        {doc.status === 'indexed' && 'Indexed'}
-                        {doc.status === 'processing' && 'Processing'}
-                        {doc.status === 'failed' && 'Failed'}
+                        {doc.status === 'indexed' || doc.status === 'complete' || doc.status === 'success' ? 'Complete' : doc.status === 'processing' ? 'Processing' : 'Error'}
                       </Badge>
                     </div>
 

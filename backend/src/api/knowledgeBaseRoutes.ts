@@ -9,6 +9,7 @@ import { DocumentProcessorService } from '../services/DocumentProcessorService.j
 import { llmAssistanceService } from '../services/LLMAssistanceService.js';
 import { ragQueryService } from '../services/RAGQueryService.js';
 import { kbPromptService } from '../services/KBPromptService.js';
+import { kbDocumentService } from '../services/KnowledgeBaseDocumentService.js';
 import { logger } from '../utils/logger.js';
 
 const knowledgeBaseRouter: ExpressRouter = Router();
@@ -232,6 +233,27 @@ knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Resp
           keyTerms,
           status: 'success',
         });
+
+        // Save document record to MongoDB for frontend persistence
+        try {
+          const documentId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          await kbDocumentService.createDocument({
+            applicationId,
+            documentId,
+            fileName: file.originalname,
+            fileSize: file.size,
+            totalChunks: ids.length,
+            status: 'success',
+            embeddingStatus: 'success',
+            uploadedAt: new Date(),
+            processedAt: new Date(),
+            namespace: namespace ?? 'default',
+          });
+          logger.info(`[KnowledgeBase] Saved document record for ${file.originalname} with ID ${documentId}`);
+        } catch (docError) {
+          logger.warn(`[KnowledgeBase] Failed to save document record: ${docError instanceof Error ? docError.message : 'Unknown error'}`);
+          // Don't fail the upload if we can't save the record
+        }
 
         // Clean up uploaded file
         fs.unlinkSync(file.path);
@@ -1027,4 +1049,78 @@ knowledgeBaseRouter.patch('/prompts/:applicationId/:promptId/badge', async (req:
   }
 });
 
+/**
+ * GET /api/knowledge-base/documents
+ * Fetch all uploaded documents for an application
+ * Used by KB Upload tab to display document list
+ */
+knowledgeBaseRouter.get('/documents', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const applicationId = req.query.applicationId as string;
+    const namespace = req.query.namespace as string;
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId query parameter' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching documents for app: ${applicationId}`);
+
+    const documents = await kbDocumentService.getDocumentsByApplication(applicationId, namespace);
+
+    res.json({
+      success: true,
+      data: documents,
+      total: documents.length,
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to fetch documents:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch documents',
+    });
+  }
+});
+
+/**
+ * DELETE /api/knowledge-base/documents/:documentId
+ * Delete a single uploaded document
+ * Removes from MongoDB record but NOT from Chroma (would need separate cleanup)
+ */
+knowledgeBaseRouter.delete('/documents/:documentId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { documentId } = req.params;
+    const applicationId = req.query.applicationId as string;
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId query parameter' });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Deleting document: ${documentId}`);
+
+    const deleted = await kbDocumentService.deleteDocument(documentId);
+
+    if (!deleted) {
+      res.status(404).json({
+        success: false,
+        error: 'Document not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Document deleted successfully',
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to delete document:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete document',
+    });
+  }
+});
+
 export default knowledgeBaseRouter;
+

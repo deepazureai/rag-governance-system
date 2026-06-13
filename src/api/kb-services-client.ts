@@ -273,7 +273,9 @@ export async function listKBDocuments(
     fileSize: number;
     uploadDate: Date;
     totalChunks: number;
-    status: 'indexed' | 'processing' | 'failed';
+    status: 'processing' | 'success' | 'error';
+    embeddingStatus: 'pending' | 'success' | 'error';
+    errorMessage?: string;
   }>
 > {
   try {
@@ -283,13 +285,27 @@ export async function listKBDocuments(
     const response = await fetch(`${apiUrl}/api/knowledge-base/documents?applicationId=${applicationId}`);
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.log('[v0-kbservices] No documents found for app');
+        return [];
+      }
       throw new Error(`Failed to fetch documents: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    console.log('[v0-kbservices] Found', data.documents?.length || 0, 'documents');
+    const result = await response.json();
+    console.log('[v0-kbservices] Found', result.data?.length || 0, 'documents');
 
-    return data.documents || [];
+    // Map backend response to frontend format
+    return (result.data || []).map((doc: any) => ({
+      documentId: doc.documentId,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      uploadDate: new Date(doc.uploadedAt),
+      totalChunks: doc.totalChunks,
+      status: doc.status || 'processing',
+      embeddingStatus: doc.embeddingStatus || 'pending',
+      errorMessage: doc.errorMessage,
+    }));
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[v0-kbservices] Error fetching documents:', message);

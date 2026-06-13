@@ -138,6 +138,30 @@ export type IKnowledgeBaseConfig = KnowledgeBaseConfig;
 export type KnowledgeBaseConfigInput = Omit<KnowledgeBaseConfig, '_id' | 'createdAt' | 'updatedAt'>;
 
 // ============================================================
+// Knowledge Base Document Types
+// ============================================================
+export interface KnowledgeBaseDocument {
+  _id?: Types.ObjectId;
+  applicationId: string;
+  documentId: string;
+  fileName: string;
+  fileSize: number;
+  totalChunks: number;
+  status: 'processing' | 'success' | 'error';
+  embeddingStatus: 'pending' | 'success' | 'error';
+  errorMessage?: string;
+  uploadedAt: Date;
+  processedAt?: Date;
+  namespace: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Input types for validation
+export type IKnowledgeBaseDocument = KnowledgeBaseDocument;
+export type KnowledgeBaseDocumentInput = Omit<KnowledgeBaseDocument, '_id' | 'createdAt' | 'updatedAt'>;
+
+// ============================================================
 // Recommendation Prompt Types
 // ============================================================
 export interface RecommendationSuggestion {
