@@ -152,28 +152,42 @@ export class VectorStoreService {
       }
 
       try {
-        // Connect to Chroma server running in Docker
-        this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
-          collectionName: this.collectionName,
-          url: 'http://chroma:8000', // Docker service name (internal network)
-        });
-        logger.info(`[VectorStoreService] Connected to Chroma server at http://chroma:8000 (Docker)`);
-      } catch (chromaServerError) {
-        // Try localhost fallback for local development
+        // Try to connect to existing Chroma collection
+        // If collection doesn't exist, this will fail gracefully and we'll create it on first addDocuments
         try {
           this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
             collectionName: this.collectionName,
-            url: 'http://localhost:8888', // Local Chroma development (port 8888 maps to 8000)
+            url: 'http://chroma:8000', // Docker service name (internal network)
           });
-          logger.info(`[VectorStoreService] Connected to Chroma server at http://localhost:8888 (local development)`);
-        } catch (chromaLocalError) {
-          logger.error(
-            `[VectorStoreService] Could not connect to Chroma. Ensure Chroma is running at http://chroma:8000 (Docker) or http://localhost:8888 (local). Error: ${chromaLocalError}`
-          );
-          throw new Error(
-            'Vector store (Chroma) is not available. Please ensure Chroma Docker service is running. Start with: docker-compose up -d chroma'
-          );
+          logger.info(`[VectorStoreService] Connected to existing Chroma collection at http://chroma:8000 (Docker)`);
+        } catch (chromaServerError) {
+          // Try localhost fallback for local development
+          try {
+            this.vectorStore = await Chroma.fromExistingCollection(this.embeddings, {
+              collectionName: this.collectionName,
+              url: 'http://localhost:8888', // Local Chroma development (port 8888 maps to 8000)
+            });
+            logger.info(`[VectorStoreService] Connected to existing Chroma collection at http://localhost:8888 (local development)`);
+          } catch (chromaLocalError) {
+            // Collection might not exist yet - this is OK, we'll create it on first addDocuments
+            const errorMsg = chromaLocalError instanceof Error ? chromaLocalError.message : String(chromaLocalError);
+            if (errorMsg.includes('Collection') && errorMsg.includes('not found')) {
+              logger.info(`[VectorStoreService] Collection '${this.collectionName}' does not exist yet (will be created on first document add)`);
+              // Initialize as null - will be created when addDocuments is called
+              this.vectorStore = null as any;
+            } else {
+              logger.error(
+                `[VectorStoreService] Could not connect to Chroma. Ensure Chroma is running at http://chroma:8000 (Docker) or http://localhost:8888 (local). Error: ${chromaLocalError}`
+              );
+              throw new Error(
+                'Vector store (Chroma) is not available. Please ensure Chroma Docker service is running. Start with: docker-compose up -d chroma'
+              );
+            }
+          }
         }
+      } catch (error) {
+        // Re-throw connection errors (not "collection not found")
+        throw error;
       }
 
       this.isInitialized = true;
@@ -213,9 +227,10 @@ export class VectorStoreService {
 
   /**
    * Add documents to vector store
+   * Creates the collection if it doesn't exist yet
    */
   async addDocuments(documents: DocumentChunk[], namespace?: string): Promise<string[]> {
-    if (!this.vectorStore || !this.embeddings) {
+    if (!this.embeddings) {
       await this.initialize();
     }
 
@@ -234,11 +249,37 @@ export class VectorStoreService {
           })
       );
 
-      // Log the metadata of the first document for debugging
       logger.info(`[VectorStoreService] Created ${langchainDocs.length} LangChain documents for vectorization`);
-      logger.info(`[VectorStoreService] Created vectorstore directory: ${this.persistDir}`);
 
-      logger.info(`[VectorStoreService] Calling vectorStore.addDocuments with ${langchainDocs.length} LangChain documents...`);
+      // If collection doesn't exist yet (vectorStore is null), create it with these documents
+      if (!this.vectorStore) {
+        logger.info(`[VectorStoreService] Creating new Chroma collection '${this.collectionName}' with initial documents...`);
+        
+        try {
+          // Try Docker first
+          this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings, {
+            collectionName: this.collectionName,
+            url: 'http://chroma:8000',
+          });
+          logger.info(`[VectorStoreService] Created new collection at http://chroma:8000 (Docker)`);
+        } catch (dockerError) {
+          try {
+            // Try localhost fallback
+            this.vectorStore = await Chroma.fromDocuments(langchainDocs, this.embeddings, {
+              collectionName: this.collectionName,
+              url: 'http://localhost:8888',
+            });
+            logger.info(`[VectorStoreService] Created new collection at http://localhost:8888 (local)`);
+          } catch (localError) {
+            logger.error('[VectorStoreService] Failed to create collection on either Chroma instance:', localError);
+            throw localError;
+          }
+        }
+        
+        return langchainDocs.map((_, idx) => `doc-${idx}`);
+      }
+
+      logger.info(`[VectorStoreService] Adding documents to existing collection...`);
       const startTime = Date.now();
       
       // Add timeout to prevent hanging if Chroma is unreachable
@@ -269,10 +310,16 @@ export class VectorStoreService {
       await this.initialize();
     }
 
+    // If still no vectorStore after initialize, collection doesn't exist yet
+    if (!this.vectorStore) {
+      logger.warn(`[VectorStoreService] Collection '${this.collectionName}' does not exist. No documents have been added yet.`);
+      return [];
+    }
+
     try {
       logger.info(`[VectorStoreService] Starting similarity search in collection: ${this.collectionName}, query: "${query.substring(0, 50)}..."`);
       
-      // similaritySearch returns Document[] not [Document, number][]
+      // similaritySearch returns Document[]
       const results: Document[] = await this.vectorStore!.similaritySearch(query, options.k);
       
       logger.info(`[VectorStoreService] similaritySearch returned ${results?.length || 0} raw results`);
