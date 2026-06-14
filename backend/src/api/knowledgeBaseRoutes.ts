@@ -778,6 +778,9 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
 
     logger.info(`[KnowledgeBase] Chat query: app=${applicationId}, thread=${threadId}, query="${userMessage.substring(0, 100)}"`);
 
+    // Time the RAG pipeline execution
+    const ragStartTime = Date.now();
+
     // Execute full RAG pipeline
     const ragResponse = await ragQueryService.query({
       applicationId,
@@ -787,24 +790,36 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
       maxTokens,
     });
 
+    const ragTotalTime = Date.now() - ragStartTime;
+
     // Store chat messages in RAG session if threadId provided
     if (threadId?.trim()) {
       try {
         logger.info(`[KnowledgeBase] Saving chat messages to RAG session: ${threadId}`);
         
         // Add user message to chat history
-        await ragSessionManager.addChatMessage(threadId, 'user', userMessage);
+        await ragSessionManager.addChatMessage(threadId, 'user', userMessage, {
+          metadata: {
+            model: 'gpt-4',  // Could be parameterized
+            temperature: temperature || 0.7,
+            maxTokens: maxTokens || 2000,
+          },
+        });
         logger.debug(`[KnowledgeBase] Saved user message to session ${threadId}`);
         
-        // Add assistant response to chat history
-        await ragSessionManager.addChatMessage(threadId, 'assistant', ragResponse.assistantMessage);
-        logger.debug(`[KnowledgeBase] Saved assistant response to session ${threadId}`);
+        // Add assistant response with full context details
+        await ragSessionManager.addChatMessage(threadId, 'assistant', ragResponse.assistantMessage, {
+          contextRetrieved: ragResponse.contextUsed,  // Array of context with source, relevance score
+          tokensUsed: ragResponse.tokensUsed,  // Total tokens used for this response
+          llmCallTime: ragTotalTime,  // Total RAG pipeline time
+          metadata: {
+            searchResultsCount: ragResponse.searchResults,
+            embeddingModel: 'text-embedding-3-large',
+            contextQuality: 'high',
+          },
+        });
+        logger.debug(`[KnowledgeBase] Saved assistant response with context to session ${threadId}`);
         
-        // Update token usage statistics
-        if (ragResponse.tokensUsed) {
-          await ragSessionManager.updateTokenUsage(threadId, ragResponse.tokensUsed);
-          logger.debug(`[KnowledgeBase] Updated token usage: ${ragResponse.tokensUsed}`);
-        }
       } catch (sessionError) {
         logger.error('[KnowledgeBase] Failed to save chat to session:', sessionError);
         // Don't fail the chat request if session storage fails - return response anyway
@@ -821,6 +836,7 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
         contextUsed: ragResponse.contextUsed,
         searchResults: ragResponse.searchResults,
         tokensUsed: ragResponse.tokensUsed,
+        executionTimeMs: ragTotalTime,
         timestamp: new Date().toISOString(),
       },
     });
@@ -867,6 +883,94 @@ knowledgeBaseRouter.get('/chat/:threadId/history', async (req: Request, res: Res
   } catch (error) {
     logger.error('[KnowledgeBase] Failed to fetch chat history:', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch chat history';
+    res.status(500).json({
+      success: false,
+      error: message,
+    });
+  }
+});
+
+/**
+ * GET /api/knowledge-base/chat/:threadId/full
+ * Fetch complete chat history with all context details for a thread
+ * Includes: prompts, responses, context sources, tokens, timing, metadata
+ */
+knowledgeBaseRouter.get('/chat/:threadId/full', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const threadId = asString(req.params.threadId);
+    const limit = parseInt(req.query.limit as string) || 100;
+
+    if (!threadId?.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Thread ID is required',
+      });
+      return;
+    }
+
+    logger.info(`[KnowledgeBase] Fetching full chat details for thread: ${threadId}, limit: ${limit}`);
+
+    // Fetch the complete session with all chat history
+    const session = await ragSessionManager.getSession(threadId);
+
+    if (!session) {
+      res.status(404).json({
+        success: false,
+        error: 'Chat thread not found',
+      });
+      return;
+    }
+
+    // Transform chat history to include all details with proper structure
+    const enrichedChatHistory = session.chatHistory.slice(-limit).map((msg: any) => ({
+      id: msg.messageId,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      tokensUsed: msg.tokensUsed || 0,
+      
+      // Context details (for assistant messages)
+      contextRetrieved: msg.contextRetrieved ? msg.contextRetrieved.map((ctx: any) => ({
+        source: ctx.source,
+        documentId: ctx.documentId,
+        chunkId: ctx.chunkId,
+        relevanceScore: ctx.relevanceScore,
+        contentPreview: ctx.content ? ctx.content.substring(0, 200) : '',
+      })) : [],
+      
+      // Timing metrics (in milliseconds)
+      timing: {
+        embeddingTime: msg.embeddingTime || 0,
+        searchTime: msg.searchTime || 0,
+        llmCallTime: msg.llmCallTime || 0,
+      },
+      
+      // Additional metadata
+      metadata: msg.metadata || {},
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        threadId,
+        sessionName: session.sessionName,
+        applicationId: session.applicationId,
+        createdAt: session.createdAt,
+        lastAccessedAt: session.lastAccessedAt,
+        statistics: {
+          totalMessages: session.chatHistory.length,
+          totalTokensUsed: session.totalTokensUsed,
+          totalQueries: session.totalQueries,
+          uploadedFiles: session.uploadedFileNames || [],
+          totalChunks: session.totalChunks,
+        },
+        chatHistory: enrichedChatHistory,
+        count: enrichedChatHistory.length,
+      },
+    });
+  } catch (error) {
+    logger.error('[KnowledgeBase] Failed to fetch full chat details:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch chat details';
     res.status(500).json({
       success: false,
       error: message,

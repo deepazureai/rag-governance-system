@@ -1,4 +1,4 @@
-import { RAGSession, RAGSessionDocument, ChatMessage } from '../models/RAGSession.js';
+import { RAGSession, RAGSessionDocument, ChatMessage, ContextDetail } from '../models/RAGSession.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -99,12 +99,20 @@ class RAGSessionManager {
   }
 
   /**
-   * Add a message to session chat history
+   * Add a message to session chat history with full context
    */
   async addChatMessage(
     sessionId: string,
     role: 'user' | 'assistant',
-    content: string
+    content: string,
+    options?: {
+      contextRetrieved?: ContextDetail[];
+      tokensUsed?: number;
+      embeddingTime?: number;
+      searchTime?: number;
+      llmCallTime?: number;
+      metadata?: Record<string, unknown>;
+    }
   ): Promise<RAGSessionDocument | null> {
     if (!sessionId?.trim() || !content?.trim()) {
       throw new Error('Session ID and content are required');
@@ -114,15 +122,29 @@ class RAGSessionManager {
       role,
       content,
       timestamp: new Date(),
+      messageId: uuidv4(),
+      ...(options?.contextRetrieved && { contextRetrieved: options.contextRetrieved }),
+      ...(typeof options?.tokensUsed === 'number' && { tokensUsed: options.tokensUsed }),
+      ...(typeof options?.embeddingTime === 'number' && { embeddingTime: options.embeddingTime }),
+      ...(typeof options?.searchTime === 'number' && { searchTime: options.searchTime }),
+      ...(typeof options?.llmCallTime === 'number' && { llmCallTime: options.llmCallTime }),
+      ...(options?.metadata && { metadata: options.metadata }),
     };
+
+    const updateData: Record<string, unknown> = {
+      $push: { chatHistory: message },
+      $set: { updatedAt: new Date(), lastAccessedAt: new Date() },
+      $inc: { totalQueries: role === 'user' ? 1 : 0 },
+    };
+
+    // Add tokens to total if provided
+    if (typeof options?.tokensUsed === 'number' && options.tokensUsed > 0) {
+      (updateData as any).$inc.totalTokensUsed = options.tokensUsed;
+    }
 
     const session: RAGSessionDocument | null = await RAGSession.findOneAndUpdate(
       { sessionId },
-      {
-        $push: { chatHistory: message },
-        $set: { updatedAt: new Date(), lastAccessedAt: new Date() },
-        $inc: { totalQueries: role === 'user' ? 1 : 0 },
-      },
+      updateData,
       { new: true }
     ).exec();
 

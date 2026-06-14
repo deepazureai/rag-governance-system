@@ -7,10 +7,33 @@ import { ObjectId } from 'mongodb';
  * Similar to Copilot's multi-chat functionality
  */
 
+interface ContextDetail {
+  source: string;
+  documentId?: string;
+  chunkId?: string;
+  relevanceScore: number;
+  content?: string;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  
+  // Context for assistant messages
+  contextRetrieved?: ContextDetail[];
+  
+  // Token usage for LLM calls
+  tokensUsed?: number;
+  
+  // Search/embedding details
+  embeddingTime?: number;  // milliseconds
+  searchTime?: number;     // milliseconds
+  llmCallTime?: number;    // milliseconds
+  
+  // Metadata
+  messageId?: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface RAGSessionDocument extends Document {
@@ -50,6 +73,26 @@ interface RAGSessionDocument extends Document {
   totalTokensUsed: number;
 }
 
+const contextDetailSchema = new Schema({
+  source: {
+    type: String,
+    required: true,
+  },
+  documentId: {
+    type: String,
+  },
+  chunkId: {
+    type: String,
+  },
+  relevanceScore: {
+    type: Number,
+    required: true,
+  },
+  content: {
+    type: String,
+  },
+});
+
 const chatMessageSchema = new Schema({
   role: {
     type: String,
@@ -63,6 +106,30 @@ const chatMessageSchema = new Schema({
   timestamp: {
     type: Date,
     default: Date.now,
+  },
+  contextRetrieved: {
+    type: [contextDetailSchema],
+    default: undefined,
+  },
+  tokensUsed: {
+    type: Number,
+  },
+  embeddingTime: {
+    type: Number,
+  },
+  searchTime: {
+    type: Number,
+  },
+  llmCallTime: {
+    type: Number,
+  },
+  messageId: {
+    type: String,
+    default: () => new (require('uuid')).v4(),
+  },
+  metadata: {
+    type: Schema.Types.Mixed,
+    default: {},
   },
 });
 
@@ -164,6 +231,7 @@ const ragSessionSchema = new Schema({
 ragSessionSchema.index({ applicationId: 1, isActive: 1 });
 ragSessionSchema.index({ applicationId: 1, lastAccessedAt: -1 });
 
-export const RAGSession = model<RAGSessionDocument>('RAGSession', ragSessionSchema);
+const RAGSession = model<RAGSessionDocument>('RAGSession', ragSessionSchema);
 
-export type { RAGSessionDocument, ChatMessage };
+export { RAGSession };
+export type { RAGSessionDocument, ChatMessage, ContextDetail };
