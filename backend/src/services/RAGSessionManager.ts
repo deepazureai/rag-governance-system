@@ -100,6 +100,7 @@ class RAGSessionManager {
 
   /**
    * Add a message to session chat history with full context
+   * Creates session if it doesn't exist (upsert behavior)
    */
   async addChatMessage(
     sessionId: string,
@@ -112,6 +113,8 @@ class RAGSessionManager {
       searchTime?: number;
       llmCallTime?: number;
       metadata?: Record<string, unknown>;
+      applicationId?: string;
+      sessionName?: string;
     }
   ): Promise<RAGSessionDocument | null> {
     if (!sessionId?.trim() || !content?.trim()) {
@@ -142,13 +145,56 @@ class RAGSessionManager {
       (updateData as any).$inc.totalTokensUsed = options.tokensUsed;
     }
 
-    const session: RAGSessionDocument | null = await RAGSession.findOneAndUpdate(
-      { sessionId },
-      updateData,
-      { new: true }
-    ).exec();
+    try {
+      // Check if session exists first
+      let session = await RAGSession.findOne({ sessionId }).exec();
+      
+      if (!session) {
+        // Session doesn't exist - need to create it with required fields
+        const appId = options?.applicationId || 'unknown';
+        const sessionName = options?.sessionName || `Session-${sessionId}`;
+        
+        console.log(`[RAGSessionManager] Creating new session: ${sessionId} for app: ${appId}`);
+        
+        session = new RAGSession({
+          applicationId: appId,
+          sessionId,
+          sessionName,
+          chatHistory: [message],
+          totalQueries: role === 'user' ? 1 : 0,
+          totalTokensUsed: options?.tokensUsed || 0,
+          embeddingModel: 'text-embedding-3-large',  // Default
+          embeddingProvider: 'azure-openai',  // Default
+          llmProvider: 'azure-openai',  // Default
+          llmModel: 'gpt-4.1-mini',  // Default
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastAccessedAt: new Date(),
+          isActive: true,
+        });
+        
+        await session.save();
+        console.log(`[RAGSessionManager] ✓ Created new session ${sessionId}, total messages: 1`);
+      } else {
+        // Session exists - update it with new message
+        session = await RAGSession.findOneAndUpdate(
+          { sessionId },
+          updateData,
+          { new: true }
+        ).exec();
+        console.log(`[RAGSessionManager] ✓ Added message to existing session ${sessionId}, total messages: ${session?.chatHistory?.length || 0}`);
+      }
 
-    return session;
+      if (!session) {
+        console.error(`[RAGSessionManager] Failed to save message to session: ${sessionId}`);
+        throw new Error(`Failed to save message to session: ${sessionId}`);
+      }
+
+      return session;
+    } catch (error) {
+      console.error(`[RAGSessionManager] Error adding message to session ${sessionId}:`, error);
+      throw error;
+    }
   }
 
   /**

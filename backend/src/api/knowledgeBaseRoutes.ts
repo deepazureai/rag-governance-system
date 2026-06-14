@@ -801,32 +801,44 @@ knowledgeBaseRouter.post('/chat', async (req: Request, res: Response): Promise<v
         logger.info(`[KnowledgeBase] Saving chat messages to RAG session: ${threadId}`);
         
         // Add user message to chat history
-        await ragSessionManager.addChatMessage(threadId, 'user', userMessage, {
+        const userSaved = await ragSessionManager.addChatMessage(threadId, 'user', userMessage, {
+          applicationId,
+          sessionName: threadId,  // Thread name as session name
           metadata: {
-            model: 'gpt-4',  // Could be parameterized
+            model: 'gpt-4',
             temperature: temperature || 0.7,
             maxTokens: maxTokens || 2000,
           },
         });
-        logger.debug(`[KnowledgeBase] Saved user message to session ${threadId}`);
+        
+        if (userSaved) {
+          logger.info(`[KnowledgeBase] ✓ Saved user message to session ${threadId}, total messages: ${userSaved.chatHistory?.length}`);
+        }
         
         // Add assistant response with full context details
-        await ragSessionManager.addChatMessage(threadId, 'assistant', ragResponse.assistantMessage, {
-          contextRetrieved: ragResponse.contextUsed,  // Array of context with source, relevance score
-          tokensUsed: ragResponse.tokensUsed,  // Total tokens used for this response
-          llmCallTime: ragTotalTime,  // Total RAG pipeline time
+        const assistantSaved = await ragSessionManager.addChatMessage(threadId, 'assistant', ragResponse.assistantMessage, {
+          applicationId,
+          sessionName: threadId,
+          contextRetrieved: ragResponse.contextUsed,
+          tokensUsed: ragResponse.tokensUsed,
+          llmCallTime: ragTotalTime,
           metadata: {
             searchResultsCount: ragResponse.searchResults,
             embeddingModel: 'text-embedding-3-large',
             contextQuality: 'high',
           },
         });
-        logger.debug(`[KnowledgeBase] Saved assistant response with context to session ${threadId}`);
+        
+        if (assistantSaved) {
+          logger.info(`[KnowledgeBase] ✓ Saved assistant response to session ${threadId}, total messages: ${assistantSaved.chatHistory?.length}`);
+        }
         
       } catch (sessionError) {
         logger.error('[KnowledgeBase] Failed to save chat to session:', sessionError);
-        // Don't fail the chat request if session storage fails - return response anyway
+        // Log but don't fail - return response anyway
       }
+    } else {
+      logger.warn('[KnowledgeBase] No threadId provided, chat messages will not be persisted');
     }
 
     res.json({
