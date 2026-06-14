@@ -204,6 +204,7 @@ knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Resp
         let ids: string[] = [];
         try {
           logger.info(`[KnowledgeBase] Adding ${documentChunks.length} chunks to vector store for ${file.originalname}...`);
+          logger.info(`[KnowledgeBase] Collection name: app-${applicationId}, Namespace: ${namespace ?? 'default'}`);
           
           // Add timeout to prevent hanging (increased to 300s for embedding generation)
           const startTime = Date.now();
@@ -216,10 +217,12 @@ knowledgeBaseRouter.post('/upload', handleFileUpload, async (req: any, res: Resp
           );
           
           ids = await Promise.race([addDocsPromise, timeoutPromise]);
-          logger.info(`[KnowledgeBase] Successfully vectorized ${file.originalname} (${ids.length} chunks)`);
+          const elapsed = Date.now() - startTime;
+          logger.info(`[KnowledgeBase] ✓ Successfully vectorized ${file.originalname}: ${ids.length} chunks added to Chroma in ${elapsed}ms`);
+          logger.info(`[KnowledgeBase] Document chunks stored in collection: app-${applicationId}`);
         } catch (vectorError) {
           const message = vectorError instanceof Error ? vectorError.message : 'Vectorization failed';
-          logger.error(`[KnowledgeBase] Failed to vectorize ${file.originalname}: ${message}`);
+          logger.error(`[KnowledgeBase] ✗ Failed to vectorize ${file.originalname}: ${message}`);
           results.push({
             filename: file.originalname,
             status: 'error',

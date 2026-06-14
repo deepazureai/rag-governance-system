@@ -71,11 +71,25 @@ class RAGQueryService {
       // This ensures we search in the correct Chroma collection for this specific application
       logger.info(`[RAGQueryService] 4. Retrieving documents from vector store for app: ${applicationId}`);
       const collectionName = `app-${applicationId}`;
-      const vectorStore = await getVectorStore(collectionName, applicationId);
+      
+      logger.info(`[RAGQueryService] Attempting to load vector store from cache/memory for collection: ${collectionName}`);
+      let vectorStore = await getVectorStore(collectionName, applicationId);
+      
+      // Check if vector store was successfully initialized
+      if (!vectorStore) {
+        logger.error(`[RAGQueryService] Vector store failed to initialize for collection: ${collectionName}`);
+        throw new Error(`Vector store not available for application: ${applicationId}. Ensure documents have been uploaded.`);
+      }
+      
+      logger.info(`[RAGQueryService] ✓ Vector store loaded successfully (from cache or initialized)`);
+      
+      logger.info(`[RAGQueryService] Executing hybrid search in collection: ${collectionName}`);
       const searchResults: DocumentChunk[] = await vectorStore.hybridSearch(query, { 
         applicationId, 
         namespace: 'default' 
       }, { k: topK });
+      
+      logger.info(`[RAGQueryService] Search returned ${searchResults.length} documents from Chroma DB`);
 
       if (searchResults.length === 0) {
         logger.warn(

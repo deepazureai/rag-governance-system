@@ -486,18 +486,30 @@ const vectorStoreInstances: Map<string, VectorStoreService> = new Map();
 export async function getVectorStore(collectionName: string = 'knowledge-base', applicationId?: string): Promise<VectorStoreService> {
   const instanceKey = applicationId || 'default';
   
-  if (!vectorStoreInstances.has(instanceKey)) {
-    // Use /tmp directory with fallback to memory-only if needed
-    const tmpDir = path.join('/tmp', 'vectorstore', applicationId || 'default');
-    
-    const instance = new VectorStoreService({
-      collectionName,
-      persistDir: tmpDir,
-      applicationId,
-    });
-    await instance.initialize();
-    vectorStoreInstances.set(instanceKey, instance);
+  // Check if already cached in memory
+  if (vectorStoreInstances.has(instanceKey)) {
+    logger.info(`[VectorStoreService] ✓ Vector store FOUND in memory cache for app: ${instanceKey}`);
+    return vectorStoreInstances.get(instanceKey)!;
   }
+  
+  // Not in memory - initialize new instance and cache it
+  logger.info(`[VectorStoreService] Vector store NOT in cache for app: ${instanceKey}, initializing...`);
+  
+  // Use /tmp directory with fallback to memory-only if needed
+  const tmpDir = path.join('/tmp', 'vectorstore', applicationId || 'default');
+  
+  logger.info(`[VectorStoreService] Creating new VectorStoreService instance for collection: ${collectionName}`);
+  const instance = new VectorStoreService({
+    collectionName,
+    persistDir: tmpDir,
+    applicationId,
+  });
+  
+  logger.info(`[VectorStoreService] Initializing vector store connection to Chroma...`);
+  await instance.initialize();
+  
+  vectorStoreInstances.set(instanceKey, instance);
+  logger.info(`[VectorStoreService] ✓ Vector store cached in memory for app: ${instanceKey}`);
   
   return vectorStoreInstances.get(instanceKey)!;
 }
